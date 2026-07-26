@@ -1,0 +1,72 @@
+{
+  "subsystems": {
+    "gracie": {
+      "commands": {
+        "run_diagnostics": "Gracie running diagnostics.",
+        "get_health": "Gracie health is {health_state}.",
+        "safe_mode": "Gracie switching to SAFE_MODE."
+      }
+    },
+    "ethan": {
+      "commands": {
+        "run_diagnostics": "Ethan running diagnostics.",
+        "set_mode": "Ethan mode set to {mode}."
+      }
+    },
+    "lunae": {
+      "commands": {
+        "set_nav_state": "Lunae navigation state is now {nav_state}.",
+        "run_diagnostics": "Lunae running diagnostics."
+      }
+    },
+    "eden": {
+      "commands": {
+        "run_diagnostics": "Eden running diagnostics.",
+        "set_mode": "Eden mode is now {mode}."
+      }
+    }
+  },
+  "responses": {
+    "unknown_command": "Sorry, I didn't understand that.",
+    "diagnostic_complete": "Diagnostics complete for all systems.",
+    "emergency": "Critical system event! Alerting crew."
+  },
+  "conversations": [
+    {
+      "from": "EV1",
+      "to": "MCC",
+      "message": "Power systems diagnostics complete. Nominal.",
+      "timestamp": "2025-11-24T09:00:00Z"
+    },
+    {
+      "from": "MCC",
+      "to": "EV1",
+      "message": "Copy. EV1, please proceed to external panel inspection.",
+      "timestamp": "2025-11-24T09:02:00Z"
+    },
+    {
+      "from": "EV2",
+      "to": "IV2",
+      "message": "Sample container sealed and delivered to airlock.",
+      "timestamp": "2025-11-24T09:05:00Z"
+    },
+    {
+      "from": "IV2",
+      "to": "Science Team",
+      "message": "Preparing instruments for next experiment.",
+      "timestamp": "2025-11-24T09:06:00Z"
+    },
+    {
+      "from": "Science Team",
+      "to": "IV2",
+      "message": "Received sample data. Analysis underway.",
+      "timestamp": "2025-11-24T09:08:00Z"
+    },
+    {
+      "from": "MCC",
+      "to": "IV2",
+      "message": "Confirm experiment step completion, IV2.",
+      "timestamp": "2025-11-24T09:10:00Z"
+    }
+  ]
+}
