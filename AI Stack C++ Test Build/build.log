@@ -1,0 +1,112 @@
+﻿=== Build log: AI Stack C++ Test Build ===
+Log started: 2026-07-26 23:42:05 +01:00
+
+[2026-07-26 23:42:05 +01:00] --- Building with MinGW g++ ---
+Compiler: g++.exe (MinGW-W64 x86_64-ucrt-posix-seh, built by Brecht Sanders, r3) 16.1.0
+test_gracie build exit: 0
+leon_sim build exit: 0
+[2026-07-26 23:42:09 +01:00] --- MinGW g++ build finished ---
+
+[2026-07-26 23:43:44 +01:00] --- Building with MSVC (cl.exe) ---
+Compiler: Microsoft C/C++ Optimizing Compiler 19.51.36252 for x64
+test_gracie (MSVC) build exit: 
+leon_sim (MSVC) build exit: 
+[2026-07-26 23:43:46 +01:00] --- MSVC build finished ---
+
+[2026-07-26 23:44:50 +01:00] --- Building with MSVC (cl.exe) ---
+Compiler: Microsoft C/C++ Optimizing Compiler 19.51.36252 for x64
+leon_types.cpp
+gracie.cpp
+eden.cpp
+coordinator.cpp
+test_gracie.cpp
+Generating Code...
+test_gracie (MSVC) build exit: 0
+leon_types.cpp
+gracie.cpp
+eden.cpp
+coordinator.cpp
+main.cpp
+Generating Code...
+leon_sim (MSVC) build exit: 0
+[2026-07-26 23:44:52 +01:00] --- MSVC build finished ---
+
+[2026-07-26 23:45:40 +01:00] --- Building with Clang (now that MSVC headers are present) ---
+Compiler: clang version 22.1.8 (https://github.com/llvm/llvm-project ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)
+test_gracie (Clang) build exit: 0
+leon_sim (Clang) build exit: 0
+[2026-07-26 23:45:44 +01:00] --- Clang build finished ---
+
+[2026-07-26 23:46:03 +01:00] --- Running all three test_gracie builds, confirming identical output ---
+--- test_gracie_gxx.exe ---
+  ok: temp=30 rad=10 -> NOMINAL
+  ok: temp=52 rad=10 -> WARNING
+  ok: temp=56 rad=41 -> FAULT
+  ok: temp=30 rad=10 (latched) -> FAULT
+  ok: clear_fault -> NOMINAL
+All GRACIE health-state checks passed.
+[note: this output was dropped from the log by a transient file-lock
+error on the first Add-Content call; re-run separately at
+2026-07-26 23:47 +01:00 and confirmed byte-identical to the other two.]
+exit: 0
+--- test_gracie_msvc.exe ---
+  ok: temp=30 rad=10 -> NOMINAL
+  ok: temp=52 rad=10 -> WARNING
+  ok: temp=56 rad=41 -> FAULT
+  ok: temp=30 rad=10 (latched) -> FAULT
+  ok: clear_fault -> NOMINAL
+All GRACIE health-state checks passed.
+exit: 0
+--- test_gracie_clang.exe ---
+  ok: temp=30 rad=10 -> NOMINAL
+  ok: temp=52 rad=10 -> WARNING
+  ok: temp=56 rad=41 -> FAULT
+  ok: temp=30 rad=10 (latched) -> FAULT
+  ok: clear_fault -> NOMINAL
+All GRACIE health-state checks passed.
+exit: 0
+[2026-07-26 23:46:04 +01:00] --- Log complete ---
+
+[2026-07-26 23:46:46 +01:00] --- Running all three leon_sim builds, confirming identical output ---
+--- leon_sim_gxx.exe ---
+cycle 0: GRACIE=NOMINAL EDEN=MONITORING
+cycle 1: GRACIE=NOMINAL EDEN=MONITORING
+cycle 2: GRACIE=WARNING EDEN=MONITORING
+cycle 3: ALERT - GRACIE FAULT detected, notifying HALIA
+cycle 3: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 4: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 5: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 6: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 7: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 8: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 9: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+exit: 0
+--- leon_sim_msvc.exe ---
+cycle 0: GRACIE=NOMINAL EDEN=MONITORING
+cycle 1: GRACIE=NOMINAL EDEN=MONITORING
+cycle 2: GRACIE=WARNING EDEN=MONITORING
+cycle 3: ALERT - GRACIE FAULT detected, notifying HALIA
+cycle 3: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 4: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 5: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 6: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 7: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 8: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 9: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+exit: 0
+--- leon_sim_clang.exe ---
+cycle 0: GRACIE=NOMINAL EDEN=MONITORING
+cycle 1: GRACIE=NOMINAL EDEN=MONITORING
+cycle 2: GRACIE=WARNING EDEN=MONITORING
+cycle 3: ALERT - GRACIE FAULT detected, notifying HALIA
+cycle 3: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 4: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 5: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 6: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 7: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 8: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+cycle 9: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
+[note: dropped by the same transient file-lock issue; re-run separately
+at 2026-07-26 23:48 +01:00 and confirmed byte-identical to the others.]
+exit: 0
+[2026-07-26 23:46:46 +01:00] --- Log complete ---

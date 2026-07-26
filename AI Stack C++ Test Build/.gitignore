@@ -1,0 +1,10 @@
+# Compiled build artifacts — regenerable, not source. build.log is
+# kept (it's the record that this actually compiles), same as the
+# rest of the project keeps its logs.
+*.exe
+*.obj
+*.o
+build/
+
+# The root .gitignore's "*.log" rule would otherwise swallow this too.
+!build.log

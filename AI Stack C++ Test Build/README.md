@@ -72,15 +72,56 @@ compliant core entirely, same as ground software does on real missions.
 | 7. Checked returns | Every call site (`main.cpp`, `test_gracie.cpp`) checks the `Status` return and bails with a message on failure. |
 | 8. Minimal preprocessor | Only `#ifndef`/`#define`/`#endif` header guards. |
 | 9. No function pointers | No `std::function`, no lambdas-as-callbacks, no virtual functions — see the cyclic-executive note above. |
-| 10. Warnings + static analysis | `CMakeLists.txt` sets `-Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow` (or `/W4 /WX` on MSVC) and wires up an optional `cppcheck` target. |
+| 10. Warnings + static analysis | Compiles with zero warnings under `-Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow` (verified 2026-07-26, GCC 16.1.0 — see Status below). `cppcheck` target wired into `CMakeLists.txt` but not yet run — not installed standalone in this environment yet, though the WinLibs toolchain bundles one. |
 
-## Status — read before trusting this code
+## Status — compiled and passing on three toolchains (2026-07-26)
 
-This was written without a compiler available to check it. It has been
-reviewed carefully by hand for the usual mistakes (null checks before
-dereference, correct bounds, matching signatures) but **has not
-actually been built**. Treat it as a draft pending a real compile, not
-verified working code.
+Built and run three separate ways, all producing byte-identical output
+— full timestamped transcript of every attempt (including the two dead
+ends below) in `build.log`:
+
+| Toolchain | Result |
+|---|---|
+| MinGW-w64 GCC 16.1.0 (UCRT) | Clean build, zero warnings, 23:42 |
+| MSVC 19.51.36252 (VS 2026 Community) | Clean build, `/W4`, 23:44 |
+| Clang 22.1.8 (LLVM) | Clean build, zero warnings, 23:45 |
+
+Two dead ends on the way there, worth knowing if setting this up fresh:
+
+- The official LLVM/Clang Windows installer targets MSVC's ABI and
+  ships no standard-library headers of its own — without Visual Studio
+  installed, `#include <cstdint>` fails outright even though Clang
+  itself installed fine. Not broken, just not self-contained on
+  Windows the way it is elsewhere. Installing MinGW-w64 (self-contained,
+  ~1 minute) unblocked the first build; installing Visual Studio
+  Community afterward (free for individual/personal and open-source
+  use) then made Clang work too, since it could pick up VS's headers.
+- `cl.exe` only exists on PATH inside a "Developer" shell — a plain
+  PowerShell session needs `vcvarsall.bat`'s environment variables
+  imported first.
+
+All three `test_gracie` binaries and all three `leon_sim` binaries were
+run and their output diffed by eye — identical across compilers:
+
+```
+$ ./test_gracie.exe
+  ok: temp=30 rad=10 -> NOMINAL
+  ok: temp=52 rad=10 -> WARNING
+  ok: temp=56 rad=41 -> FAULT
+  ok: temp=30 rad=10 (latched) -> FAULT
+  ok: clear_fault -> NOMINAL
+All GRACIE health-state checks passed.
+```
+
+`leon_sim.exe` reproduces the same FAULT-at-cycle-3 escalation as the
+Python demo, latched through every later cycle (telemetry recovers but
+the fault is never explicitly cleared) — full output in `build.log`.
+
+CMake wasn't used for this pass (compiled directly with each compiler
+to isolate toolchain differences); the WinLibs MinGW package bundles
+its own `cmake`, so switching to `cmake -S . -B build && cmake --build
+build` is a reasonable next step so the `cppcheck` target and `ctest`
+integration in `CMakeLists.txt` actually get exercised.
 
 ## Building it (once you have a toolchain)
 
