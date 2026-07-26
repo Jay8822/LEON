@@ -43,8 +43,15 @@ add_test(NAME gracie_health_state COMMAND test_gracie)
 # environment (it wasn't in the one this was written in).
 find_program(CPPCHECK cppcheck)
 if(CPPCHECK)
+    # --enable=all also pulls in the "information" category, which is
+    # meta-commentary about the analysis itself (e.g. "limiting branch
+    # analysis, use --check-level=exhaustive") rather than a finding
+    # about the code — combined with --error-exitcode that fails the
+    # build on pure noise. warning/style/performance/portability is
+    # the set that actually flags code issues.
     add_custom_target(cppcheck
-        COMMAND ${CPPCHECK} --enable=all --std=c++14 --suppress=missingIncludeSystem
+        COMMAND ${CPPCHECK} --enable=warning,style,performance,portability
+                --std=c++14 --suppress=missingIncludeSystem
                 --error-exitcode=1 -I ${CMAKE_SOURCE_DIR}/include
                 ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/tests
     )

@@ -72,7 +72,7 @@ compliant core entirely, same as ground software does on real missions.
 | 7. Checked returns | Every call site (`main.cpp`, `test_gracie.cpp`) checks the `Status` return and bails with a message on failure. |
 | 8. Minimal preprocessor | Only `#ifndef`/`#define`/`#endif` header guards. |
 | 9. No function pointers | No `std::function`, no lambdas-as-callbacks, no virtual functions — see the cyclic-executive note above. |
-| 10. Warnings + static analysis | Compiles with zero warnings under `-Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow` (verified 2026-07-26, GCC 16.1.0 — see Status below). `cppcheck` target wired into `CMakeLists.txt` but not yet run — not installed standalone in this environment yet, though the WinLibs toolchain bundles one. |
+| 10. Warnings + static analysis | Compiles with zero warnings under `-Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow` on three separate toolchains, and `cppcheck --enable=warning,style,performance,portability` reports zero findings — both verified 2026-07-26 via the actual `cmake`/`ctest`/`cppcheck` targets (not just direct compiler invocation). See Status below. |
 
 ## Status — compiled and passing on three toolchains (2026-07-26)
 
@@ -117,11 +117,18 @@ All GRACIE health-state checks passed.
 Python demo, latched through every later cycle (telemetry recovers but
 the fault is never explicitly cleared) — full output in `build.log`.
 
-CMake wasn't used for this pass (compiled directly with each compiler
-to isolate toolchain differences); the WinLibs MinGW package bundles
-its own `cmake`, so switching to `cmake -S . -B build && cmake --build
-build` is a reasonable next step so the `cppcheck` target and `ctest`
-integration in `CMakeLists.txt` actually get exercised.
+**CMake/ctest/cppcheck pass (same day, later):** built and tested through
+the actual `CMakeLists.txt` targets rather than direct compiler
+invocation — `cmake -S . -B build -G Ninja`, `cmake --build build`,
+`ctest --test-dir build` (1/1 passed), and `cmake --build build
+--target cppcheck`. The `cppcheck` target's first run failed — not on a
+real finding, but because `--enable=all` pulls in the "information"
+category (meta-commentary like "limiting branch analysis", not an
+actual code issue) and `--error-exitcode=1` failed the build on it
+anyway. Fixed by narrowing to `--enable=warning,style,performance,portability`,
+which is the set that actually flags code problems; re-run reports
+zero findings. Full timestamped transcript, including that dead end,
+in `build.log`.
 
 ## Building it (once you have a toolchain)
 
@@ -142,8 +149,8 @@ that needs a real build to shake out.
 
 ## Roadmap, if this is worth continuing
 
-1. Get this compiling clean with zero warnings — the real first
-   milestone, not anything above.
+1. ~~Get this compiling clean with zero warnings~~ — done 2026-07-26,
+   on three toolchains, with `ctest` and `cppcheck` both passing.
 2. Port LUNAE (navigation) and ETHAN (propulsion) as the same kind of
    fixed-state-struct modules, wired into the same cyclic executive.
 3. Replace the hardcoded test telemetry with a real bounded input

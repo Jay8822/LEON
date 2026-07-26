@@ -110,3 +110,97 @@ cycle 9: GRACIE=FAULT EDEN=SAFE_MODE_ISSUED reason=GRACIE_FAULT
 at 2026-07-26 23:48 +01:00 and confirmed byte-identical to the others.]
 exit: 0
 [2026-07-26 23:46:46 +01:00] --- Log complete ---
+
+[2026-07-26 23:52:20 +01:00] === CMake build pass ===
+cmake: cmake version 4.3.3
+ninja: 1.13.2
+[2026-07-26 23:52:25 +01:00] --- cmake configure ---
+-- The CXX compiler identification is GNU 16.1.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Users/jaypr/AppData/Local/Microsoft/WinGet/Packages/BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe/mingw64/bin/g++.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (8.0s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/Users/jaypr/Desktop/AI Stack/AI Stack C++ Test Build/build
+configure exit: 0
+[2026-07-26 23:52:45 +01:00] --- cmake --build ---
+[1/9] Building CXX object CMakeFiles/leon_core.dir/src/gracie.cpp.obj
+[2/9] Building CXX object CMakeFiles/leon_core.dir/src/leon_types.cpp.obj
+[3/9] Building CXX object CMakeFiles/test_gracie.dir/tests/test_gracie.cpp.obj
+[4/9] Building CXX object CMakeFiles/leon_core.dir/src/eden.cpp.obj
+[5/9] Building CXX object CMakeFiles/leon_sim.dir/src/main.cpp.obj
+[6/9] Building CXX object CMakeFiles/leon_core.dir/src/coordinator.cpp.obj
+[7/9] Linking CXX static library libleon_core.a
+[8/9] Linking CXX executable test_gracie.exe
+[9/9] Linking CXX executable leon_sim.exe
+build exit: 0
+[2026-07-26 23:53:02 +01:00] --- ctest ---
+Test project C:/Users/jaypr/Desktop/AI Stack/AI Stack C++ Test Build/build
+    Start 1: gracie_health_state
+1/1 Test #1: gracie_health_state ..............   Passed    0.09 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   0.12 sec
+ctest exit: 0
+[2026-07-26 23:53:24 +01:00] --- cppcheck ---
+cppcheck: Cppcheck 2.21.0
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D "C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\build" && C:\Users\jaypr\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin\cppcheck.exe --enable=all --std=c++14 --suppress=missingIncludeSystem --error-exitcode=1 -I "C:/Users/jaypr/Desktop/AI Stack/AI Stack C++ Test Build/include" "C:/Users/jaypr/Desktop/AI Stack/AI Stack C++ Test Build/src" "C:/Users/jaypr/Desktop/AI Stack/AI Stack C++ Test Build/tests""
+FAILED: [code=1] CMakeFiles/cppcheck C:/Users/jaypr/Desktop/AI Stack/AI Stack C++ Test Build/build/CMakeFiles/cppcheck 
+C:\WINDOWS\system32\cmd.exe /C "cd /D "C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\build" && C:\Users\jaypr\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin\cppcheck.exe --enable=all --std=c++14 --suppress=missingIncludeSystem --error-exitcode=1 -I "C:/Users/jaypr/Desktop/AI Stack/AI Stack C++ Test Build/include" "C:/Users/jaypr/Desktop/AI Stack/AI Stack C++ Test Build/src" "C:/Users/jaypr/Desktop/AI Stack/AI Stack C++ Test Build/tests""
+Checking C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\src\coordinator.cpp ...
+1/6 files checked 14% done
+Checking C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\src\eden.cpp ...
+2/6 files checked 25% done
+Checking C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\src\gracie.cpp ...
+3/6 files checked 40% done
+Checking C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\src\leon_types.cpp ...
+4/6 files checked 45% done
+Checking C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\src\main.cpp ...
+C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\src\main.cpp:0:0: information: Limiting analysis of branches. Use --check-level=exhaustive to analyze all branches. [normalCheckLevelMaxBranches]
+
+^
+5/6 files checked 82% done
+Checking C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\tests\test_gracie.cpp ...
+6/6 files checked 100% done
+nofile:0:0: information: Active checkers: 173/186 (use --checkers-report=<filename> to see details) [checkersReport]
+
+ninja: build stopped: subcommand failed.
+cppcheck exit: 1
+[2026-07-26 23:55:08 +01:00] --- cppcheck target fixed (see CMakeLists.txt), reconfiguring ---
+-- Configuring done (0.3s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/Users/jaypr/Desktop/AI Stack/AI Stack C++ Test Build/build
+reconfigure exit: 0
+[2026-07-26 23:55:08 +01:00] --- cmake --build (rebuild) ---
+[note: ninja's own output line was dropped by the same transient
+file-lock issue seen earlier in this log; nothing had changed since
+the prior successful build, so this was expected to be a no-op.]
+build exit: 0
+[2026-07-26 23:55:08 +01:00] --- ctest (re-run) ---
+Test project C:/Users/jaypr/Desktop/AI Stack/AI Stack C++ Test Build/build
+    Start 1: gracie_health_state
+1/1 Test #1: gracie_health_state ..............   Passed    0.02 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   0.04 sec
+ctest exit: 0
+[2026-07-26 23:55:09 +01:00] --- cppcheck (fixed config) ---
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D "C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\build" && C:\Users\jaypr\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin\cppcheck.exe --enable=warning,style,performance,portability --std=c++14 --suppress=missingIncludeSystem --error-exitcode=1 -I "C:/Users/jaypr/Desktop/AI Stack/AI Stack C++ Test Build/include" "C:/Users/jaypr/Desktop/AI Stack/AI Stack C++ Test Build/src" "C:/Users/jaypr/Desktop/AI Stack/AI Stack C++ Test Build/tests""
+Checking C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\src\coordinator.cpp ...
+1/6 files checked 14% done
+Checking C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\src\eden.cpp ...
+2/6 files checked 25% done
+Checking C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\src\gracie.cpp ...
+3/6 files checked 40% done
+Checking C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\src\leon_types.cpp ...
+4/6 files checked 45% done
+Checking C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\src\main.cpp ...
+5/6 files checked 82% done
+Checking C:\Users\jaypr\Desktop\AI Stack\AI Stack C++ Test Build\tests\test_gracie.cpp ...
+6/6 files checked 100% done
+cppcheck exit: 0
+[2026-07-26 23:55:09 +01:00] --- CMake build pass complete ---
