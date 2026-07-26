@@ -93,3 +93,11 @@
 [2025-11-24 15:50:12,009] INFO: Publishing event 'crew/message' with data: {'from': 'commander Pratt', 'message': 'show sample chat'}
 [2025-11-24 15:50:12,009] INFO: Calling handler 'on_message' for event 'crew/message'
 [2025-11-24 15:50:12,011] INFO: Publishing event 'crew/response' with data: {'to': 'commander Pratt', 'timestamp': 1763999412, 'response': 'IV2 to Science Team: Preparing instruments for next experiment.'}
+[2026-07-26 18:40:40,038] INFO: Subscribing to event 'commands' with handler 'halia_command_handler'
+[2026-07-26 18:40:40,039] INFO: Subscribing to event 'telemetry/health' with handler 'gracie_health_handler'
+[2026-07-26 18:40:55,636] INFO: Subscribing to event 'commands' with handler 'halia_command_handler'
+[2026-07-26 18:40:55,636] INFO: Subscribing to event 'telemetry/health' with handler 'gracie_health_handler'
+[2026-07-26 18:40:57,060] INFO: Subscribing to event 'crew/message' with handler 'on_crew_message'
+[2026-07-26 18:40:57,060] INFO: Subscribing to event 'halia/alert' with handler 'on_alert'
+[2026-07-26 18:40:57,072] INFO: Publishing event 'crew/response' with data: {'to': 'Commander Pratt', 'timestamp': 1785087657, 'response': "Command 'run_diagnostics' sent to ethan."}
+[2026-07-26 18:40:57,074] INFO: Publishing event 'crew/response' with data: {'to': 'Dr. Liu', 'timestamp': 1785087657, 'response': 'All systems nominal. No alerts or faults detected.'}

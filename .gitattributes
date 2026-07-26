@@ -1,2 +1,12 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Historical logs and extracted text are records, not source — never
+# rewrite their line endings. The rule above (combined with
+# core.autocrlf) silently converted the November 2025 logs from CRLF to
+# LF the first time they were staged. These overrides stop that from
+# happening again, here or on any other machine that clones this repo.
+*.log -text
+*.text -text
+*.json -text
+*.pdf -text

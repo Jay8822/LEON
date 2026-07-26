@@ -1,10 +1,17 @@
 __pycache__/
 *.py[cod]
 
-# Runtime output
-logs/
+# Runtime output — new log noise stays out, but pre-existing tracked
+# logs (including the November 2025 history) are explicitly kept.
+# Negations must come last: an earlier match can still be re-excluded
+# by a later pattern (e.g. "*.log" would re-ignore a file un-ignored
+# by an earlier rule), so exclude everything first, un-ignore after.
+logs/*
 *.log
 crew_sessions.json
+!/universal_agent.log
+!/event_bus.log
+!logs/system.log
 
 venv/
 .venv/

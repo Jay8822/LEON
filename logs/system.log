@@ -159,3 +159,649 @@
 [2025-11-04 13:07:17] Health update from GRACIE: NOMINAL at 1762261637
 [2025-11-04 13:07:18] Health update from GRACIE: NOMINAL at 1762261638
 [2025-11-04 13:07:35] Crew response: {'to': 'commander', 'timestamp': 1762261655, 'response': 'Received your message, commander. What would you like to do next?'}
+[2026-07-26 19:00:56] Subscribing to 'telemetry/health' with handler '<lambda>'
+[2026-07-26 19:00:56] Subscribing to 'gracie/command' with handler 'on_command'
+[2026-07-26 19:00:56] Processed telemetry (temp: 30, rad: 10) State: NOMINAL => NOMINAL
+[2026-07-26 19:00:56] Publishing 'telemetry/health' to 1 handler(s): {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1234567890}
+[2026-07-26 19:00:56] Processed telemetry (temp: 52, rad: 10) State: NOMINAL => WARNING
+[2026-07-26 19:00:56] Publishing 'telemetry/health' to 1 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1234567890}
+[2026-07-26 19:00:56] Processed telemetry (temp: 56, rad: 41) State: WARNING => FAULT
+[2026-07-26 19:00:56] Publishing 'telemetry/health' to 1 handler(s): {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1234567890}
+[2026-07-26 19:00:56] Processed telemetry (temp: 30, rad: 10) State: FAULT => FAULT
+[2026-07-26 19:00:56] Publishing 'telemetry/health' to 1 handler(s): {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1234567890}
+[2026-07-26 19:00:56] Received command: clear_fault with payload {'command': 'clear_fault'}
+[2026-07-26 19:00:56] FAULT cleared, health reset to NOMINAL.
+[2026-07-26 19:00:56] Manual health update: NOMINAL
+[2026-07-26 19:00:56] Publishing 'health/update' to 0 handler(s): {'status': 'NOMINAL', 'timestamp': 1785088856}
+[2026-07-26 19:01:07] Subscribing to 'health/update' with handler 'on_health_update'
+[2026-07-26 19:01:07] Subscribing to 'telemetry/health' with handler 'on_health_update'
+[2026-07-26 19:01:07] Subscribing to 'navigation/update' with handler 'on_nav_update'
+[2026-07-26 19:01:07] Subscribing to 'propulsion/update' with handler 'on_propulsion_update'
+[2026-07-26 19:01:07] Subscribing to 'eden/status_update' with handler 'on_eden_update'
+[2026-07-26 19:01:07] Crew session context loaded.
+[2026-07-26 19:01:07] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:01:07] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:01:07] Subscribing to 'gracie/command' with handler 'on_command'
+[2026-07-26 19:01:07] Subscribing to 'halia/alert' with handler 'append'
+[2026-07-26 19:01:07] Subscribing to 'crew/response' with handler '<lambda>'
+[2026-07-26 19:01:07] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'run diagnostic on gracie'}
+[2026-07-26 19:01:07] Crew session context saved.
+[2026-07-26 19:01:07] Sending command: run_diagnostics to gracie with params None
+[2026-07-26 19:01:07] Publishing 'gracie/command' to 1 handler(s): {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:01:07] Received command: run_diagnostics with payload {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:01:07] Manual health update: NOMINAL
+[2026-07-26 19:01:07] Publishing 'health/update' to 1 handler(s): {'status': 'NOMINAL', 'timestamp': 1785088867}
+[2026-07-26 19:01:07] Health update: {'status': 'NOMINAL', 'timestamp': 1785088867}
+[2026-07-26 19:01:07] Command 'run_diagnostics' sent to gracie with params None
+[2026-07-26 19:01:07] HALIA to Commander Pratt: Command 'run_diagnostics' sent to gracie.
+[2026-07-26 19:01:07] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785088867, 'response': "Command 'run_diagnostics' sent to gracie."}
+[2026-07-26 19:01:07] Processed telemetry (temp: 60, rad: 45) State: NOMINAL => FAULT
+[2026-07-26 19:01:07] Publishing 'telemetry/health' to 1 handler(s): {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1785088867}
+[2026-07-26 19:01:07] Health update: {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1785088867}
+[2026-07-26 19:01:07] GRACIE FAULT detected! Notifying HALIA.
+[2026-07-26 19:01:07] Publishing 'halia/alert' to 2 handler(s): {'message': 'GRACIE FAULT detected!'}
+[2026-07-26 19:01:07] HALIA ALERT: GRACIE FAULT detected!
+[2026-07-26 19:01:07] Status queried: {'GRACIE': {'health': 'FAULT', 'last_update': 1785088867}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}
+[2026-07-26 19:01:18] Subscribing to 'health/update' with handler 'on_health_update'
+[2026-07-26 19:01:18] Subscribing to 'telemetry/health' with handler 'on_health_update'
+[2026-07-26 19:01:18] Subscribing to 'navigation/update' with handler 'on_nav_update'
+[2026-07-26 19:01:18] Subscribing to 'propulsion/update' with handler 'on_propulsion_update'
+[2026-07-26 19:01:18] Subscribing to 'eden/status_update' with handler 'on_eden_update'
+[2026-07-26 19:01:18] Subscribing to 'gracie/command' with handler 'on_command'
+[2026-07-26 19:01:18] Subscribing to 'ethan/command' with handler 'on_command'
+[2026-07-26 19:01:18] Subscribing to 'lunae/command' with handler 'on_command'
+[2026-07-26 19:01:18] Subscribing to 'eden/command' with handler 'on_command'
+[2026-07-26 19:01:18] Crew session context loaded.
+[2026-07-26 19:01:18] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:01:18] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:01:18] Subscribing to 'telemetry/health' with handler 'print_health'
+[2026-07-26 19:01:18] Subscribing to 'telemetry/health' with handler 'on_health_event'
+[2026-07-26 19:01:18] Subscribing to 'cmd/propulsion' with handler 'print_command'
+[2026-07-26 19:01:18] Subscribing to 'cmd/propulsion' with handler 'on_command'
+[2026-07-26 19:01:18] Subscribing to 'state/system' with handler 'print_state'
+[2026-07-26 19:01:18] Subscribing to 'state/nav' with handler 'print_nav'
+[2026-07-26 19:01:18] Subscribing to 'cmd/nav' with handler 'on_nav_command'
+[2026-07-26 19:01:18] Subscribing to 'crew/response' with handler 'print_crew_response'
+[2026-07-26 19:01:18] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'Halia, how are we doing?'}
+[2026-07-26 19:01:18] Crew session context saved.
+[2026-07-26 19:01:18] HALIA to Commander Pratt: Received your message, Commander Pratt. What would you like to do next? Memory of last 3 messages still active.
+[2026-07-26 19:01:18] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785088878, 'response': 'Received your message, Commander Pratt. What would you like to do next? Memory of last 3 messages still active.'}
+[2026-07-26 19:01:18] Crew response: {'to': 'Commander Pratt', 'timestamp': 1785088878, 'response': 'Received your message, Commander Pratt. What would you like to do next? Memory of last 3 messages still active.'}
+[2026-07-26 19:01:18] Processed telemetry (temp: 46.59538863701547, rad: 24.980346375848047) State: NOMINAL => NOMINAL
+[2026-07-26 19:01:18] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785088878}
+[2026-07-26 19:01:18] Health update: {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785088878}
+[2026-07-26 19:01:18] Health update from GRACIE: NOMINAL at 1785088878
+[2026-07-26 19:01:18] Health event received: NOMINAL
+[2026-07-26 19:01:18] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:01:18] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785088878, 'source': 'LUNAE'}
+[2026-07-26 19:01:18] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785088878, 'source': 'LUNAE'}
+[2026-07-26 19:01:19] Processed telemetry (temp: 30.387697107126712, rad: 15.45938973402161) State: NOMINAL => NOMINAL
+[2026-07-26 19:01:19] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785088879}
+[2026-07-26 19:01:19] Health update: {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785088879}
+[2026-07-26 19:01:19] Health update from GRACIE: NOMINAL at 1785088879
+[2026-07-26 19:01:19] Health event received: NOMINAL
+[2026-07-26 19:01:19] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:01:19] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785088879, 'source': 'LUNAE'}
+[2026-07-26 19:01:19] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785088879, 'source': 'LUNAE'}
+[2026-07-26 19:01:20] Processed telemetry (temp: 43.39850906639715, rad: 12.293830387657497) State: NOMINAL => NOMINAL
+[2026-07-26 19:01:20] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785088880}
+[2026-07-26 19:01:20] Health update: {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785088880}
+[2026-07-26 19:01:20] Health update from GRACIE: NOMINAL at 1785088880
+[2026-07-26 19:01:20] Health event received: NOMINAL
+[2026-07-26 19:01:20] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:01:20] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785088880, 'source': 'LUNAE'}
+[2026-07-26 19:01:20] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785088880, 'source': 'LUNAE'}
+[2026-07-26 19:01:22] Processed telemetry (temp: 38.54700697507601, rad: 42.94442223606162) State: NOMINAL => WARNING
+[2026-07-26 19:01:22] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785088882}
+[2026-07-26 19:01:22] Health update: {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785088882}
+[2026-07-26 19:01:22] Health update from GRACIE: WARNING at 1785088882
+[2026-07-26 19:01:22] Health event received: WARNING
+[2026-07-26 19:01:22] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:01:22] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785088882, 'source': 'LUNAE'}
+[2026-07-26 19:01:22] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785088882, 'source': 'LUNAE'}
+[2026-07-26 19:01:23] Processed telemetry (temp: 39.92056785342216, rad: 38.15514282383823) State: WARNING => WARNING
+[2026-07-26 19:01:23] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785088883}
+[2026-07-26 19:01:23] Health update: {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785088883}
+[2026-07-26 19:01:23] Health update from GRACIE: WARNING at 1785088883
+[2026-07-26 19:01:23] Health event received: WARNING
+[2026-07-26 19:01:23] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:01:23] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785088883, 'source': 'LUNAE'}
+[2026-07-26 19:01:23] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785088883, 'source': 'LUNAE'}
+[2026-07-26 19:01:24] Processed telemetry (temp: 46.062168891783195, rad: 12.876725542984541) State: WARNING => NOMINAL
+[2026-07-26 19:01:24] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785088884}
+[2026-07-26 19:01:24] Health update: {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785088884}
+[2026-07-26 19:01:24] Health update from GRACIE: NOMINAL at 1785088884
+[2026-07-26 19:01:24] Health event received: NOMINAL
+[2026-07-26 19:01:24] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:01:24] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785088884, 'source': 'LUNAE'}
+[2026-07-26 19:01:24] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785088884, 'source': 'LUNAE'}
+[2026-07-26 19:01:25] Processed telemetry (temp: 35.47206363930126, rad: 8.096529820936192) State: NOMINAL => NOMINAL
+[2026-07-26 19:01:25] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785088885}
+[2026-07-26 19:01:25] Health update: {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785088885}
+[2026-07-26 19:01:25] Health update from GRACIE: NOMINAL at 1785088885
+[2026-07-26 19:01:25] Health event received: NOMINAL
+[2026-07-26 19:01:25] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:01:25] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785088885, 'source': 'LUNAE'}
+[2026-07-26 19:01:25] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785088885, 'source': 'LUNAE'}
+[2026-07-26 19:01:26] Processed telemetry (temp: 47.25040277677376, rad: 48.67821068709972) State: NOMINAL => WARNING
+[2026-07-26 19:01:26] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785088886}
+[2026-07-26 19:01:26] Health update: {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785088886}
+[2026-07-26 19:01:26] Health update from GRACIE: WARNING at 1785088886
+[2026-07-26 19:01:26] Health event received: WARNING
+[2026-07-26 19:01:26] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:01:26] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785088886, 'source': 'LUNAE'}
+[2026-07-26 19:01:26] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785088886, 'source': 'LUNAE'}
+[2026-07-26 19:01:27] Processed telemetry (temp: 42.384760513513136, rad: 20.853959583289573) State: WARNING => NOMINAL
+[2026-07-26 19:01:27] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785088887}
+[2026-07-26 19:01:27] Health update: {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785088887}
+[2026-07-26 19:01:27] Health update from GRACIE: NOMINAL at 1785088887
+[2026-07-26 19:01:27] Health event received: NOMINAL
+[2026-07-26 19:01:27] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:01:27] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785088887, 'source': 'LUNAE'}
+[2026-07-26 19:01:27] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785088887, 'source': 'LUNAE'}
+[2026-07-26 19:01:28] Processed telemetry (temp: 46.77629646728826, rad: 21.566569951970735) State: NOMINAL => NOMINAL
+[2026-07-26 19:01:28] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785088888}
+[2026-07-26 19:01:28] Health update: {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785088888}
+[2026-07-26 19:01:28] Health update from GRACIE: NOMINAL at 1785088888
+[2026-07-26 19:01:28] Health event received: NOMINAL
+[2026-07-26 19:01:28] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:01:29] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785088889, 'source': 'LUNAE'}
+[2026-07-26 19:01:29] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785088889, 'source': 'LUNAE'}
+[2026-07-26 19:01:56] Subscribing to 'health/update' with handler 'on_health_update'
+[2026-07-26 19:01:56] Subscribing to 'telemetry/health' with handler 'on_health_update'
+[2026-07-26 19:01:56] Subscribing to 'navigation/update' with handler 'on_nav_update'
+[2026-07-26 19:01:56] Subscribing to 'propulsion/update' with handler 'on_propulsion_update'
+[2026-07-26 19:01:56] Subscribing to 'eden/status_update' with handler 'on_eden_update'
+[2026-07-26 19:01:56] Subscribing to 'gracie/command' with handler 'on_command'
+[2026-07-26 19:01:56] Subscribing to 'ethan/command' with handler 'on_command'
+[2026-07-26 19:01:56] Subscribing to 'lunae/command' with handler 'on_command'
+[2026-07-26 19:01:56] Subscribing to 'eden/command' with handler 'on_command'
+[2026-07-26 19:01:56] Crew session context loaded.
+[2026-07-26 19:01:56] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:01:56] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:01:56] Subscribing to 'telemetry/health' with handler 'print_health'
+[2026-07-26 19:01:56] Subscribing to 'telemetry/health' with handler 'on_health_event'
+[2026-07-26 19:01:56] Subscribing to 'cmd/propulsion' with handler 'print_command'
+[2026-07-26 19:01:56] Subscribing to 'cmd/propulsion' with handler 'on_command'
+[2026-07-26 19:01:56] Subscribing to 'state/system' with handler 'print_state'
+[2026-07-26 19:01:56] Subscribing to 'state/nav' with handler 'print_nav'
+[2026-07-26 19:01:56] Subscribing to 'cmd/nav' with handler 'on_nav_command'
+[2026-07-26 19:01:56] Subscribing to 'crew/response' with handler 'print_crew_response'
+[2026-07-26 19:01:56] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'status'}
+[2026-07-26 19:01:56] Crew session context saved.
+[2026-07-26 19:01:56] Status queried: {'GRACIE': {'health': 'UNKNOWN', 'last_update': None}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}
+[2026-07-26 19:01:56] System status queried: {'GRACIE': {'health': 'UNKNOWN', 'last_update': None}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}
+[2026-07-26 19:01:56] HALIA to Commander Pratt: System Status: {'GRACIE': {'health': 'UNKNOWN', 'last_update': None}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}. I remember 3 recent message(s) from you.
+[2026-07-26 19:01:56] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785088916, 'response': "System Status: {'GRACIE': {'health': 'UNKNOWN', 'last_update': None}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}. I remember 3 recent message(s) from you."}
+[2026-07-26 19:01:56] Crew response: {'to': 'Commander Pratt', 'timestamp': 1785088916, 'response': "System Status: {'GRACIE': {'health': 'UNKNOWN', 'last_update': None}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}. I remember 3 recent message(s) from you."}
+[2026-07-26 19:01:56] Publishing 'crew/message' to 1 handler(s): {'from': 'Dr. Liu', 'message': 'run diagnostic on eden'}
+[2026-07-26 19:01:56] Crew session context saved.
+[2026-07-26 19:01:56] Sending command: run_diagnostics to eden with params None
+[2026-07-26 19:01:56] Publishing 'eden/command' to 1 handler(s): {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:01:56] Received command: run_diagnostics with payload {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:01:56] Running diagnostics
+[2026-07-26 19:01:56] Status update: {'status': 'DIAGNOSTIC', 'timestamp': 1785088916}
+[2026-07-26 19:01:56] Publishing 'eden/status_update' to 1 handler(s): {'status': 'DIAGNOSTIC', 'timestamp': 1785088916}
+[2026-07-26 19:01:56] EDEN update: {'status': 'DIAGNOSTIC', 'timestamp': 1785088916}
+[2026-07-26 19:01:56] Status update: {'status': 'NOMINAL', 'timestamp': 1785088916}
+[2026-07-26 19:01:56] Publishing 'eden/status_update' to 1 handler(s): {'status': 'NOMINAL', 'timestamp': 1785088916}
+[2026-07-26 19:01:56] EDEN update: {'status': 'NOMINAL', 'timestamp': 1785088916}
+[2026-07-26 19:01:56] Command 'run_diagnostics' sent to eden with params None
+[2026-07-26 19:01:56] HALIA to Dr. Liu: Command 'run_diagnostics' sent to eden.
+[2026-07-26 19:01:56] Publishing 'crew/response' to 1 handler(s): {'to': 'Dr. Liu', 'timestamp': 1785088916, 'response': "Command 'run_diagnostics' sent to eden."}
+[2026-07-26 19:01:56] Crew response: {'to': 'Dr. Liu', 'timestamp': 1785088916, 'response': "Command 'run_diagnostics' sent to eden."}
+[2026-07-26 19:02:02] Subscribing to 'health/update' with handler 'on_health_update'
+[2026-07-26 19:02:03] Subscribing to 'telemetry/health' with handler 'on_health_update'
+[2026-07-26 19:02:03] Subscribing to 'navigation/update' with handler 'on_nav_update'
+[2026-07-26 19:02:03] Subscribing to 'propulsion/update' with handler 'on_propulsion_update'
+[2026-07-26 19:02:03] Subscribing to 'eden/status_update' with handler 'on_eden_update'
+[2026-07-26 19:02:03] Crew session context loaded.
+[2026-07-26 19:02:03] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:02:03] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:02:03] Subscribing to 'crew/response' with handler 'on_response'
+[2026-07-26 19:02:03] Starting system diagnostics...
+[2026-07-26 19:02:03] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'run diagnostic on gracie'}
+[2026-07-26 19:02:03] Crew session context saved.
+[2026-07-26 19:02:03] Sending command: run_diagnostics to gracie with params None
+[2026-07-26 19:02:03] Publishing 'gracie/command' to 0 handler(s): {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:02:03] Command 'run_diagnostics' sent to gracie with params None
+[2026-07-26 19:02:03] HALIA to Commander Pratt: Command 'run_diagnostics' sent to gracie.
+[2026-07-26 19:02:03] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785088923, 'response': "Command 'run_diagnostics' sent to gracie."}
+[2026-07-26 19:02:03] Step 1: Received response: Command 'run_diagnostics' sent to gracie.
+[2026-07-26 19:02:03] Proceeding to next step after Gracie diagnostic.
+[2026-07-26 19:02:03] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'run diagnostic on ethan'}
+[2026-07-26 19:02:03] Crew session context saved.
+[2026-07-26 19:02:03] Sending command: run_diagnostics to ethan with params None
+[2026-07-26 19:02:03] Publishing 'ethan/command' to 0 handler(s): {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:02:03] Command 'run_diagnostics' sent to ethan with params None
+[2026-07-26 19:02:03] HALIA to Commander Pratt: Command 'run_diagnostics' sent to ethan.
+[2026-07-26 19:02:03] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785088923, 'response': "Command 'run_diagnostics' sent to ethan."}
+[2026-07-26 19:02:03] Step 2: Received response: Command 'run_diagnostics' sent to ethan.
+[2026-07-26 19:02:03] Diagnostics complete.
+[2026-07-26 19:02:03] Subscribing to 'health/update' with handler 'on_health_update'
+[2026-07-26 19:02:03] Subscribing to 'telemetry/health' with handler 'on_health_update'
+[2026-07-26 19:02:03] Subscribing to 'navigation/update' with handler 'on_nav_update'
+[2026-07-26 19:02:03] Subscribing to 'propulsion/update' with handler 'on_propulsion_update'
+[2026-07-26 19:02:03] Subscribing to 'eden/status_update' with handler 'on_eden_update'
+[2026-07-26 19:02:04] Crew session context loaded.
+[2026-07-26 19:02:04] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:02:04] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:02:04] Subscribing to 'crew/response' with handler '<lambda>'
+[2026-07-26 19:02:04] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'run diagnostic on gracie'}
+[2026-07-26 19:02:04] Crew session context saved.
+[2026-07-26 19:02:04] Sending command: run_diagnostics to gracie with params None
+[2026-07-26 19:02:04] Publishing 'gracie/command' to 0 handler(s): {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:02:04] Command 'run_diagnostics' sent to gracie with params None
+[2026-07-26 19:02:04] HALIA to Commander Pratt: Command 'run_diagnostics' sent to gracie.
+[2026-07-26 19:02:04] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785088924, 'response': "Command 'run_diagnostics' sent to gracie."}
+[2026-07-26 19:02:04] Subscribing to 'crew/response' with handler '<lambda>'
+[2026-07-26 19:02:04] Crew session context loaded.
+[2026-07-26 19:02:04] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:02:04] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:02:04] Crew session context saved.
+[2026-07-26 19:02:04] Command 'run_diagnostics' sent to ethan with params None
+[2026-07-26 19:02:04] HALIA to Commander Pratt: Command 'run_diagnostics' sent to ethan.
+[2026-07-26 19:02:04] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785088924, 'response': "Command 'run_diagnostics' sent to ethan."}
+[2026-07-26 19:02:04] Crew session context saved.
+[2026-07-26 19:02:04] HALIA to Dr. Liu: All systems nominal. No alerts or faults detected.
+[2026-07-26 19:02:04] Publishing 'crew/response' to 1 handler(s): {'to': 'Dr. Liu', 'timestamp': 1785088924, 'response': 'All systems nominal. No alerts or faults detected.'}
+[2026-07-26 19:02:04] Invalid crew message: 1 validation error for CrewMessage
+from
+  Field required [type=missing, input_value={'message': 'missing sender'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+[2026-07-26 19:02:16] Subscribing to 'health/update' with handler 'on_health_update'
+[2026-07-26 19:02:16] Subscribing to 'telemetry/health' with handler 'on_health_update'
+[2026-07-26 19:02:16] Subscribing to 'navigation/update' with handler 'on_nav_update'
+[2026-07-26 19:02:16] Subscribing to 'propulsion/update' with handler 'on_propulsion_update'
+[2026-07-26 19:02:16] Subscribing to 'eden/status_update' with handler 'on_eden_update'
+[2026-07-26 19:02:16] Crew session context loaded.
+[2026-07-26 19:02:16] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:02:16] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:02:16] Subscribing to 'crew/response' with handler '<lambda>'
+[2026-07-26 19:02:16] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'status'}
+[2026-07-26 19:02:16] Crew session context saved.
+[2026-07-26 19:02:16] Status queried: {'GRACIE': {'health': 'UNKNOWN', 'last_update': None}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}
+[2026-07-26 19:02:16] System status queried: {'GRACIE': {'health': 'UNKNOWN', 'last_update': None}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}
+[2026-07-26 19:02:16] HALIA to Commander Pratt: System Status: {'GRACIE': {'health': 'UNKNOWN', 'last_update': None}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}. I remember 3 recent message(s) from you.
+[2026-07-26 19:02:16] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785088936, 'response': "System Status: {'GRACIE': {'health': 'UNKNOWN', 'last_update': None}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}. I remember 3 recent message(s) from you."}
+[2026-07-26 19:02:16] Publishing 'crew/message' to 1 handler(s): {'from': 'Dr. Liu', 'message': 'run diagnostic on lunae'}
+[2026-07-26 19:02:16] Crew session context saved.
+[2026-07-26 19:02:16] Sending command: run_diagnostics to lunae with params None
+[2026-07-26 19:02:16] Publishing 'lunae/command' to 0 handler(s): {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:02:16] Command 'run_diagnostics' sent to lunae with params None
+[2026-07-26 19:02:16] HALIA to Dr. Liu: Command 'run_diagnostics' sent to lunae.
+[2026-07-26 19:02:16] Publishing 'crew/response' to 1 handler(s): {'to': 'Dr. Liu', 'timestamp': 1785088936, 'response': "Command 'run_diagnostics' sent to lunae."}
+[2026-07-26 19:04:15] Subscribing to 'health/update' with handler 'on_health_update'
+[2026-07-26 19:04:15] Subscribing to 'telemetry/health' with handler 'on_health_update'
+[2026-07-26 19:04:15] Subscribing to 'navigation/update' with handler 'on_nav_update'
+[2026-07-26 19:04:15] Subscribing to 'propulsion/update' with handler 'on_propulsion_update'
+[2026-07-26 19:04:15] Subscribing to 'eden/status_update' with handler 'on_eden_update'
+[2026-07-26 19:04:15] Subscribing to 'gracie/command' with handler 'on_command'
+[2026-07-26 19:04:15] Subscribing to 'ethan/command' with handler 'on_command'
+[2026-07-26 19:04:15] Subscribing to 'lunae/command' with handler 'on_command'
+[2026-07-26 19:04:15] Subscribing to 'eden/command' with handler 'on_command'
+[2026-07-26 19:04:15] Crew session context loaded.
+[2026-07-26 19:04:15] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:04:15] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:04:15] Subscribing to 'telemetry/health' with handler 'print_health'
+[2026-07-26 19:04:15] Subscribing to 'telemetry/health' with handler 'on_health_event'
+[2026-07-26 19:04:15] Subscribing to 'cmd/propulsion' with handler 'print_command'
+[2026-07-26 19:04:15] Subscribing to 'cmd/propulsion' with handler 'on_command'
+[2026-07-26 19:04:15] Subscribing to 'state/system' with handler 'print_state'
+[2026-07-26 19:04:15] Subscribing to 'state/nav' with handler 'print_nav'
+[2026-07-26 19:04:15] Subscribing to 'cmd/nav' with handler 'on_nav_command'
+[2026-07-26 19:04:15] Subscribing to 'crew/response' with handler 'print_crew_response'
+[2026-07-26 19:04:15] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'Halia, how are we doing?'}
+[2026-07-26 19:04:15] Crew session context saved.
+[2026-07-26 19:04:15] HALIA to Commander Pratt: Received your message, Commander Pratt. What would you like to do next? Memory of last 3 messages still active.
+[2026-07-26 19:04:15] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785089055, 'response': 'Received your message, Commander Pratt. What would you like to do next? Memory of last 3 messages still active.'}
+[2026-07-26 19:04:15] Crew response: {'to': 'Commander Pratt', 'timestamp': 1785089055, 'response': 'Received your message, Commander Pratt. What would you like to do next? Memory of last 3 messages still active.'}
+[2026-07-26 19:04:15] Processed telemetry (temp: 49.909272673358316, rad: 49.12787872974513) State: NOMINAL => WARNING
+[2026-07-26 19:04:15] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089055}
+[2026-07-26 19:04:15] Health update: {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089055}
+[2026-07-26 19:04:15] Health update from GRACIE: WARNING at 1785089055
+[2026-07-26 19:04:15] Health event received: WARNING
+[2026-07-26 19:04:15] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:04:15] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785089055, 'source': 'LUNAE'}
+[2026-07-26 19:04:15] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785089055, 'source': 'LUNAE'}
+[2026-07-26 19:04:16] Processed telemetry (temp: 48.50314199949908, rad: 21.46997068115518) State: WARNING => NOMINAL
+[2026-07-26 19:04:16] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785089056}
+[2026-07-26 19:04:16] Health update: {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785089056}
+[2026-07-26 19:04:16] Health update from GRACIE: NOMINAL at 1785089056
+[2026-07-26 19:04:16] Health event received: NOMINAL
+[2026-07-26 19:04:16] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:04:16] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785089056, 'source': 'LUNAE'}
+[2026-07-26 19:04:16] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785089056, 'source': 'LUNAE'}
+[2026-07-26 19:04:17] Processed telemetry (temp: 33.493793226240484, rad: 43.21031591556801) State: NOMINAL => WARNING
+[2026-07-26 19:04:17] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089057}
+[2026-07-26 19:04:17] Health update: {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089057}
+[2026-07-26 19:04:17] Health update from GRACIE: WARNING at 1785089057
+[2026-07-26 19:04:17] Health event received: WARNING
+[2026-07-26 19:04:17] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:04:17] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785089057, 'source': 'LUNAE'}
+[2026-07-26 19:04:17] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785089057, 'source': 'LUNAE'}
+[2026-07-26 19:04:18] Processed telemetry (temp: 40.33815805615274, rad: 49.80542176669419) State: WARNING => WARNING
+[2026-07-26 19:04:18] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089058}
+[2026-07-26 19:04:18] Health update: {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089058}
+[2026-07-26 19:04:18] Health update from GRACIE: WARNING at 1785089058
+[2026-07-26 19:04:18] Health event received: WARNING
+[2026-07-26 19:04:18] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:04:18] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785089058, 'source': 'LUNAE'}
+[2026-07-26 19:04:18] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785089058, 'source': 'LUNAE'}
+[2026-07-26 19:04:19] Processed telemetry (temp: 35.2491078137642, rad: 33.34390268335976) State: WARNING => WARNING
+[2026-07-26 19:04:19] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089059}
+[2026-07-26 19:04:19] Health update: {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089059}
+[2026-07-26 19:04:19] Health update from GRACIE: WARNING at 1785089059
+[2026-07-26 19:04:19] Health event received: WARNING
+[2026-07-26 19:04:19] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:04:19] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785089059, 'source': 'LUNAE'}
+[2026-07-26 19:04:19] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785089059, 'source': 'LUNAE'}
+[2026-07-26 19:04:20] Processed telemetry (temp: 41.32473250354602, rad: 39.65906131839742) State: WARNING => WARNING
+[2026-07-26 19:04:20] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089060}
+[2026-07-26 19:04:20] Health update: {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089060}
+[2026-07-26 19:04:20] Health update from GRACIE: WARNING at 1785089060
+[2026-07-26 19:04:20] Health event received: WARNING
+[2026-07-26 19:04:20] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:04:20] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785089060, 'source': 'LUNAE'}
+[2026-07-26 19:04:20] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785089060, 'source': 'LUNAE'}
+[2026-07-26 19:04:21] Processed telemetry (temp: 48.74098715628877, rad: 30.31918589081926) State: WARNING => WARNING
+[2026-07-26 19:04:21] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089061}
+[2026-07-26 19:04:21] Health update: {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089061}
+[2026-07-26 19:04:21] Health update from GRACIE: WARNING at 1785089061
+[2026-07-26 19:04:21] Health event received: WARNING
+[2026-07-26 19:04:21] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:04:21] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785089061, 'source': 'LUNAE'}
+[2026-07-26 19:04:21] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785089061, 'source': 'LUNAE'}
+[2026-07-26 19:04:22] Processed telemetry (temp: 32.52678568725754, rad: 36.08010111060383) State: WARNING => WARNING
+[2026-07-26 19:04:22] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089062}
+[2026-07-26 19:04:22] Health update: {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089062}
+[2026-07-26 19:04:22] Health update from GRACIE: WARNING at 1785089062
+[2026-07-26 19:04:22] Health event received: WARNING
+[2026-07-26 19:04:22] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:04:22] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785089062, 'source': 'LUNAE'}
+[2026-07-26 19:04:22] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785089062, 'source': 'LUNAE'}
+[2026-07-26 19:04:23] Processed telemetry (temp: 32.10056482069001, rad: 47.463672577585506) State: WARNING => WARNING
+[2026-07-26 19:04:23] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089063}
+[2026-07-26 19:04:23] Health update: {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089063}
+[2026-07-26 19:04:23] Health update from GRACIE: WARNING at 1785089063
+[2026-07-26 19:04:23] Health event received: WARNING
+[2026-07-26 19:04:23] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:04:23] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785089063, 'source': 'LUNAE'}
+[2026-07-26 19:04:23] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785089063, 'source': 'LUNAE'}
+[2026-07-26 19:04:24] Processed telemetry (temp: 40.927970038597586, rad: 42.77582213976977) State: WARNING => WARNING
+[2026-07-26 19:04:24] Publishing 'telemetry/health' to 3 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089064}
+[2026-07-26 19:04:24] Health update: {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785089064}
+[2026-07-26 19:04:24] Health update from GRACIE: WARNING at 1785089064
+[2026-07-26 19:04:24] Health event received: WARNING
+[2026-07-26 19:04:24] Processed telemetry. Nav: CRUISE => CRUISE
+[2026-07-26 19:04:24] Publishing 'state/nav' to 1 handler(s): {'nav_state': 'CRUISE', 'timestamp': 1785089064, 'source': 'LUNAE'}
+[2026-07-26 19:04:24] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785089064, 'source': 'LUNAE'}
+[2026-07-26 19:04:25] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'status'}
+[2026-07-26 19:04:25] Crew session context saved.
+[2026-07-26 19:04:25] Status queried: {'GRACIE': {'health': 'WARNING', 'last_update': 1785089064}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}
+[2026-07-26 19:04:25] System status queried: {'GRACIE': {'health': 'WARNING', 'last_update': 1785089064}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}
+[2026-07-26 19:04:25] HALIA to Commander Pratt: System Status: {'GRACIE': {'health': 'WARNING', 'last_update': 1785089064}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}. I remember 3 recent message(s) from you.
+[2026-07-26 19:04:25] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785089065, 'response': "System Status: {'GRACIE': {'health': 'WARNING', 'last_update': 1785089064}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}. I remember 3 recent message(s) from you."}
+[2026-07-26 19:04:25] Crew response: {'to': 'Commander Pratt', 'timestamp': 1785089065, 'response': "System Status: {'GRACIE': {'health': 'WARNING', 'last_update': 1785089064}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}. I remember 3 recent message(s) from you."}
+[2026-07-26 19:15:34] Subscribing to 'crew/response' with handler '<lambda>'
+[2026-07-26 19:15:34] Crew session context loaded.
+[2026-07-26 19:15:34] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:15:34] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:15:34] Crew session context saved.
+[2026-07-26 19:15:34] Command 'run_diagnostics' sent to ethan with params None
+[2026-07-26 19:15:34] HALIA to Commander Pratt: Command 'run_diagnostics' sent to ethan.
+[2026-07-26 19:15:34] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785089734, 'response': "Command 'run_diagnostics' sent to ethan."}
+[2026-07-26 19:15:34] Crew session context saved.
+[2026-07-26 19:15:34] HALIA to Dr. Liu: All systems nominal. No alerts or faults detected.
+[2026-07-26 19:15:34] Publishing 'crew/response' to 1 handler(s): {'to': 'Dr. Liu', 'timestamp': 1785089734, 'response': 'All systems nominal. No alerts or faults detected.'}
+[2026-07-26 19:15:34] Invalid crew message: 1 validation error for CrewMessage
+from
+  Field required [type=missing, input_value={'message': 'missing sender'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+[2026-07-26 19:15:55] Subscribing to 'health/update' with handler 'on_health_update'
+[2026-07-26 19:15:55] Subscribing to 'telemetry/health' with handler 'on_health_update'
+[2026-07-26 19:15:55] Subscribing to 'navigation/update' with handler 'on_nav_update'
+[2026-07-26 19:15:55] Subscribing to 'propulsion/update' with handler 'on_propulsion_update'
+[2026-07-26 19:15:55] Subscribing to 'eden/status_update' with handler 'on_eden_update'
+[2026-07-26 19:15:55] Subscribing to 'ethan/command' with handler 'on_command'
+[2026-07-26 19:15:55] Subscribing to 'cmd/propulsion' with handler 'on_command'
+[2026-07-26 19:15:55] Crew session context loaded.
+[2026-07-26 19:15:55] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:15:55] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:15:55] Subscribing to 'crew/response' with handler '<lambda>'
+[2026-07-26 19:15:55] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'run diagnostic on ethan'}
+[2026-07-26 19:15:56] Crew session context saved.
+[2026-07-26 19:15:56] Sending command: run_diagnostics to ethan with params None
+[2026-07-26 19:15:56] Publishing 'ethan/command' to 1 handler(s): {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:15:56] Received command: run_diagnostics with payload {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:15:56] Running diagnostics
+[2026-07-26 19:15:56] Status update: {'mode': 'TESTING', 'timestamp': 1785089756}
+[2026-07-26 19:15:56] Publishing 'propulsion/update' to 1 handler(s): {'mode': 'TESTING', 'timestamp': 1785089756}
+[2026-07-26 19:15:56] Propulsion update: {'mode': 'TESTING', 'timestamp': 1785089756}
+[2026-07-26 19:15:56] Status update: {'mode': 'NTP', 'timestamp': 1785089756}
+[2026-07-26 19:15:56] Publishing 'propulsion/update' to 1 handler(s): {'mode': 'NTP', 'timestamp': 1785089756}
+[2026-07-26 19:15:56] Propulsion update: {'mode': 'NTP', 'timestamp': 1785089756}
+[2026-07-26 19:15:56] Publishing 'state/system' to 0 handler(s): {'propulsion_mode': 'NTP', 'timestamp': 1785089756, 'source': 'ETHAN_AI'}
+[2026-07-26 19:15:56] Command 'run_diagnostics' sent to ethan with params None
+[2026-07-26 19:15:56] HALIA to Commander Pratt: Command 'run_diagnostics' sent to ethan.
+[2026-07-26 19:15:56] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785089756, 'response': "Command 'run_diagnostics' sent to ethan."}
+[2026-07-26 19:15:56] Status queried: {'GRACIE': {'health': 'UNKNOWN', 'last_update': None}, 'ETHAN': {'mode': 'NTP', 'last_update': 1785089756}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}
+[2026-07-26 19:16:05] Subscribing to 'health/update' with handler 'on_health_update'
+[2026-07-26 19:16:05] Subscribing to 'telemetry/health' with handler 'on_health_update'
+[2026-07-26 19:16:05] Subscribing to 'navigation/update' with handler 'on_nav_update'
+[2026-07-26 19:16:05] Subscribing to 'propulsion/update' with handler 'on_propulsion_update'
+[2026-07-26 19:16:05] Subscribing to 'eden/status_update' with handler 'on_eden_update'
+[2026-07-26 19:16:05] Subscribing to 'gracie/command' with handler 'on_command'
+[2026-07-26 19:16:05] Subscribing to 'eden/command' with handler 'on_command'
+[2026-07-26 19:16:05] Subscribing to 'telemetry/health' with handler 'on_health_event'
+[2026-07-26 19:16:05] Processed telemetry (temp: 30, rad: 10) State: NOMINAL => NOMINAL
+[2026-07-26 19:16:05] Publishing 'telemetry/health' to 2 handler(s): {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1000}
+[2026-07-26 19:16:05] Health update: {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1000}
+[2026-07-26 19:16:05] Health event received: NOMINAL
+[2026-07-26 19:16:05] Status update: {'status': 'MONITORING', 'timestamp': 1785089765}
+[2026-07-26 19:16:05] Publishing 'eden/status_update' to 1 handler(s): {'status': 'MONITORING', 'timestamp': 1785089765}
+[2026-07-26 19:16:05] EDEN update: {'status': 'MONITORING', 'timestamp': 1785089765}
+[2026-07-26 19:16:05] Status queried: {'GRACIE': {'health': 'NOMINAL', 'last_update': 1000}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'MONITORING', 'last_update': 1785089765}}
+[2026-07-26 19:16:05] Processed telemetry (temp: 52, rad: 10) State: NOMINAL => WARNING
+[2026-07-26 19:16:05] Publishing 'telemetry/health' to 2 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1001}
+[2026-07-26 19:16:05] Health update: {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1001}
+[2026-07-26 19:16:05] Health event received: WARNING
+[2026-07-26 19:16:05] Status update: {'status': 'MONITORING', 'timestamp': 1785089765}
+[2026-07-26 19:16:05] Publishing 'eden/status_update' to 1 handler(s): {'status': 'MONITORING', 'timestamp': 1785089765}
+[2026-07-26 19:16:05] EDEN update: {'status': 'MONITORING', 'timestamp': 1785089765}
+[2026-07-26 19:16:05] Status queried: {'GRACIE': {'health': 'WARNING', 'last_update': 1001}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'MONITORING', 'last_update': 1785089765}}
+[2026-07-26 19:16:05] Processed telemetry (temp: 56, rad: 45) State: WARNING => FAULT
+[2026-07-26 19:16:05] Publishing 'telemetry/health' to 2 handler(s): {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1002}
+[2026-07-26 19:16:05] Health update: {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1002}
+[2026-07-26 19:16:05] GRACIE FAULT detected! Notifying HALIA.
+[2026-07-26 19:16:05] Publishing 'halia/alert' to 0 handler(s): {'message': 'GRACIE FAULT detected!'}
+[2026-07-26 19:16:05] Health event received: FAULT
+[2026-07-26 19:16:05] EDEN detected FAULT! Sending SAFE_MODE command...
+[2026-07-26 19:16:05] Publishing 'cmd/propulsion' to 0 handler(s): {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-07-26 19:16:05] Status update: {'status': 'SAFE_MODE', 'timestamp': 1785089765}
+[2026-07-26 19:16:05] Publishing 'eden/status_update' to 1 handler(s): {'status': 'SAFE_MODE', 'timestamp': 1785089765}
+[2026-07-26 19:16:05] EDEN update: {'status': 'SAFE_MODE', 'timestamp': 1785089765}
+[2026-07-26 19:16:05] Status queried: {'GRACIE': {'health': 'FAULT', 'last_update': 1002}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'SAFE_MODE', 'last_update': 1785089765}}
+[2026-07-26 19:16:05] Processed telemetry (temp: 30, rad: 10) State: FAULT => FAULT
+[2026-07-26 19:16:05] Publishing 'telemetry/health' to 2 handler(s): {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1003}
+[2026-07-26 19:16:05] Health update: {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1003}
+[2026-07-26 19:16:05] Health event received: FAULT
+[2026-07-26 19:16:05] EDEN detected FAULT! Sending SAFE_MODE command...
+[2026-07-26 19:16:05] Publishing 'cmd/propulsion' to 0 handler(s): {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-07-26 19:16:05] Status update: {'status': 'SAFE_MODE', 'timestamp': 1785089765}
+[2026-07-26 19:16:05] Publishing 'eden/status_update' to 1 handler(s): {'status': 'SAFE_MODE', 'timestamp': 1785089765}
+[2026-07-26 19:16:05] EDEN update: {'status': 'SAFE_MODE', 'timestamp': 1785089765}
+[2026-07-26 19:16:05] Status queried: {'GRACIE': {'health': 'FAULT', 'last_update': 1003}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'SAFE_MODE', 'last_update': 1785089765}}
+[2026-07-26 19:16:24] Subscribing to 'telemetry/health' with handler '<lambda>'
+[2026-07-26 19:16:24] Subscribing to 'gracie/command' with handler 'on_command'
+[2026-07-26 19:16:24] Processed telemetry (temp: 30, rad: 10) State: NOMINAL => NOMINAL
+[2026-07-26 19:16:24] Publishing 'telemetry/health' to 1 handler(s): {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1234567890}
+[2026-07-26 19:16:24] Processed telemetry (temp: 52, rad: 10) State: NOMINAL => WARNING
+[2026-07-26 19:16:24] Publishing 'telemetry/health' to 1 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1234567890}
+[2026-07-26 19:16:24] Processed telemetry (temp: 56, rad: 41) State: WARNING => FAULT
+[2026-07-26 19:16:24] Publishing 'telemetry/health' to 1 handler(s): {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1234567890}
+[2026-07-26 19:16:24] Processed telemetry (temp: 30, rad: 10) State: FAULT => FAULT
+[2026-07-26 19:16:24] Publishing 'telemetry/health' to 1 handler(s): {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1234567890}
+[2026-07-26 19:16:24] Received command: clear_fault with payload {'command': 'clear_fault'}
+[2026-07-26 19:16:24] FAULT cleared, health reset to NOMINAL.
+[2026-07-26 19:16:24] Manual health update: NOMINAL
+[2026-07-26 19:16:24] Publishing 'health/update' to 0 handler(s): {'status': 'NOMINAL', 'timestamp': 1785089784}
+[2026-07-26 19:16:25] Subscribing to 'health/update' with handler 'on_health_update'
+[2026-07-26 19:16:25] Subscribing to 'telemetry/health' with handler 'on_health_update'
+[2026-07-26 19:16:25] Subscribing to 'navigation/update' with handler 'on_nav_update'
+[2026-07-26 19:16:25] Subscribing to 'propulsion/update' with handler 'on_propulsion_update'
+[2026-07-26 19:16:25] Subscribing to 'eden/status_update' with handler 'on_eden_update'
+[2026-07-26 19:16:26] Crew session context loaded.
+[2026-07-26 19:16:26] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:16:26] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:16:26] Subscribing to 'gracie/command' with handler 'on_command'
+[2026-07-26 19:16:26] Subscribing to 'halia/alert' with handler 'append'
+[2026-07-26 19:16:26] Subscribing to 'crew/response' with handler '<lambda>'
+[2026-07-26 19:16:26] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'run diagnostic on gracie'}
+[2026-07-26 19:16:26] Crew session context saved.
+[2026-07-26 19:16:26] Sending command: run_diagnostics to gracie with params None
+[2026-07-26 19:16:26] Publishing 'gracie/command' to 1 handler(s): {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:16:26] Received command: run_diagnostics with payload {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:16:26] Manual health update: NOMINAL
+[2026-07-26 19:16:26] Publishing 'health/update' to 1 handler(s): {'status': 'NOMINAL', 'timestamp': 1785089786}
+[2026-07-26 19:16:26] Health update: {'status': 'NOMINAL', 'timestamp': 1785089786}
+[2026-07-26 19:16:26] Command 'run_diagnostics' sent to gracie with params None
+[2026-07-26 19:16:26] HALIA to Commander Pratt: Command 'run_diagnostics' sent to gracie.
+[2026-07-26 19:16:26] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785089786, 'response': "Command 'run_diagnostics' sent to gracie."}
+[2026-07-26 19:16:26] Processed telemetry (temp: 60, rad: 45) State: NOMINAL => FAULT
+[2026-07-26 19:16:26] Publishing 'telemetry/health' to 1 handler(s): {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1785089786}
+[2026-07-26 19:16:26] Health update: {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1785089786}
+[2026-07-26 19:16:26] GRACIE FAULT detected! Notifying HALIA.
+[2026-07-26 19:16:26] Publishing 'halia/alert' to 2 handler(s): {'message': 'GRACIE FAULT detected!'}
+[2026-07-26 19:16:26] HALIA ALERT: GRACIE FAULT detected!
+[2026-07-26 19:16:26] Status queried: {'GRACIE': {'health': 'FAULT', 'last_update': 1785089786}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}
+[2026-07-26 19:16:27] Subscribing to 'health/update' with handler 'on_health_update'
+[2026-07-26 19:16:27] Subscribing to 'telemetry/health' with handler 'on_health_update'
+[2026-07-26 19:16:27] Subscribing to 'navigation/update' with handler 'on_nav_update'
+[2026-07-26 19:16:27] Subscribing to 'propulsion/update' with handler 'on_propulsion_update'
+[2026-07-26 19:16:27] Subscribing to 'eden/status_update' with handler 'on_eden_update'
+[2026-07-26 19:16:27] Crew session context loaded.
+[2026-07-26 19:16:27] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:16:27] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:16:27] Subscribing to 'crew/response' with handler 'on_response'
+[2026-07-26 19:16:27] Starting system diagnostics...
+[2026-07-26 19:16:27] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'run diagnostic on gracie'}
+[2026-07-26 19:16:27] Crew session context saved.
+[2026-07-26 19:16:27] Sending command: run_diagnostics to gracie with params None
+[2026-07-26 19:16:27] Publishing 'gracie/command' to 0 handler(s): {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:16:27] Command 'run_diagnostics' sent to gracie with params None
+[2026-07-26 19:16:27] HALIA to Commander Pratt: Command 'run_diagnostics' sent to gracie.
+[2026-07-26 19:16:27] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785089787, 'response': "Command 'run_diagnostics' sent to gracie."}
+[2026-07-26 19:16:27] Step 1: Received response: Command 'run_diagnostics' sent to gracie.
+[2026-07-26 19:16:27] Proceeding to next step after Gracie diagnostic.
+[2026-07-26 19:16:27] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'run diagnostic on ethan'}
+[2026-07-26 19:16:27] Crew session context saved.
+[2026-07-26 19:16:27] Sending command: run_diagnostics to ethan with params None
+[2026-07-26 19:16:27] Publishing 'ethan/command' to 0 handler(s): {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:16:27] Command 'run_diagnostics' sent to ethan with params None
+[2026-07-26 19:16:27] HALIA to Commander Pratt: Command 'run_diagnostics' sent to ethan.
+[2026-07-26 19:16:27] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785089787, 'response': "Command 'run_diagnostics' sent to ethan."}
+[2026-07-26 19:16:27] Step 2: Received response: Command 'run_diagnostics' sent to ethan.
+[2026-07-26 19:16:27] Diagnostics complete.
+[2026-07-26 19:16:28] Subscribing to 'health/update' with handler 'on_health_update'
+[2026-07-26 19:16:28] Subscribing to 'telemetry/health' with handler 'on_health_update'
+[2026-07-26 19:16:28] Subscribing to 'navigation/update' with handler 'on_nav_update'
+[2026-07-26 19:16:28] Subscribing to 'propulsion/update' with handler 'on_propulsion_update'
+[2026-07-26 19:16:28] Subscribing to 'eden/status_update' with handler 'on_eden_update'
+[2026-07-26 19:16:28] Crew session context loaded.
+[2026-07-26 19:16:28] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:16:28] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:16:28] Subscribing to 'crew/response' with handler '<lambda>'
+[2026-07-26 19:16:28] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'run diagnostic on gracie'}
+[2026-07-26 19:16:28] Crew session context saved.
+[2026-07-26 19:16:28] Sending command: run_diagnostics to gracie with params None
+[2026-07-26 19:16:28] Publishing 'gracie/command' to 0 handler(s): {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:16:28] Command 'run_diagnostics' sent to gracie with params None
+[2026-07-26 19:16:28] HALIA to Commander Pratt: Command 'run_diagnostics' sent to gracie.
+[2026-07-26 19:16:28] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785089788, 'response': "Command 'run_diagnostics' sent to gracie."}
+[2026-07-26 19:16:28] Subscribing to 'crew/response' with handler '<lambda>'
+[2026-07-26 19:16:28] Crew session context loaded.
+[2026-07-26 19:16:28] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:16:28] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:16:28] Crew session context saved.
+[2026-07-26 19:16:28] Command 'run_diagnostics' sent to ethan with params None
+[2026-07-26 19:16:28] HALIA to Commander Pratt: Command 'run_diagnostics' sent to ethan.
+[2026-07-26 19:16:28] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785089788, 'response': "Command 'run_diagnostics' sent to ethan."}
+[2026-07-26 19:16:28] Crew session context saved.
+[2026-07-26 19:16:28] HALIA to Dr. Liu: All systems nominal. No alerts or faults detected.
+[2026-07-26 19:16:28] Publishing 'crew/response' to 1 handler(s): {'to': 'Dr. Liu', 'timestamp': 1785089788, 'response': 'All systems nominal. No alerts or faults detected.'}
+[2026-07-26 19:16:28] Invalid crew message: 1 validation error for CrewMessage
+from
+  Field required [type=missing, input_value={'message': 'missing sender'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+[2026-07-26 19:24:11] Subscribing to 'telemetry/health' with handler '<lambda>'
+[2026-07-26 19:24:11] Subscribing to 'gracie/command' with handler 'on_command'
+[2026-07-26 19:24:11] Processed telemetry (temp: 30, rad: 10) State: NOMINAL => NOMINAL
+[2026-07-26 19:24:11] Publishing 'telemetry/health' to 1 handler(s): {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1234567890}
+[2026-07-26 19:24:11] Processed telemetry (temp: 52, rad: 10) State: NOMINAL => WARNING
+[2026-07-26 19:24:11] Publishing 'telemetry/health' to 1 handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1234567890}
+[2026-07-26 19:24:11] Processed telemetry (temp: 56, rad: 41) State: WARNING => FAULT
+[2026-07-26 19:24:11] Publishing 'telemetry/health' to 1 handler(s): {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1234567890}
+[2026-07-26 19:24:11] Processed telemetry (temp: 30, rad: 10) State: FAULT => FAULT
+[2026-07-26 19:24:11] Publishing 'telemetry/health' to 1 handler(s): {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1234567890}
+[2026-07-26 19:24:11] Received command: clear_fault with payload {'command': 'clear_fault'}
+[2026-07-26 19:24:11] FAULT cleared, health reset to NOMINAL.
+[2026-07-26 19:24:11] Manual health update: NOMINAL
+[2026-07-26 19:24:11] Publishing 'health/update' to 0 handler(s): {'status': 'NOMINAL', 'timestamp': 1785090251}
+[2026-07-26 19:24:12] Subscribing to 'health/update' with handler 'on_health_update'
+[2026-07-26 19:24:12] Subscribing to 'telemetry/health' with handler 'on_health_update'
+[2026-07-26 19:24:12] Subscribing to 'navigation/update' with handler 'on_nav_update'
+[2026-07-26 19:24:12] Subscribing to 'propulsion/update' with handler 'on_propulsion_update'
+[2026-07-26 19:24:12] Subscribing to 'eden/status_update' with handler 'on_eden_update'
+[2026-07-26 19:24:12] Crew session context loaded.
+[2026-07-26 19:24:12] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:24:12] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:24:12] Subscribing to 'gracie/command' with handler 'on_command'
+[2026-07-26 19:24:12] Subscribing to 'halia/alert' with handler 'append'
+[2026-07-26 19:24:12] Subscribing to 'crew/response' with handler '<lambda>'
+[2026-07-26 19:24:12] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'run diagnostic on gracie'}
+[2026-07-26 19:24:12] Crew session context saved.
+[2026-07-26 19:24:12] Sending command: run_diagnostics to gracie with params None
+[2026-07-26 19:24:12] Publishing 'gracie/command' to 1 handler(s): {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:24:12] Received command: run_diagnostics with payload {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:24:12] Manual health update: NOMINAL
+[2026-07-26 19:24:12] Publishing 'health/update' to 1 handler(s): {'status': 'NOMINAL', 'timestamp': 1785090252}
+[2026-07-26 19:24:12] Health update: {'status': 'NOMINAL', 'timestamp': 1785090252}
+[2026-07-26 19:24:12] Command 'run_diagnostics' sent to gracie with params None
+[2026-07-26 19:24:12] HALIA to Commander Pratt: Command 'run_diagnostics' sent to gracie.
+[2026-07-26 19:24:12] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785090252, 'response': "Command 'run_diagnostics' sent to gracie."}
+[2026-07-26 19:24:12] Processed telemetry (temp: 60, rad: 45) State: NOMINAL => FAULT
+[2026-07-26 19:24:12] Publishing 'telemetry/health' to 1 handler(s): {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1785090252}
+[2026-07-26 19:24:12] Health update: {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1785090252}
+[2026-07-26 19:24:12] GRACIE FAULT detected! Notifying HALIA.
+[2026-07-26 19:24:12] Publishing 'halia/alert' to 2 handler(s): {'message': 'GRACIE FAULT detected!'}
+[2026-07-26 19:24:12] HALIA ALERT: GRACIE FAULT detected!
+[2026-07-26 19:24:12] Status queried: {'GRACIE': {'health': 'FAULT', 'last_update': 1785090252}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'UNKNOWN', 'last_update': None}, 'EDEN': {'status': 'UNKNOWN', 'last_update': None}}
+[2026-07-26 19:24:13] Subscribing to 'health/update' with handler 'on_health_update'
+[2026-07-26 19:24:13] Subscribing to 'telemetry/health' with handler 'on_health_update'
+[2026-07-26 19:24:13] Subscribing to 'navigation/update' with handler 'on_nav_update'
+[2026-07-26 19:24:13] Subscribing to 'propulsion/update' with handler 'on_propulsion_update'
+[2026-07-26 19:24:13] Subscribing to 'eden/status_update' with handler 'on_eden_update'
+[2026-07-26 19:24:13] Crew session context loaded.
+[2026-07-26 19:24:13] Subscribing to 'crew/message' with handler 'on_crew_message'
+[2026-07-26 19:24:13] Subscribing to 'halia/alert' with handler 'on_alert'
+[2026-07-26 19:24:13] Subscribing to 'crew/response' with handler 'on_response'
+[2026-07-26 19:24:13] Starting system diagnostics...
+[2026-07-26 19:24:13] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'run diagnostic on gracie'}
+[2026-07-26 19:24:13] Crew session context saved.
+[2026-07-26 19:24:13] Sending command: run_diagnostics to gracie with params None
+[2026-07-26 19:24:13] Publishing 'gracie/command' to 0 handler(s): {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:24:13] Command 'run_diagnostics' sent to gracie with params None
+[2026-07-26 19:24:13] HALIA to Commander Pratt: Command 'run_diagnostics' sent to gracie.
+[2026-07-26 19:24:13] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785090253, 'response': "Command 'run_diagnostics' sent to gracie."}
+[2026-07-26 19:24:13] Step 1: Received response: Command 'run_diagnostics' sent to gracie.
+[2026-07-26 19:24:13] Proceeding to next step after Gracie diagnostic.
+[2026-07-26 19:24:13] Publishing 'crew/message' to 1 handler(s): {'from': 'Commander Pratt', 'message': 'run diagnostic on ethan'}
+[2026-07-26 19:24:13] Crew session context saved.
+[2026-07-26 19:24:13] Sending command: run_diagnostics to ethan with params None
+[2026-07-26 19:24:13] Publishing 'ethan/command' to 0 handler(s): {'command': 'run_diagnostics', 'parameters': {}}
+[2026-07-26 19:24:13] Command 'run_diagnostics' sent to ethan with params None
+[2026-07-26 19:24:13] HALIA to Commander Pratt: Command 'run_diagnostics' sent to ethan.
+[2026-07-26 19:24:13] Publishing 'crew/response' to 1 handler(s): {'to': 'Commander Pratt', 'timestamp': 1785090253, 'response': "Command 'run_diagnostics' sent to ethan."}
+[2026-07-26 19:24:13] Step 2: Received response: Command 'run_diagnostics' sent to ethan.
+[2026-07-26 19:24:13] Diagnostics complete.
