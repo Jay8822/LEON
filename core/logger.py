@@ -31,6 +31,11 @@ def setup_agent_logger(agent_name):
     """
     logger = logging.getLogger(agent_name)
     logger.setLevel(logging.INFO)
+    # Without this, every per-agent message also propagates to the root
+    # logger (configured by basicConfig() above to write logs/system.log),
+    # so system.log silently duplicates the content of every other log
+    # file instead of holding just main.py's own top-level narrative.
+    logger.propagate = False
     if not logger.handlers:
         handler = logging.FileHandler(os.path.join(LOG_DIR, f'{agent_name}.log'))
         handler.setFormatter(

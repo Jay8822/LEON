@@ -1,5 +1,20 @@
 # agents/universal_agent.py
-# Updated 2026-07-26 — takes a shared bus instead of importing a global one. Jay Pratt + AI (Claude, Anthropic).
+# Updated 2026-07-27 — documenting status: implemented and tested, but not
+# wired into main.py's live system. Jay Pratt + AI (Claude, Anthropic).
+#
+# UniversalAgent is a second, independent responder to "crew/message" —
+# it answers from a JSON skills table (universal_agent_skills.json)
+# instead of HALIA's personality-driven logic. It works standalone (see
+# the __main__ block below, or instantiate it directly) but main.py
+# does not construct it, so it currently does nothing in the live app.
+# It's left unwired deliberately, not by oversight: subscribing it
+# alongside HALIA on the same "crew/message" topic would make every
+# crew message get two independent responses (HALIA's and this one),
+# which isn't a real feature, just a confusing side effect of both
+# listening to the same topic. Activating this for real would need
+# either its own topic/selection mechanism (e.g. a "skills:" prefix) or
+# a decision to replace, not add to, HALIA's response path — not just
+# an extra subscribe() call in main.py.
 
 import json
 import os

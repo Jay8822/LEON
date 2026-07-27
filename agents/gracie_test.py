@@ -1,9 +1,11 @@
 # agents/gracie_test.py
-# Updated 2026-07-26 — rewritten as a real check with assertions. Jay Pratt + AI (Claude, Anthropic).
+# Updated 2026-07-27 — replaced the hardcoded placeholder timestamp with real ones. Jay Pratt + AI (Claude, Anthropic).
 """Manual check for GRACIE's health-state rules. Run from the repo root:
 
     python -m agents.gracie_test
 """
+
+import time
 
 from agents.gracie import GracieAgent
 from core.bus import EventBus
@@ -28,7 +30,7 @@ def main():
         (56, 41, "FAULT"),
         (30, 10, "FAULT"),     # FAULT latches until cleared
     ]:
-        gracie.process_telemetry(TelemetryPacket(temp, rad, 1234567890))
+        gracie.process_telemetry(TelemetryPacket(temp, rad, int(time.time())))
         assert gracie.health_state == expected, \
             f"temp={temp} rad={rad}: expected {expected}, got {gracie.health_state}"
         print(f"  ok: temp={temp} rad={rad} -> {expected}")

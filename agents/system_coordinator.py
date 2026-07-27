@@ -17,11 +17,10 @@ class SystemCoordinator:
             "LUNAE": {"nav_state": "UNKNOWN", "last_update": None},
             "EDEN": {"status": "UNKNOWN", "last_update": None},
         }
-        # Subscribe to system updates. GRACIE reports health on two topics:
-        # "health/update" (manual, key "status") and "telemetry/health"
-        # (derived from telemetry, key "system_health"). Watch both, or
-        # telemetry-driven FAULTs never reach HALIA.
-        self.bus.subscribe("health/update", self.on_health_update)
+        # GRACIE reports health on "telemetry/health" for every trigger
+        # (real telemetry, run_diagnostics, clear_fault) — one topic, one
+        # payload shape, so every subscriber (this coordinator and EDEN)
+        # sees the same thing regardless of what triggered the report.
         self.bus.subscribe("telemetry/health", self.on_health_update)
         self.bus.subscribe("navigation/update", self.on_nav_update)
         self.bus.subscribe("propulsion/update", self.on_propulsion_update)
@@ -29,7 +28,7 @@ class SystemCoordinator:
 
     def on_health_update(self, payload):
         previous = self.system_status["GRACIE"]["health"]
-        health = payload.get("system_health") or payload.get("status") or "UNKNOWN"
+        health = payload.get("system_health", "UNKNOWN")
         self.system_status["GRACIE"].update({
             "health": health,
             "last_update": payload.get("timestamp", time.time())

@@ -59,6 +59,34 @@ later, it'd be a small, fixed-response command interface, not a port of
 HALIA as it exists in Python — and it would likely stay outside the
 compliant core entirely, same as ground software does on real missions.
 
+## Schema differences from the Python version (intentional, not drift)
+
+A consistency pass (2026-07-27) compared `leon_types.hpp` against
+`core/schemas.py` field by field. The differences below are kept as-is,
+deliberately — Python is the ground-simulation schema, C++ is the
+flight-representative subset, and they're not meant to converge:
+
+| Field | Python (`core/schemas.py`) | C++ (`leon_types.hpp`) |
+|---|---|---|
+| `TelemetryPacket.source` | present (`str`) | **not present** — the C++ demo has exactly one telemetry source, so a source tag carries no information yet |
+| `TelemetryPacket.nav_state` | free `str` | closed `NavState` enum (`kIdle`/`kCruise`/`kHold`) |
+| `CommandPacket.mode` | `Optional[str]` — `None` when a command like SAFE_MODE has no propulsion mode | closed `PropulsionMode` enum with **no null representation**; SAFE_MODE has to use `PropulsionMode::kSafeMode` as a stand-in, since Rule 3's no-heap/no-`std::optional`-by-convention style here has nothing to hold "absent" |
+| `CommandPacket.reason` | unconstrained `str` | `FixedString`, capped at `kMaxReasonLen - 1` (31) characters |
+
+The `mode` difference is the one with real teeth: it's not just a type
+change, it changes what "no mode" *means* — Python can say "not
+applicable," C++ can only pick a concrete enum value and treat one of
+them as standing in for "not applicable." Worth knowing if this is ever
+extended to a command whose mode genuinely matters alongside SAFE_MODE.
+
+**Test telemetry timestamps** (`1000`–`1009` in `main.cpp`): also
+intentional, not a debug leftover. They're a fixed, deterministic input
+sequence so the demo is reproducible run-to-run — using `time()` would
+make every run's output timestamps different for no benefit, since
+nothing here reads wall-clock time meaningfully. If this ever takes
+input from a real sensor/clock source, this array is what gets replaced
+(see the Roadmap below), not patched to look more "real" in place.
+
 ## Compliance checklist (this code, rule by rule)
 
 | Rule | How it's satisfied here |

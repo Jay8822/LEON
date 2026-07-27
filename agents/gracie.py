@@ -18,11 +18,11 @@ class GracieAgent:
         command = payload.get("command")
         self.logger.info(f"Received command: {command} with payload {payload}")
         if command == "run_diagnostics":
-            self.send_health_update(self.health_state)
+            self.report_health()
         elif command == "clear_fault":
             self.health_state = "NOMINAL"
             self.logger.info("FAULT cleared, health reset to NOMINAL.")
-            self.send_health_update(self.health_state)
+            self.report_health()
 
     def process_telemetry(self, telemetry):
         # Basic rules: health checks. FAULT latches until an explicit
@@ -37,17 +37,20 @@ class GracieAgent:
                 self.health_state = "NOMINAL"
         self.logger.info(f"Processed telemetry (temp: {telemetry.temp_c}, rad: {telemetry.radiation}) "
                          f"State: {prior_state} => {self.health_state}")
-        # Publish health
+        self.report_health(telemetry.timestamp)
+
+    def report_health(self, timestamp=None):
+        # Single publish path for every trigger (telemetry, run_diagnostics,
+        # clear_fault) on the single topic every subscriber — SystemCoordinator
+        # *and* EDEN — listens on. Previously run_diagnostics/clear_fault
+        # published to a separate "health/update" topic that only the
+        # coordinator watched, so a diagnostic-triggered FAULT report never
+        # reached EDEN the way a telemetry-triggered one did.
+        if timestamp is None:
+            timestamp = int(time.time())
+        self.logger.info(f"Reporting health: {self.health_state}")
         self.bus.publish("telemetry/health", {
             "system_health": self.health_state,
             "source": "GRACIE",
-            "timestamp": telemetry.timestamp
+            "timestamp": timestamp
         })
-
-    def send_health_update(self, status):
-        payload = {
-            "status": status,
-            "timestamp": int(time.time())
-        }
-        self.logger.info(f"Manual health update: {status}")
-        self.bus.publish("health/update", payload)

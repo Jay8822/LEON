@@ -31,7 +31,7 @@ def build_system():
     bus.subscribe("cmd/propulsion", print_command)
     bus.subscribe("cmd/propulsion", ethan.on_command)
     bus.subscribe("state/system", print_state)
-    bus.subscribe("state/nav", print_nav)
+    bus.subscribe("navigation/update", print_nav)
     bus.subscribe("cmd/nav", lunae.on_nav_command)
     bus.subscribe("crew/response", print_crew_response)
 
