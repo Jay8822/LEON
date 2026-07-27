@@ -7,9 +7,10 @@ registry). It is a **redesign**, not a translation of the Python code —
 the constraints below rule out the pub/sub architecture main.py uses.
 
 Concept and architecture by Jay Pratt. Written with AI pair-programming
-assistance (Claude, Anthropic), 2026-07-26. **Not yet compiled or run**
-— no C++ toolchain (g++/clang/cl/cmake) was available in the environment
-this was written in. See "Status" below before trusting any of it.
+assistance (Claude, Anthropic), 2026-07-26. Written without a compiler
+available in the original environment; subsequently built and verified
+clean on three toolchains the same day — see "Status" below for the
+full record before trusting any of it.
 
 ## What "Power of 10" is
 
