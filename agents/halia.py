@@ -1,9 +1,8 @@
 # agents/halia.py
-# Updated 2026-07-26 — shared bus, optional coordinator, resilient session load. Jay Pratt + AI (Claude, Anthropic).
+# Updated 2026-07-27 — removed personality/"sass" flavor text ahead of going public; plain, honest responses only. Jay Pratt + AI (Claude, Anthropic).
 
 import json
 import os
-import random
 import time
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -105,12 +104,6 @@ class HaliaAgent:
         role = profile.get("role", "crew")
         msg_low = message.lower()
         memory_count = len(context)
-        personality_context = {
-            "crew_stress": 60,
-            "crew_fatigue": 30,
-            "recent_success": False,
-            "memory_count": memory_count
-        }
         if "status" in msg_low:
             status = self.get_system_status()
             return f"System Status: {status}. I remember {memory_count} recent message(s) from you."
@@ -130,42 +123,4 @@ class HaliaAgent:
         elif "how are we doing" in msg_low:
             return f"Received your message, {crew_id}. What would you like to do next? Memory of last {memory_count} messages still active."
         else:
-            return self.generate_response("general", personality_context)
-
-    def generate_response(self, topic, context):
-        base_response = self.generate_truthful_response(topic, context)
-        if context.get('crew_stress', 0) > 70:
-            base_response = self.add_sass(base_response)
-            if context.get('recent_success'):
-                base_response += " You're doing fine, despite what I say."
-            else:
-                base_response += " But keep pushing. The ship hasn't exploded *yet*."
-        elif context.get('crew_fatigue', 0) > 50:
-            base_response = self.add_encouragement(base_response)
-            base_response += " Let's get some rest soon."
-        else:
-            base_response = self.add_encouragement(base_response)
-        return base_response
-
-    def generate_truthful_response(self, topic, context):
-        return f"Crew asked about {topic}."
-
-    def add_sass(self, response):
-        snark_bank = [
-            "Statistically, that was a poor choice. But hey, you're consistent.",
-            "I'd be more surprised if you didn't mess that up.",
-            "Remind me again why you're in charge of anything vital?",
-            "This is fine. Everything is fine. I'm not panicking. You're panicking.",
-            "At this point, I'm running on sarcasm and backup batteries."
-        ]
-        return response + " " + random.choice(snark_bank)
-
-    def add_encouragement(self, response):
-        encouragements = [
-            "You're making progress, don't lose steam.",
-            "Not bad at all, keep it going.",
-            "I might actually start believing in you yet.",
-            "One step closer. Keep going.",
-            "You're fine, mostly. Let's keep it that way."
-        ]
-        return response + " " + random.choice(encouragements)
+            return "Unrecognized command. Try 'status', 'run diagnostic on <system>', or 'help'."
