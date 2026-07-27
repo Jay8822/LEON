@@ -1,0 +1,11 @@
+[2026-07-27 17:59:38,823] INFO: Subscribing to 'gracie/command' with handler 'on_command'
+[2026-07-27 17:59:38,823] INFO: Connected to EDEN process.
+[2026-07-27 17:59:38,824] INFO: Dispatching 'telemetry/health' to 0 local handler(s): {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785171578}
+[2026-07-27 17:59:38,826] INFO: Sent 'telemetry/health' to peer process: {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785171578}
+[2026-07-27 17:59:39,828] INFO: Dispatching 'telemetry/health' to 0 local handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785171579}
+[2026-07-27 17:59:39,828] INFO: Sent 'telemetry/health' to peer process: {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785171579}
+[2026-07-27 17:59:40,837] INFO: Dispatching 'telemetry/health' to 0 local handler(s): {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1785171580}
+[2026-07-27 17:59:40,837] INFO: Sent 'telemetry/health' to peer process: {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1785171580}
+[2026-07-27 17:59:41,838] INFO: Dispatching 'telemetry/health' to 0 local handler(s): {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1785171581}
+[2026-07-27 17:59:41,838] INFO: Sent 'telemetry/health' to peer process: {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1785171581}
+[2026-07-27 17:59:42,847] INFO: Telemetry sequence complete, closing connection to EDEN.

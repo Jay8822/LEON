@@ -1,0 +1,22 @@
+[2026-07-27 17:58:55,011] INFO: Subscribing to 'eden/command' with handler 'on_command'
+[2026-07-27 17:58:55,011] INFO: Subscribing to 'telemetry/health' with handler 'on_health_event'
+[2026-07-27 17:58:55,011] INFO: Subscribing to 'cmd/propulsion' with handler '<lambda>'
+[2026-07-27 17:58:55,011] INFO: Subscribing to 'eden/status_update' with handler '<lambda>'
+[2026-07-27 17:58:55,017] INFO: Listening on 127.0.0.1:8765, waiting for GRACIE process to connect.
+[2026-07-27 17:59:38,816] INFO: GRACIE process connected from ('127.0.0.1', 55622).
+[2026-07-27 17:59:38,826] INFO: Received 'telemetry/health' from peer: {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785171578}
+[2026-07-27 17:59:38,826] INFO: Dispatching 'telemetry/health' to 1 local handler(s): {'system_health': 'NOMINAL', 'source': 'GRACIE', 'timestamp': 1785171578}
+[2026-07-27 17:59:38,826] INFO: Dispatching 'eden/status_update' to 1 local handler(s): {'status': 'MONITORING', 'timestamp': 1785171578}
+[2026-07-27 17:59:39,828] INFO: Received 'telemetry/health' from peer: {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785171579}
+[2026-07-27 17:59:39,828] INFO: Dispatching 'telemetry/health' to 1 local handler(s): {'system_health': 'WARNING', 'source': 'GRACIE', 'timestamp': 1785171579}
+[2026-07-27 17:59:39,828] INFO: Dispatching 'eden/status_update' to 1 local handler(s): {'status': 'MONITORING', 'timestamp': 1785171579}
+[2026-07-27 17:59:40,837] INFO: Received 'telemetry/health' from peer: {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1785171580}
+[2026-07-27 17:59:40,837] INFO: Dispatching 'telemetry/health' to 1 local handler(s): {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1785171580}
+[2026-07-27 17:59:40,837] INFO: Dispatching 'cmd/propulsion' to 1 local handler(s): {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-07-27 17:59:40,837] INFO: Dispatching 'eden/status_update' to 1 local handler(s): {'status': 'SAFE_MODE', 'timestamp': 1785171580}
+[2026-07-27 17:59:41,838] INFO: Received 'telemetry/health' from peer: {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1785171581}
+[2026-07-27 17:59:41,838] INFO: Dispatching 'telemetry/health' to 1 local handler(s): {'system_health': 'FAULT', 'source': 'GRACIE', 'timestamp': 1785171581}
+[2026-07-27 17:59:41,838] INFO: Dispatching 'cmd/propulsion' to 1 local handler(s): {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-07-27 17:59:41,838] INFO: Dispatching 'eden/status_update' to 1 local handler(s): {'status': 'SAFE_MODE', 'timestamp': 1785171581}
+[2026-07-27 17:59:42,848] INFO: Peer process disconnected.
+[2026-07-27 17:59:42,848] INFO: GRACIE process disconnected. Exiting.
