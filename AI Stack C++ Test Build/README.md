@@ -187,5 +187,7 @@ that needs a real build to shake out.
    heap).
 4. Decide what, if anything, a crew-facing interface looks like under
    these constraints — almost certainly not a port of HALIA.
-5. Get an actual static analyzer (cppcheck, or ideally a MISRA-aware
-   one) and CI running before calling any of it flight-representative.
+5. ~~Get an actual static analyzer running~~ — done: `cppcheck` passes
+   clean via the `cppcheck` CMake target. A MISRA-aware analyzer and
+   actual CI (this was all run manually, once, not automated) are
+   still open before calling any of it flight-representative.
