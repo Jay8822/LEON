@@ -56,7 +56,7 @@ def main():
     # SAFE_MODE here.
     commands.clear()
     bus.publish("crew/message", {
-        "from": "Commander Pratt",
+        "from": "James Pratt",
         "message": "run diagnostic on gracie"
     })
     assert commands and commands[-1]["command"] == "SAFE_MODE", \

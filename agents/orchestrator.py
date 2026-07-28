@@ -15,7 +15,7 @@ class Orchestrator:
     def start_diagnostics(self):
         self.logger.info("Starting system diagnostics...")
         self.step = 1
-        self.bus.publish("crew/message", {"from": "Commander Pratt", "message": "run diagnostic on gracie"})
+        self.bus.publish("crew/message", {"from": "James Pratt", "message": "run diagnostic on gracie"})
 
     def on_response(self, payload):
         response = payload.get("response", "")
@@ -25,7 +25,7 @@ class Orchestrator:
             # Advance before publishing: publish is synchronous, so the
             # response to this message arrives before publish() returns.
             self.step = 2
-            self.bus.publish("crew/message", {"from": "Commander Pratt", "message": "run diagnostic on ethan"})
+            self.bus.publish("crew/message", {"from": "James Pratt", "message": "run diagnostic on ethan"})
         elif self.step == 2:
             self.logger.info(f"Step 2: Received response: {response}")
             self.logger.info("Diagnostics complete.")

@@ -1,5 +1,5 @@
 # agents/halia.py
-# Updated 2026-07-27 — removed personality/"sass" flavor text ahead of going public; plain, honest responses only. Jay Pratt + AI (Claude, Anthropic).
+# Updated 2026-07-28 — replaced "Commander Pratt" crew label with a neutral name/role, ahead of going public. Jay Pratt + AI (Claude, Anthropic).
 
 import json
 import os
@@ -27,7 +27,7 @@ class HaliaAgent:
         self.coordinator = coordinator
         self.context = {}  # Store up to last 3 messages per crew member
         self.profiles = {
-            "Commander Pratt": {"role": "Commander", "suite": "A"},
+            "James Pratt": {"role": "Engineering", "suite": "A"},
             "Dr. Liu": {"role": "Science", "suite": "B"},
             # Add more crew as needed!
         }

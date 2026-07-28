@@ -126,7 +126,7 @@ if __name__ == "__main__":
     agent = UniversalAgent(bus)
     # Initial test message
     bus.publish("crew/message", {
-        "from": "Commander Pratt",
+        "from": "James Pratt",
         "message": "show sample chat"
     })
 

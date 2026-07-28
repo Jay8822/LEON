@@ -19,7 +19,7 @@ def main():
     bus.subscribe("crew/response", lambda p: print(f"HALIA -> {p['to']}: {p['response']}"))
 
     bus.publish("crew/message", {
-        "from": "Commander Pratt",
+        "from": "James Pratt",
         "message": "run diagnostic on gracie"
     })
 

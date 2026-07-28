@@ -118,7 +118,7 @@ if __name__ == "__main__":
     bus, agents = build_system()
 
     bus.publish("crew/message", {
-        "from": "Commander Pratt",
+        "from": "James Pratt",
         "message": "Halia, how are we doing?"
     })
 

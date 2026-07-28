@@ -23,7 +23,7 @@ def main():
     bus.subscribe("crew/response", lambda p: (responses.append(p), print(f"PUBLISH: crew/response {p}")))
     halia = HaliaAgent(bus, DummyCoordinator())
 
-    halia.on_crew_message({"from": "Commander Pratt", "message": "run diagnostic on ethan"})
+    halia.on_crew_message({"from": "James Pratt", "message": "run diagnostic on ethan"})
     halia.on_crew_message({"from": "Dr. Liu", "message": "how are you?"})
     assert len(responses) == 2, "expected exactly 2 responses to the 2 well-formed messages"
 
