@@ -27,12 +27,8 @@ Six components communicating over a shared in-memory pub/sub event bus:
 - **HALIA** — crew command interface (typed message validation via pydantic; plain, non-generative responses to a fixed set of recognized commands — "status," "run diagnostic on \<system\>," "help," etc.)
 - **SystemCoordinator** — cross-subsystem status registry; alerts on the transition into FAULT
 
-Also present but **not wired into the running app**: `UniversalAgent`
-(a second, independent crew-message responder driven by a JSON skills
-table — works standalone, just not subscribed alongside HALIA, since
-both listening to the same topic would make every message get two
-responses) and `Orchestrator` (a scripted diagnostic sequencer,
-runnable on its own).
+Also present but **not wired into the running app**: `Orchestrator`
+(a scripted diagnostic sequencer, runnable on its own).
 
 Run it:
 
@@ -101,8 +97,6 @@ understand what that would actually take, not claiming to be there.
 
 - Only 2 of 6 components run as separate processes; the rest still
   share one in-process bus.
-- `UniversalAgent` is implemented and tested but not active in the
-  running app.
 - HALIA recognizes a fixed set of commands; anything else gets a
   plain "unrecognized command" response, not a generated one.
 - The C++ build covers 3 of 6 components and has a deliberately

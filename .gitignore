@@ -9,8 +9,7 @@ __pycache__/
 logs/*
 *.log
 crew_sessions.json
-!/universal_agent.log
-!/event_bus.log
+!logs/event_bus_history.log
 !logs/system.log
 !logs/gracie_process.log
 !logs/eden_process.log
