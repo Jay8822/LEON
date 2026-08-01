@@ -22,6 +22,13 @@ namespace {
 // sensor drivers, not a static array. The sequence below exercises the
 // same NOMINAL -> WARNING -> FAULT -> (latched) path as
 // agents/gracie_test.py and agents/test_halia_gracie.py.
+//
+// To be explicit: this is scripted test input, not staged output. It's
+// fixed so the demo reproducibly walks NOMINAL -> WARNING -> FAULT on
+// every run instead of depending on randomness. The fault-detection
+// and escalation logic below (gracie_process_telemetry(),
+// eden_on_health_event(), the coordinator calls) is the real,
+// unmodified logic reacting live to whatever this array contains.
 const leon::TelemetryPacket kTestTelemetry[leon::kSimCycles] = {
     {1000, 30.0f, 10.0f, 0.2f, leon::NavState::kCruise, leon::HealthState::kNominal},
     {1001, 45.0f, 20.0f, 0.3f, leon::NavState::kCruise, leon::HealthState::kNominal},

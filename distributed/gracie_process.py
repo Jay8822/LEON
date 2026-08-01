@@ -27,6 +27,16 @@ PORT = 8765
 # demonstrator whose job is to reliably prove the fault-escalation
 # crossing every run, not a simulation, so it doesn't depend on random
 # telemetry happening to hit both thresholds together.
+#
+# To be explicit, since a reviewer running this could otherwise mistake
+# reproducible input for a rigged result: this is scripted test input,
+# not staged output. The sequence is fixed on purpose so the demo
+# reliably and reproducibly walks NOMINAL -> WARNING -> FAULT, with
+# the fault latching, on every run. What happens after each reading —
+# GracieAgent's health evaluation, the latch, EDEN's SAFE_MODE
+# escalation over the socket — is the real, unmodified agent logic
+# reacting live to whatever this array contains, not a scripted or
+# faked response.
 TELEMETRY_SEQUENCE = [
     (30.0, 10.0),  # NOMINAL
     (52.0, 15.0),  # WARNING

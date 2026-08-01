@@ -76,6 +76,10 @@ Uses the real, unmodified `agents.gracie.GracieAgent` and
 raw sockets rather than DDS or ZeroMQ (what a real distributed build
 would use), and what extending this to the other agents would take.
 
+GRACIE runs a fixed, scripted telemetry sequence (not random) so the
+demo reliably and reproducibly walks NOMINAL → WARNING → FAULT — see
+"Known limitations" for the broader synthetic-telemetry point.
+
 Run it (two terminals, from the repo root):
 
     python -m distributed.eden_process      # terminal 1, start this first
