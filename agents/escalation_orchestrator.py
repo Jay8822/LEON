@@ -1,0 +1,254 @@
+# agents/escalation_orchestrator.py
+# Added 2026-08-01 — Jay Pratt + AI (Claude, Anthropic).
+"""EscalationOrchestrator — SPEC.md "Orchestrator" (separate seventh
+agent) + "Escalation chain (in order)".
+
+Built against SPEC.md, draft Oct 2026. This is a new, self-contained
+component — it does not call into, subscribe to, or modify GracieAgent,
+EthanAgent, LunaeAgent, EdenAgent, HaliaAgent, SystemCoordinator, or
+agents/orchestrator.py (SPEC.md is explicit that file is *not* this
+component). Zero behaviour change to any existing agent in this pass.
+
+Two things SPEC.md does not yet specify, resolved with explicit sign-off
+rather than guessed:
+
+1. No real per-agent thresholds exist anywhere in SPEC.md ("real numbers
+   for every threshold" is listed as an open item pending hardware
+   data). So rule-checking here is an injectable RuleSet interface, not
+   real values — tests pass in fake example rules, explicitly not
+   claimed as real spacecraft parameters. Wiring real thresholds in is
+   future work.
+2. The rerun instruction, ETHAN's "need a human now" signal, and the
+   generic "critical malfunction" bypass trigger all require agent-side
+   behaviour that doesn't exist on any current agent. This component is
+   tested against synthetic AgentReport objects, not real agent output.
+   Wiring the real mesh to actually produce these signals is separate
+   future work.
+
+The 9 steps from SPEC.md's "Escalation chain (in order)", and where each
+lives below:
+
+  1. Self-check            — agent-owned behaviour, not orchestrator logic.
+                              No method here; nothing for this class to do.
+  2. Load varies by phase  — descriptive, not actionable logic. No method.
+  3. Unresolved -> orchestrator first   — intake()
+     (bypass check happens first, since it must pre-empt everything else)
+  4. Orchestrator checks (violated outright vs conflicting)   — triage()
+  5. Orchestrator decides (EDEN vs rerun instruction)         — decide()
+  6. Rerun logic (same twice / differs / keeps differing)     — record_rerun()
+  7. Clear path (all-clear -> release)                        — consensus()
+  8. Unclear path (dissent -> human)                          — consensus()
+  9. Timeout / process-count floor                            — check_floor()
+
+Interpretive calls made without a blocking question, documented here so
+they're easy to correct:
+
+- Step 4's "violated outright" requires BOTH the agent's own rules
+  (held here via eden_rules, mirroring EDEN's copy) AND this
+  orchestrator's own harder rules to agree it's violated — mirroring
+  EDEN's own stated "both must align" validation principle one level
+  earlier, rather than either rule alone being sufficient.
+- Step 5's "decide" has no stated decision procedure for the ambiguous
+  case. Implemented as: outright violation -> EDEN immediately;
+  anything merely ambiguous -> rerun requested first (the rerun ladder
+  is the very next thing SPEC.md describes, so this is the direct
+  reading, not an invented branch).
+- Step 6 "same result" means the same verdict/classification repeats
+  (e.g. still AMBIGUOUS), not bit-identical sensor values — continuous
+  readings essentially never repeat exactly.
+"""
+
+import time
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, List, Optional, Protocol, Tuple
+
+from core.logger import setup_agent_logger
+
+
+class Severity(Enum):
+    """Outcome of checking a report against a rule set (step 4)."""
+    NOMINAL = "NOMINAL"
+    AMBIGUOUS = "AMBIGUOUS"  # SPEC.md: "conflicting but not clearly a fault"
+    VIOLATED = "VIOLATED"    # SPEC.md: "violated outright"
+
+
+class Consensus(Enum):
+    """Step 7/8: all-clear vs. dissent."""
+    CLEAR = "CLEAR"
+    UNCLEAR = "UNCLEAR"
+
+
+class BypassReason(Enum):
+    """"Orchestrator bypass": the two cases that skip the gate."""
+    ETHAN_NEED_HUMAN_NOW = "ETHAN_NEED_HUMAN_NOW"
+    CRITICAL_MALFUNCTION = "CRITICAL_MALFUNCTION"
+
+
+class RuleSet(Protocol):
+    """A per-agent rule set. Deliberately just an interface — see the
+    module docstring on why no real values are hardcoded here."""
+
+    def check(self, report: "AgentReport") -> Severity: ...
+
+
+@dataclass
+class AgentReport:
+    """Generic shape for "an agent reports something to the orchestrator".
+    Not tied to any existing agent's real payload shape — see module
+    docstring. `value` is whatever the (synthetic, for now) caller wants
+    the rule set to evaluate."""
+    agent: str
+    value: object
+    timestamp: int = field(default_factory=lambda: int(time.time()))
+    bypass: Optional[BypassReason] = None
+
+
+@dataclass
+class ChainResult:
+    """Where a report ended up, and why."""
+    outcome: str  # "EDEN" | "RERUN_REQUESTED" | "HUMAN" | "CLEAR"
+    reason: str
+    report: AgentReport
+
+
+class EscalationOrchestrator:
+    def __init__(
+        self,
+        eden_rules: Dict[str, RuleSet],
+        own_rules: Dict[str, RuleSet],
+        max_reruns: int = 3,
+        process_count_floor: int = 5,
+        timeout_seconds: float = 60.0,
+    ):
+        self.logger = setup_agent_logger("escalation_orchestrator")
+        self.eden_rules = eden_rules
+        self.own_rules = own_rules
+        self.max_reruns = max_reruns
+        self.process_count_floor = process_count_floor
+        self.timeout_seconds = timeout_seconds
+        self._rerun_history: Dict[str, List[Severity]] = {}
+        self._decision_log: List[dict] = []
+
+    # --- logging: every decision, bypass, and release -----------------
+    def _log(self, kind: str, report: AgentReport, detail: str) -> dict:
+        entry = {
+            "timestamp": int(time.time()),
+            "kind": kind,  # "decision" | "bypass" | "release"
+            "agent": report.agent,
+            "detail": detail,
+        }
+        self._decision_log.append(entry)
+        self.logger.info(f"{kind.upper()} agent={report.agent} {detail}")
+        return entry
+
+    def decision_log(self) -> List[dict]:
+        return list(self._decision_log)
+
+    # --- step 3 + bypass check -------------------------------------------
+    def intake(self, report: AgentReport) -> ChainResult:
+        """Step 3: unresolved items go to the orchestrator first, not
+        EDEN. The bypass check happens before anything else, since a
+        bypass must pre-empt the normal gate entirely."""
+        if report.bypass is not None:
+            return self.bypass(report)
+        severity = self.triage(report)
+        return self.decide(report, severity)
+
+    def bypass(self, report: AgentReport) -> ChainResult:
+        """ETHAN's need-a-human-now and any critical malfunction skip
+        the gate, straight to human interaction — but still leave a
+        logged note to the orchestrator. The orchestrator never loses
+        awareness; it only doesn't get to gate the fast path."""
+        self._log("bypass", report, f"reason={report.bypass.value}")
+        return ChainResult("HUMAN", f"bypass:{report.bypass.value}", report)
+
+    # --- step 4: orchestrator checks --------------------------------------
+    def triage(self, report: AgentReport) -> Severity:
+        """Check against the agent's own rules (held here via eden_rules)
+        and this orchestrator's own harder parameters. Both must agree
+        for an outright violation or an outright all-clear; anything
+        else is ambiguous."""
+        agent_verdict = self.eden_rules[report.agent].check(report)
+        own_verdict = self.own_rules[report.agent].check(report)
+        if agent_verdict == Severity.VIOLATED and own_verdict == Severity.VIOLATED:
+            return Severity.VIOLATED
+        if agent_verdict == Severity.NOMINAL and own_verdict == Severity.NOMINAL:
+            return Severity.NOMINAL
+        return Severity.AMBIGUOUS
+
+    # --- step 5: orchestrator decides --------------------------------------
+    def decide(self, report: AgentReport, severity: Severity) -> ChainResult:
+        """Violated outright -> straight to EDEN. Ambiguous -> rerun
+        requested (step 6 is the ladder that follows). Nominal -> no
+        escalation at all."""
+        if severity == Severity.VIOLATED:
+            self._log("decision", report, "VIOLATED -> EDEN")
+            return ChainResult("EDEN", "violated_outright", report)
+        if severity == Severity.NOMINAL:
+            self._log("decision", report, "NOMINAL -> no escalation")
+            return ChainResult("CLEAR", "nominal", report)
+        # Seed the rerun history with this original ambiguous check, so
+        # the first actual rerun is compared against *it* (SPEC.md: "the
+        # agent reruns the test" implies check #1 is the original, check
+        # #2 is the first rerun — "same result twice" means check #2
+        # matches check #1, not that two reruns must happen first).
+        self._rerun_history[report.agent] = [severity]
+        self._log("decision", report, "AMBIGUOUS -> rerun requested")
+        return ChainResult("RERUN_REQUESTED", "ambiguous", report)
+
+    # --- step 6: rerun ladder ------------------------------------------------
+    def record_rerun(self, report: AgentReport, severity: Severity) -> ChainResult:
+        """Caller supplies each successive rerun's severity. Same result
+        as the previous check -> raised to EDEN (stable, confirmed).
+        Different -> rerun again. Keeps differing past max_reruns ->
+        raised to EDEN regardless of parameters (instability itself is
+        grounds for escalation). History is seeded by decide() with the
+        original ambiguous check, so the first rerun compares against
+        that, not just against other reruns."""
+        history = self._rerun_history.setdefault(report.agent, [])
+        history.append(severity)
+        if len(history) >= 2 and history[-1] == history[-2]:
+            self._log("decision", report, f"same result twice ({severity.value}) -> EDEN")
+            self._rerun_history.pop(report.agent, None)
+            return ChainResult("EDEN", "rerun_stable", report)
+        if len(history) >= self.max_reruns:
+            self._log("decision", report, "results kept differing -> EDEN regardless")
+            self._rerun_history.pop(report.agent, None)
+            return ChainResult("EDEN", "rerun_unstable", report)
+        self._log("decision", report, f"result differs (check #{len(history)}) -> rerun again")
+        return ChainResult("RERUN_REQUESTED", "rerun_differs", report)
+
+    # --- step 7 / 8: consensus -----------------------------------------------
+    def consensus(self, entries: List[Tuple[AgentReport, Consensus]]) -> ChainResult:
+        """Step 7: every agent involved sends all-clear -> release,
+        logged for each. Step 8: any one dissenting "unclear" -> human.
+        Consensus is required to stand down; any dissent goes to a
+        person."""
+        if all(verdict == Consensus.CLEAR for _, verdict in entries):
+            for report, _ in entries:
+                self._log("release", report, "all-clear, latch released")
+            return ChainResult("CLEAR", "consensus_clear", entries[0][0])
+        dissenting_report, _ = next(
+            (report, verdict) for report, verdict in entries if verdict == Consensus.UNCLEAR
+        )
+        self._log("decision", dissenting_report, "dissent -> human")
+        return ChainResult("HUMAN", f"dissent:{dissenting_report.agent}", dissenting_report)
+
+    # --- step 9: timeout / process-count floor --------------------------------
+    def check_floor(
+        self, report: AgentReport, process_count: int, elapsed_seconds: float
+    ) -> Optional[ChainResult]:
+        """True last resort. If conflict persists beyond the process-
+        count floor or the time limit, raised for human interaction
+        regardless of anything else — no infinite retry loops. Returns
+        None if neither limit has been crossed yet."""
+        if process_count > self.process_count_floor or elapsed_seconds > self.timeout_seconds:
+            self._log(
+                "decision",
+                report,
+                f"timeout/process floor hit (count={process_count}, "
+                f"elapsed={elapsed_seconds:.1f}s) -> human",
+            )
+            return ChainResult("HUMAN", "timeout_floor", report)
+        return None
