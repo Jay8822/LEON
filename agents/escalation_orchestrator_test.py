@@ -15,6 +15,9 @@ here because SPEC.md assigns both to agent-owned behaviour / mission
 context, not orchestrator logic — there is nothing on this class to
 exercise for them. See the escalation_orchestrator.py module docstring.
 
+Also covers SPEC.md's "Graceful degradation when EDEN does not
+respond" (send_to_eden() / check_eden_silence()), added 2026-10-21.
+
 Run from the repo root:
 
     python -m agents.escalation_orchestrator_test
@@ -25,8 +28,15 @@ from agents.escalation_orchestrator import (
     BypassReason,
     Consensus,
     EscalationOrchestrator,
+    FaultClass,
     Severity,
 )
+
+# Placeholder window lengths for the EDEN-silence tests below. These are
+# arbitrary test fixtures, not hardware-derived numbers -- SPEC.md marks
+# both windows "to be set from hardware data. No default value[s]."
+TEST_MAJOR_WINDOW_SECONDS = 5.0
+TEST_NON_URGENT_WINDOW_SECONDS = 30.0
 
 
 class AlwaysViolated:
@@ -53,6 +63,8 @@ class ThresholdRule:
 
 
 def make_orchestrator(agent_rule, own_rule, **kwargs):
+    kwargs.setdefault("major_fault_window_seconds", TEST_MAJOR_WINDOW_SECONDS)
+    kwargs.setdefault("non_urgent_fault_window_seconds", TEST_NON_URGENT_WINDOW_SECONDS)
     return EscalationOrchestrator(
         eden_rules={"GRACIE": agent_rule},
         own_rules={"GRACIE": own_rule},
@@ -213,6 +225,76 @@ def test_bypass_critical_malfunction():
     print("  ok: bypass — a critical malfunction from any agent skips the gate too")
 
 
+# --- graceful degradation when EDEN does not respond -------------------------
+
+def test_eden_silence_window_not_yet_elapsed():
+    orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
+    pending = orch.send_to_eden(report(), fault_class=FaultClass.MAJOR)
+    assert orch.check_eden_silence(pending, elapsed_seconds=1.0) is None
+    print("  ok: EDEN-silence — no outcome before the window elapses")
+
+
+def test_eden_silence_major_fault_holds_and_is_passed():
+    orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
+    pending = orch.send_to_eden(report(), fault_class=FaultClass.MAJOR)
+    result = orch.check_eden_silence(pending, elapsed_seconds=TEST_MAJOR_WINDOW_SECONDS + 1)
+    assert result.outcome == "HOLD" and result.reason == "major_unresponsive_passed", result
+    print("  ok: EDEN-silence — major fault unresponsive -> HOLD, passed to a human")
+
+
+def test_eden_silence_non_urgent_fault_still_live_is_flagged():
+    orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
+    pending = orch.send_to_eden(report(), fault_class=FaultClass.NON_URGENT)
+    result = orch.check_eden_silence(
+        pending, elapsed_seconds=TEST_NON_URGENT_WINDOW_SECONDS + 1, fault_still_live=True
+    )
+    assert result.outcome == "FLAGGED" and result.reason == "non_urgent_unresponsive_flagged", result
+    print("  ok: EDEN-silence — non-urgent fault still live -> FLAGGED, craft keeps running")
+
+
+def test_eden_silence_non_urgent_resolved_on_own_is_still_logged():
+    """SPEC.md's core principle: 'Everything is logged, regardless.' A
+    non-urgent fault that cleared on its own gets no flag and no hold,
+    but must still show up in the decision log."""
+    orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
+    pending = orch.send_to_eden(report(), fault_class=FaultClass.NON_URGENT)
+    result = orch.check_eden_silence(
+        pending, elapsed_seconds=TEST_NON_URGENT_WINDOW_SECONDS + 1, fault_still_live=False
+    )
+    assert result.outcome == "CLEARED_NO_ACTION", result
+    assert result.reason == "non_urgent_resolved_on_own", result
+    log = orch.decision_log()
+    matching = [e for e in log if "cleared on its own" in e["detail"]]
+    assert matching, f"expected a log entry recording the self-resolved fault, got: {log}"
+    print("  ok: EDEN-silence — non-urgent fault resolved on its own: no flag, no hold, but logged")
+
+
+def test_eden_silence_unknown_fault_class_treated_as_major():
+    orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
+    pending = orch.send_to_eden(report(), fault_class=None)
+    assert pending.fault_class == FaultClass.MAJOR
+    result = orch.check_eden_silence(pending, elapsed_seconds=TEST_MAJOR_WINDOW_SECONDS + 1)
+    assert result.outcome == "HOLD" and result.reason == "major_unresponsive_passed", result
+    log = orch.decision_log()
+    assert any("unknown -> treated as MAJOR" in e["detail"] for e in log), log
+    print("  ok: EDEN-silence — unknown fault class is treated as major, and that's logged")
+
+
+def test_eden_silence_major_and_non_urgent_windows_are_independent():
+    orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
+    assert TEST_MAJOR_WINDOW_SECONDS < TEST_NON_URGENT_WINDOW_SECONDS
+
+    major_pending = orch.send_to_eden(report(agent="ETHAN"), fault_class=FaultClass.MAJOR)
+    non_urgent_pending = orch.send_to_eden(report(agent="LUNAE"), fault_class=FaultClass.NON_URGENT)
+
+    midpoint = (TEST_MAJOR_WINDOW_SECONDS + TEST_NON_URGENT_WINDOW_SECONDS) / 2
+    # Past the (shorter) major window, but not yet past the (longer)
+    # non-urgent window: major fires, non-urgent does not.
+    assert orch.check_eden_silence(major_pending, elapsed_seconds=midpoint).outcome == "HOLD"
+    assert orch.check_eden_silence(non_urgent_pending, elapsed_seconds=midpoint) is None
+    print("  ok: EDEN-silence — major's shorter window and non-urgent's longer window are honored independently")
+
+
 # --- logging: timestamp + originating agent on every entry -------------------
 
 def test_every_log_entry_has_timestamp_and_agent():
@@ -240,6 +322,12 @@ def main():
         test_step9_timeout_floor,
         test_bypass_ethan_need_human_now,
         test_bypass_critical_malfunction,
+        test_eden_silence_window_not_yet_elapsed,
+        test_eden_silence_major_fault_holds_and_is_passed,
+        test_eden_silence_non_urgent_fault_still_live_is_flagged,
+        test_eden_silence_non_urgent_resolved_on_own_is_still_logged,
+        test_eden_silence_unknown_fault_class_treated_as_major,
+        test_eden_silence_major_and_non_urgent_windows_are_independent,
         test_every_log_entry_has_timestamp_and_agent,
     ]
     for test in tests:

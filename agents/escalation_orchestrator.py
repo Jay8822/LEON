@@ -56,6 +56,25 @@ they're easy to correct:
 - Step 6 "same result" means the same verdict/classification repeats
   (e.g. still AMBIGUOUS), not bit-identical sensor values — continuous
   readings essentially never repeat exactly.
+
+Added 2026-10-21: SPEC.md's "Graceful degradation when EDEN does not
+respond" (send_to_eden(), check_eden_silence()). One clock per fault,
+starting at the knock (send_to_eden()); its length depends on fault
+class (major faults get the shorter window; both lengths are required
+constructor parameters with no defaults, per the same "no real numbers
+yet" rule as everything else here). Unknown fault class is treated as
+major (SPEC.md's explicit fallback). Two outcomes only — major
+unresponsive -> HOLD + passed to a human; non-urgent unresponsive and
+still live -> FLAGGED, craft keeps running. A non-urgent fault that
+resolved on its own before its window elapsed produces no flag and no
+hold, but is still logged (SPEC.md's core principle: "everything is
+logged, regardless").
+
+One more interpretive call, same spirit as the others above: if a
+non-urgent fault's "still live" status is itself unknown (caller
+passes `fault_still_live=None`), it's treated as still live — the same
+cautious-default pattern as the unknown-fault-class rule, erring
+toward flagging rather than silently standing down.
 """
 
 import time
@@ -85,6 +104,12 @@ class BypassReason(Enum):
     CRITICAL_MALFUNCTION = "CRITICAL_MALFUNCTION"
 
 
+class FaultClass(Enum):
+    """SPEC.md "Fault classes", for the EDEN-silence degradation path."""
+    MAJOR = "MAJOR"
+    NON_URGENT = "NON_URGENT"
+
+
 class RuleSet(Protocol):
     """A per-agent rule set. Deliberately just an interface — see the
     module docstring on why no real values are hardcoded here."""
@@ -107,9 +132,20 @@ class AgentReport:
 @dataclass
 class ChainResult:
     """Where a report ended up, and why."""
-    outcome: str  # "EDEN" | "RERUN_REQUESTED" | "HUMAN" | "CLEAR"
+    outcome: str  # "EDEN" | "RERUN_REQUESTED" | "HUMAN" | "CLEAR" |
+                  # "HOLD" | "FLAGGED" | "CLEARED_NO_ACTION"
     reason: str
     report: AgentReport
+
+
+@dataclass
+class PendingEdenKnock:
+    """A report sent to EDEN (the "knock"), with a running clock. Created
+    by send_to_eden(); passed back into check_eden_silence() once the
+    caller wants to know whether EDEN has gone quiet."""
+    report: AgentReport
+    fault_class: FaultClass  # already resolved -- unknown becomes MAJOR
+    started_at: float
 
 
 class EscalationOrchestrator:
@@ -117,13 +153,21 @@ class EscalationOrchestrator:
         self,
         eden_rules: Dict[str, RuleSet],
         own_rules: Dict[str, RuleSet],
+        major_fault_window_seconds: float,
+        non_urgent_fault_window_seconds: float,
         max_reruns: int = 3,
         process_count_floor: int = 5,
         timeout_seconds: float = 60.0,
     ):
+        # major_fault_window_seconds / non_urgent_fault_window_seconds have
+        # no defaults on purpose -- SPEC.md marks both "to be set from
+        # hardware data. No default value[s]." Callers must supply real
+        # (or, for tests, clearly-labelled fixture) numbers.
         self.logger = setup_agent_logger("escalation_orchestrator")
         self.eden_rules = eden_rules
         self.own_rules = own_rules
+        self.major_fault_window_seconds = major_fault_window_seconds
+        self.non_urgent_fault_window_seconds = non_urgent_fault_window_seconds
         self.max_reruns = max_reruns
         self.process_count_floor = process_count_floor
         self.timeout_seconds = timeout_seconds
@@ -252,3 +296,65 @@ class EscalationOrchestrator:
             )
             return ChainResult("HUMAN", "timeout_floor", report)
         return None
+
+    # --- graceful degradation when EDEN does not respond -----------------
+    def send_to_eden(
+        self, report: AgentReport, fault_class: Optional[FaultClass] = None
+    ) -> PendingEdenKnock:
+        """The knock. Starts this fault's clock. Unknown fault class is
+        treated as major (SPEC.md's explicit fallback), not as a reason
+        to fail or guess further."""
+        resolved_class = fault_class if fault_class is not None else FaultClass.MAJOR
+        if fault_class is None:
+            self._log("decision", report, "fault class unknown -> treated as MAJOR")
+        self._log(
+            "decision", report, f"knock sent to EDEN (fault_class={resolved_class.value})"
+        )
+        return PendingEdenKnock(report=report, fault_class=resolved_class, started_at=time.time())
+
+    def check_eden_silence(
+        self,
+        pending: PendingEdenKnock,
+        elapsed_seconds: float,
+        fault_still_live: Optional[bool] = None,
+    ) -> Optional[ChainResult]:
+        """Step: has EDEN gone quiet on this fault for longer than its
+        window? Two outcomes only, by fault class — a major fault holds
+        and is passed to a human; a non-urgent fault is flagged and the
+        craft keeps running. A non-urgent fault that resolved on its own
+        before the window elapsed produces neither, but is still logged
+        (SPEC.md's core principle: everything is logged, regardless).
+        Returns None if the window hasn't elapsed yet."""
+        report = pending.report
+        if pending.fault_class == FaultClass.MAJOR:
+            window = self.major_fault_window_seconds
+        else:
+            window = self.non_urgent_fault_window_seconds
+
+        if elapsed_seconds < window:
+            return None
+
+        if pending.fault_class == FaultClass.MAJOR:
+            self._log(
+                "decision", report,
+                f"EDEN unresponsive beyond major window ({window}s) -> HOLD, passed to human",
+            )
+            return ChainResult("HOLD", "major_unresponsive_passed", report)
+
+        # Non-urgent. Unknown liveness is treated as still live -- same
+        # cautious-default pattern as the unknown-fault-class rule above.
+        still_live = fault_still_live if fault_still_live is not None else True
+        if still_live:
+            self._log(
+                "decision", report,
+                f"EDEN unresponsive beyond non-urgent window ({window}s), "
+                "fault still live -> FLAGGED, craft keeps running",
+            )
+            return ChainResult("FLAGGED", "non_urgent_unresponsive_flagged", report)
+
+        self._log(
+            "decision", report,
+            f"EDEN unresponsive beyond non-urgent window ({window}s), "
+            "but fault cleared on its own -> no flag, no hold, logged only",
+        )
+        return ChainResult("CLEARED_NO_ACTION", "non_urgent_resolved_on_own", report)
