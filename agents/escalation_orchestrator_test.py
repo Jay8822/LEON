@@ -16,7 +16,10 @@ context, not orchestrator logic — there is nothing on this class to
 exercise for them. See the escalation_orchestrator.py module docstring.
 
 Also covers SPEC.md's "Graceful degradation when EDEN does not
-respond" (send_to_eden() / check_eden_silence()), added 2026-10-21.
+respond" (send_to_eden() / check_eden_silence()), added 2026-10-21, and
+the "Four-way sign-off" retest ladder / "After a manual override"
+(start_signoff(), confirm(), use_override(), override_unused(),
+check_after_override(), light_flag_tick()), added the same day.
 
 Run from the repo root:
 
@@ -30,13 +33,15 @@ from agents.escalation_orchestrator import (
     EscalationOrchestrator,
     FaultClass,
     Severity,
+    SignOffParty,
 )
 
-# Placeholder window lengths for the EDEN-silence tests below. These are
+# Placeholder window/cycle lengths for the tests below. These are
 # arbitrary test fixtures, not hardware-derived numbers -- SPEC.md marks
-# both windows "to be set from hardware data. No default value[s]."
+# all three "to be set from hardware data. No default value[s]."
 TEST_MAJOR_WINDOW_SECONDS = 5.0
 TEST_NON_URGENT_WINDOW_SECONDS = 30.0
+TEST_LIGHT_FLAG_CYCLE_MINUTES = 15.0
 
 
 class AlwaysViolated:
@@ -65,6 +70,7 @@ class ThresholdRule:
 def make_orchestrator(agent_rule, own_rule, **kwargs):
     kwargs.setdefault("major_fault_window_seconds", TEST_MAJOR_WINDOW_SECONDS)
     kwargs.setdefault("non_urgent_fault_window_seconds", TEST_NON_URGENT_WINDOW_SECONDS)
+    kwargs.setdefault("light_flag_cycle_minutes", TEST_LIGHT_FLAG_CYCLE_MINUTES)
     return EscalationOrchestrator(
         eden_rules={"GRACIE": agent_rule},
         own_rules={"GRACIE": own_rule},
@@ -295,6 +301,90 @@ def test_eden_silence_major_and_non_urgent_windows_are_independent():
     print("  ok: EDEN-silence — major's shorter window and non-urgent's longer window are honored independently")
 
 
+# --- four-way sign-off --------------------------------------------------------
+
+def test_signoff_all_four_confirm_in_any_order_releases():
+    orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
+    state = orch.start_signoff(report(), FaultClass.NON_URGENT)
+    assert orch.confirm(state, SignOffParty.EDEN, True) is None
+    assert orch.confirm(state, SignOffParty.HUMAN, True) is None
+    assert orch.confirm(state, SignOffParty.ORIGINATING_AGENT, True) is None
+    result = orch.confirm(state, SignOffParty.ORCHESTRATOR, True)
+    assert result.outcome == "RELEASE" and result.reason == "four_way_signoff_complete", result
+    print("  ok: sign-off — all four confirming, in any order, releases")
+
+
+def test_signoff_major_fault_one_retest_then_terminal_hold():
+    orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
+    state = orch.start_signoff(report(), FaultClass.MAJOR)
+    for party in SignOffParty:
+        confirmed = party != SignOffParty.EDEN  # EDEN withholds
+        result = orch.confirm(state, party, confirmed)
+    assert result.outcome == "RETEST_REQUESTED" and result.reason == "signoff_gap", result
+
+    # Retest: still one gap (major faults get exactly one retest).
+    for party in SignOffParty:
+        confirmed = party != SignOffParty.EDEN
+        result = orch.confirm(state, party, confirmed)
+    assert result.outcome == "HOLD" and result.reason == "major_signoff_failed", result
+    print("  ok: sign-off — major fault, still gapped after one retest -> terminal HOLD, no override")
+
+
+def test_signoff_non_urgent_fault_needs_double_retest_before_override():
+    orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
+    state = orch.start_signoff(report(), FaultClass.NON_URGENT)
+
+    for party in SignOffParty:
+        result = orch.confirm(state, party, party != SignOffParty.EDEN)
+    assert result.outcome == "RETEST_REQUESTED", result  # retest #1
+
+    for party in SignOffParty:
+        result = orch.confirm(state, party, party != SignOffParty.EDEN)
+    assert result.outcome == "RETEST_REQUESTED", result  # retest #2 (the "double retest")
+
+    for party in SignOffParty:
+        result = orch.confirm(state, party, party != SignOffParty.EDEN)
+    assert result.outcome == "OVERRIDE_AVAILABLE" and result.reason == "non_urgent_signoff_failed", result
+    print("  ok: sign-off — non-urgent fault needs a double retest before the override appears")
+
+
+def test_signoff_override_unused_falls_to_hold_course():
+    orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
+    state = orch.start_signoff(report(), FaultClass.NON_URGENT)
+    for _ in range(2):
+        for party in SignOffParty:
+            orch.confirm(state, party, party != SignOffParty.EDEN)
+    result = orch.override_unused(state)
+    assert result.outcome == "HOLD_COURSE" and result.reason == "non_urgent_override_unused", result
+    print("  ok: sign-off — override left unused -> HOLD_COURSE (reduced speed), not a full stop")
+
+
+def test_signoff_override_used_then_fault_gone_is_cleared():
+    orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
+    state = orch.start_signoff(report(), FaultClass.NON_URGENT)
+    used = orch.use_override(state)
+    assert used.outcome == "OVERRIDE_USED" and state.override_used is True
+    result = orch.check_after_override(state, fault_still_present=False)
+    assert result.outcome == "CLEARED_NO_ACTION" and result.reason == "override_rerun_cleared", result
+    print("  ok: sign-off — after override, fault gone on rerun -> cleared")
+
+
+def test_signoff_override_used_then_fault_persists_light_flags_repeat():
+    orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
+    state = orch.start_signoff(report(), FaultClass.NON_URGENT)
+    orch.use_override(state)
+    first = orch.check_after_override(state, fault_still_present=True)
+    assert first.outcome == "FLAGGED" and first.reason == "override_rerun_fault_persists", first
+
+    # The light flag repeats every cycle -- not a one-time flag.
+    tick1 = orch.light_flag_tick(state)
+    tick2 = orch.light_flag_tick(state)
+    assert tick1.outcome == "FLAGGED" and tick2.outcome == "FLAGGED"
+    light_flag_entries = [e for e in orch.decision_log() if "light flag" in e["detail"]]
+    assert len(light_flag_entries) == 2, light_flag_entries
+    print("  ok: sign-off — after override, fault persists -> flagged, then re-flagged every cycle")
+
+
 # --- logging: timestamp + originating agent on every entry -------------------
 
 def test_every_log_entry_has_timestamp_and_agent():
@@ -328,6 +418,12 @@ def main():
         test_eden_silence_non_urgent_resolved_on_own_is_still_logged,
         test_eden_silence_unknown_fault_class_treated_as_major,
         test_eden_silence_major_and_non_urgent_windows_are_independent,
+        test_signoff_all_four_confirm_in_any_order_releases,
+        test_signoff_major_fault_one_retest_then_terminal_hold,
+        test_signoff_non_urgent_fault_needs_double_retest_before_override,
+        test_signoff_override_unused_falls_to_hold_course,
+        test_signoff_override_used_then_fault_gone_is_cleared,
+        test_signoff_override_used_then_fault_persists_light_flags_repeat,
         test_every_log_entry_has_timestamp_and_agent,
     ]
     for test in tests:

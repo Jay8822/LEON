@@ -75,6 +75,24 @@ non-urgent fault's "still live" status is itself unknown (caller
 passes `fault_still_live=None`), it's treated as still live — the same
 cautious-default pattern as the unknown-fault-class rule, erring
 toward flagging rather than silently standing down.
+
+Added 2026-10-21 (second addition): SPEC.md's "Four-way sign-off" retest/
+escalation ladder, "Hold course" state, and "After a manual override"
+(start_signoff(), confirm(), use_override(), override_unused(),
+check_after_override(), light_flag_tick()). All four parties (human,
+orchestrator, originating agent, EDEN) must confirm, in any order, to
+release. One gap once all four have weighed in triggers a retest for
+everyone -- major faults get exactly one retest before a terminal
+HOLD (flagged for investigation, no override path); non-urgent faults
+get a second retest before a manual override becomes available. The
+override is optional: if nobody uses it, the craft automatically
+treats the fault as major except it goes to the new HOLD_COURSE state
+(reduced speed, not a full stop) instead. Once the override *is* used,
+the originating agent reruns its check; gone -> cleared, still present
+-> flagged and then re-flagged ("light flag": queued, not an active
+alert) on every self-check cycle until dealt with. The cycle interval
+is another required, no-default constructor parameter, same "no real
+numbers yet" rule as the rest of this file.
 """
 
 import time
@@ -105,9 +123,18 @@ class BypassReason(Enum):
 
 
 class FaultClass(Enum):
-    """SPEC.md "Fault classes", for the EDEN-silence degradation path."""
+    """SPEC.md "Fault classes" -- shared by the EDEN-silence degradation
+    path and the four-way sign-off retest ladder."""
     MAJOR = "MAJOR"
     NON_URGENT = "NON_URGENT"
+
+
+class SignOffParty(Enum):
+    """SPEC.md "Four-way sign-off": who has to confirm."""
+    HUMAN = "HUMAN"
+    ORCHESTRATOR = "ORCHESTRATOR"
+    ORIGINATING_AGENT = "ORIGINATING_AGENT"
+    EDEN = "EDEN"
 
 
 class RuleSet(Protocol):
@@ -133,7 +160,9 @@ class AgentReport:
 class ChainResult:
     """Where a report ended up, and why."""
     outcome: str  # "EDEN" | "RERUN_REQUESTED" | "HUMAN" | "CLEAR" |
-                  # "HOLD" | "FLAGGED" | "CLEARED_NO_ACTION"
+                  # "HOLD" | "FLAGGED" | "CLEARED_NO_ACTION" |
+                  # "RELEASE" | "RETEST_REQUESTED" | "OVERRIDE_AVAILABLE" |
+                  # "OVERRIDE_USED" | "HOLD_COURSE"
     reason: str
     report: AgentReport
 
@@ -148,6 +177,21 @@ class PendingEdenKnock:
     started_at: float
 
 
+@dataclass
+class SignOffState:
+    """Tracks one fault's progress through the four-way sign-off. Created
+    by start_signoff(); passed back into confirm() and the rest of the
+    sign-off/override methods. Not keyed internally by agent name, since
+    a single agent could in principle have more than one fault awaiting
+    sign-off at once -- the caller holds the reference, same pattern as
+    PendingEdenKnock."""
+    report: AgentReport
+    fault_class: FaultClass
+    confirmations: Dict[SignOffParty, bool] = field(default_factory=dict)
+    retest_count: int = 0
+    override_used: bool = False
+
+
 class EscalationOrchestrator:
     def __init__(
         self,
@@ -155,19 +199,22 @@ class EscalationOrchestrator:
         own_rules: Dict[str, RuleSet],
         major_fault_window_seconds: float,
         non_urgent_fault_window_seconds: float,
+        light_flag_cycle_minutes: float,
         max_reruns: int = 3,
         process_count_floor: int = 5,
         timeout_seconds: float = 60.0,
     ):
-        # major_fault_window_seconds / non_urgent_fault_window_seconds have
-        # no defaults on purpose -- SPEC.md marks both "to be set from
-        # hardware data. No default value[s]." Callers must supply real
-        # (or, for tests, clearly-labelled fixture) numbers.
+        # major_fault_window_seconds / non_urgent_fault_window_seconds /
+        # light_flag_cycle_minutes have no defaults on purpose -- SPEC.md
+        # marks each "to be set from hardware data. No default value[s]."
+        # Callers must supply real (or, for tests, clearly-labelled
+        # fixture) numbers.
         self.logger = setup_agent_logger("escalation_orchestrator")
         self.eden_rules = eden_rules
         self.own_rules = own_rules
         self.major_fault_window_seconds = major_fault_window_seconds
         self.non_urgent_fault_window_seconds = non_urgent_fault_window_seconds
+        self.light_flag_cycle_minutes = light_flag_cycle_minutes
         self.max_reruns = max_reruns
         self.process_count_floor = process_count_floor
         self.timeout_seconds = timeout_seconds
@@ -358,3 +405,103 @@ class EscalationOrchestrator:
             "but fault cleared on its own -> no flag, no hold, logged only",
         )
         return ChainResult("CLEARED_NO_ACTION", "non_urgent_resolved_on_own", report)
+
+    # --- four-way sign-off -------------------------------------------------
+    def start_signoff(self, report: AgentReport, fault_class: FaultClass) -> SignOffState:
+        """Begin tracking the four-way sign-off for one fault."""
+        self._log("decision", report, f"four-way sign-off started (fault_class={fault_class.value})")
+        return SignOffState(report=report, fault_class=fault_class)
+
+    def confirm(
+        self, state: SignOffState, party: SignOffParty, confirmed: bool
+    ) -> Optional[ChainResult]:
+        """One party confirms (or doesn't). Order doesn't matter. Once
+        all four have weighed in: unanimous "yes" releases; any "no"
+        triggers the retest ladder (_handle_signoff_gap). Returns None
+        while parties are still pending, same convention as
+        check_eden_silence()/check_floor()."""
+        state.confirmations[party] = confirmed
+        self._log("decision", state.report, f"sign-off: {party.value} confirmed={confirmed}")
+
+        if len(state.confirmations) < len(SignOffParty):
+            return None  # still waiting on at least one party
+
+        if all(state.confirmations.values()):
+            self._log("release", state.report, "four-way sign-off complete, latch released")
+            return ChainResult("RELEASE", "four_way_signoff_complete", state.report)
+
+        return self._handle_signoff_gap(state)
+
+    def _handle_signoff_gap(self, state: SignOffState) -> ChainResult:
+        """Not all four agreed. Major faults get one retest before a
+        terminal HOLD (no override path). Non-urgent faults get a
+        second retest before a manual override becomes available."""
+        required_retests = 1 if state.fault_class == FaultClass.MAJOR else 2
+
+        if state.retest_count < required_retests:
+            state.retest_count += 1
+            state.confirmations.clear()
+            self._log(
+                "decision", state.report,
+                f"sign-off gap -> retest #{state.retest_count} of {required_retests}",
+            )
+            return ChainResult("RETEST_REQUESTED", "signoff_gap", state.report)
+
+        if state.fault_class == FaultClass.MAJOR:
+            self._log(
+                "decision", state.report,
+                "still not confirmed after retest -> HOLD, flagged for further investigation",
+            )
+            return ChainResult("HOLD", "major_signoff_failed", state.report)
+
+        self._log(
+            "decision", state.report,
+            "still not confirmed after double retest -> manual override available",
+        )
+        return ChainResult("OVERRIDE_AVAILABLE", "non_urgent_signoff_failed", state.report)
+
+    def use_override(self, state: SignOffState) -> ChainResult:
+        """A human uses the non-urgent manual override."""
+        state.override_used = True
+        self._log("decision", state.report, "manual override used")
+        return ChainResult("OVERRIDE_USED", "non_urgent_override_used", state.report)
+
+    def override_unused(self, state: SignOffState) -> ChainResult:
+        """Nobody used the override. The craft automatically treats the
+        fault as major, except it holds course at reduced speed instead
+        of a full stop."""
+        self._log(
+            "decision", state.report,
+            "override not used -> HOLD_COURSE, treated as major (reduced speed, not full stop)",
+        )
+        return ChainResult("HOLD_COURSE", "non_urgent_override_unused", state.report)
+
+    def check_after_override(
+        self, state: SignOffState, fault_still_present: bool
+    ) -> ChainResult:
+        """SPEC.md "After a manual override": the originating agent
+        reruns its test, to check the fault isn't spreading or
+        creeping. Gone -> cleared. Still present -> logged for a
+        person, and the light-flag cycle begins (see light_flag_tick())."""
+        if not fault_still_present:
+            self._log("decision", state.report, "post-override rerun: fault gone -> cleared")
+            return ChainResult("CLEARED_NO_ACTION", "override_rerun_cleared", state.report)
+        self._log(
+            "decision", state.report,
+            "post-override rerun: fault still present -> logged for a person, "
+            "light-flag cycle begins",
+        )
+        return ChainResult("FLAGGED", "override_rerun_fault_persists", state.report)
+
+    def light_flag_tick(self, state: SignOffState) -> ChainResult:
+        """One tick of the recurring light-flag cycle. Caller invokes
+        this once per self-check cycle (length: light_flag_cycle_minutes)
+        while the fault remains undealt-with. Each call logs again --
+        "light flag" means flagged, repeated every cycle, not an active
+        alert, so repetition is the entire point rather than something
+        to suppress on repeat calls."""
+        self._log(
+            "decision", state.report,
+            f"light flag (recurring every {self.light_flag_cycle_minutes}min, not an active alert)",
+        )
+        return ChainResult("FLAGGED", "light_flag_cycle", state.report)

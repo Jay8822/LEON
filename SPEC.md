@@ -140,7 +140,7 @@ Agent latches its flag, reports to EDEN, EDEN acts and confirms, then the origin
 
 ### Four-way sign-off (human-interaction faults only)
 
-Release requires all four to confirm and log:
+Release requires all four to confirm and log, in any order:
 
 1. Human confirms the fix
 2. Orchestrator confirms
@@ -148,6 +148,27 @@ Release requires all four to confirm and log:
 4. EDEN confirms
 
 Reason: humans can miss things (a door left open, a flap not closed, a switch missed). The machine-side sign-off catches what a person might overlook.
+
+### Sign-off retest and escalation
+
+If one party has not confirmed once the other three have, all four retest.
+
+- **Major fault**, still not confirmed after the retest: craft stays held, flagged for further investigation. No override path for major faults.
+- **Non-urgent fault**: a manual override becomes available for a human to use, but only after a *double* retest (retest twice, not once). The override is optional — if nobody uses it and the double retest still fails, the craft automatically treats the fault as major, except it holds course at reduced speed instead of coming to a full stop (see "Hold course" below).
+- In every other case (confirmations still pending, no gap yet to react to), the hold stays as it was.
+
+### Hold course — reduced-speed state
+
+A state distinct from LUNAE's HOLD (complete stop, holds current position — see LUNAE section). Hold course means the craft continues on its current heading at reduced speed rather than stopping outright. Used only as the non-urgent-fault fallback above.
+
+### After a manual override
+
+Once a human uses the override, the originating agent reruns its test, to check the fault isn't spreading to other parts or creeping.
+
+- **Fault gone**: logged as cleared.
+- **Fault still present**: logged for a person to pick up, and a light flag is raised on every timed self-check cycle until someone deals with it. The cycle interval is a configurable parameter (expected range 5–60 minutes). No default value.
+
+"Light flag" means the same as "flagged" (queued for review), repeated each cycle. It does not actively alert anyone.
 
 ### Traceability
 
