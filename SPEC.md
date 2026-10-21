@@ -181,7 +181,7 @@ The orchestrator applies a timeout, starting the moment it sends to EDEN (the kn
 
 "Flagged" means queued for a person to review. "Passed" means a person is actively alerted.
 
-Status: **not built**.
+Status: **built**. `EscalationOrchestrator.send_to_eden()` / `check_eden_silence()` in `agents/escalation_orchestrator.py`, tested in `agents/escalation_orchestrator_test.py`.
 
 ---
 
