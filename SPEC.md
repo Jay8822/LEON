@@ -174,6 +174,8 @@ Once a human uses the override, the originating agent reruns its test, to check 
 
 EDEN's main log is the master index. Every entry traces back to its originating agent with a timestamp. Nothing is anonymous.
 
+Status: **built in the orchestrator, not yet wired into the real agents**. The four-way sign-off retest ladder, "Hold course" state, and post-override rerun are implemented in `EscalationOrchestrator` (`start_signoff()`, `confirm()`, `use_override()`, `override_unused()`, `check_after_override()`, `light_flag_tick()` — `agents/escalation_orchestrator.py`), tested in `agents/escalation_orchestrator_test.py`. "Standard release" and "Traceability" above are not part of this build.
+
 ---
 
 ## Graceful degradation when EDEN does not respond
