@@ -330,6 +330,7 @@ Never judge in isolation. Each agent checks its own domain against the wider pic
 ## Open items (not yet specified)
 
 - Real numbers for every threshold currently written as "safe threshold", "margin", "X amount" or "a set time". Need hardware data.
+- GRACIE's health reports should carry the actual readings (temperature, radiation), not just the NOMINAL/WARNING/FAULT state. Right now they don't, which is why ghost mode's comparison log is health-state only — see `agents/ghost_mode.py`'s module docstring, point 4.
 - Assumptions list: what the system takes for granted without checking. Complete as of 22 October 2026 — see `ASSUMPTIONS.md`.
 - Formal specification and verification approach. Partner work.
 - Assurance case approach. Partner work.

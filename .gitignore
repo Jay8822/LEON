@@ -18,6 +18,11 @@ venv/
 .venv/
 .vscode/
 
+# Editor/tooling config, not LEON itself.
+.claude/
+.mcp.json
+.vs/
+
 # Scratch file used for review exchanges with Jay — not project content.
 Ccode update.txt
 
