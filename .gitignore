@@ -23,6 +23,10 @@ venv/
 .mcp.json
 .vs/
 
+# Downloaded real-data test datasets -- never committed, see each
+# real_data_tests/*/download_*.py for source and licence.
+real_data_tests/*/data/
+
 # Scratch file used for review exchanges with Jay — not project content.
 Ccode update.txt
 
