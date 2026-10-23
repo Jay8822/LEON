@@ -47,6 +47,7 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 ## GRACIE — health monitor
 
 - Any monitored parameter crossing its safe threshold is flagged **independently**. Temperature does not need radiation to also be high, and vice versa.
+- Rate-of-change: GRACIE also watches how fast a reading moves, not just its level — see "Rate-of-change sense (stack-wide)".
 - Three severities: **flagged**, **logged for investigation** (a spike that returns to normal), and **nominal**.
 - A rise is judged against context from other agents on the bus, not in isolation. Expected causes (engine burn from ETHAN, radiation cloud, manoeuvre) are logged. No explanation on the bus means flagged as an early warning.
 - Crossing a safe parameter by more than a set margin is flagged regardless of context.
@@ -315,9 +316,25 @@ Status: **not built**.
 
 ---
 
+## Rate-of-change sense (stack-wide)
+
+- Every agent watches not only the level of a reading ("how high is it?") but also how fast it changes ("how fast did it move?"). A reading can jump abnormally while staying inside its normal range.
+- A jump bigger than that channel's normal step size is logged for investigation immediately (the existing severity: "a spike that returns to normal is logged for investigation").
+- Any agent that detects a jump reports it on the bus, so other agents can cross-reference it.
+- Cross-check: when a jump is detected, check whether a related agent or channel reported a jump or an event in the same time window. The rule book says which channels and agents are linked; no assumptions about relationships beyond the rule book.
+  - Corroborated (a related jump or event in the window): flagged.
+  - Uncorroborated (nothing related moved): stays logged for investigation only.
+  An unrelated jump in the same window is never discarded, even though it doesn't corroborate: it's logged against the original jump with a note recording both — what jumped, where, and at what time (for example, "spike on X at time T; unrelated jump on Y at the same time T"). Coincidences don't cause a flag, but repeated unrelated coincidences can be spotted on review, and may reveal a link the rule book doesn't know about yet.
+  This keeps lone jumps quiet, which also guards against alert overload (see `ASSUMPTIONS.md` A64).
+- The time window looks both before and after the jump, centred on it. Because it looks forward, the flag-or-log decision isn't final until the window has passed. Acceptable, because the decision is only ever between a quiet log and a flag — never a safety action.
+- The normal step size for each channel comes from its rule book, measured as a rate (change per second), consistent with "every number carries its units". The time window for cross-checking is a separate setting. Neither has a default value.
+- Status: **not built**.
+
+---
+
 ## Cross-referencing principle
 
-Never judge in isolation. Each agent checks its own domain against the wider picture. GRACIE correlates a rise against what the ship is doing. ETHAN correlates his engine reading against GRACIE's. LUNAE correlates other agents' faults against her own instructions. A deep health sweep (see GRACIE) runs ship-wide, every agent sweeping its own domain, when a stream of small faults suggests something bigger.
+Never judge in isolation. Each agent checks its own domain against the wider picture. GRACIE correlates a rise against what the ship is doing. ETHAN correlates his engine reading against GRACIE's. LUNAE correlates other agents' faults against her own instructions. A deep health sweep (see GRACIE) runs ship-wide, every agent sweeping its own domain, when a stream of small faults suggests something bigger. A rate-of-change jump is cross-checked the same way (see "Rate-of-change sense (stack-wide)").
 
 ---
 

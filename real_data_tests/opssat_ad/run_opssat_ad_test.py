@@ -65,6 +65,38 @@ Design, agreed with Jay for this first pass:
   (the paper's own prose summary says 1,494/629, which doesn't match
   the file and isn't used here -- the file is authoritative).
 
+Rate-of-change extension (SPEC.md's "Rate-of-change sense
+(stack-wide)" section, added alongside this), agreed with Jay before
+building:
+
+- Jump size is a rate, |value change| / |time change| in seconds, not
+  a raw sample-to-sample delta. Checked directly: segments.csv's
+  sampling interval is constant within a fragment but varies between
+  fragments for the same channel (1s for some, 5s for others,
+  confirmed from real timestamps) -- a raw delta over 5 seconds isn't
+  comparable to one over 1 second for the same physical rate of
+  change.
+- Per channel, per setting, the jump limit is the same percentile of
+  nominal training fragments' own extreme jump rate (its single
+  biggest consecutive-sample rate) as the matching level setting --
+  95th for STRICT, 99th for LOOSE -- same method as the level
+  thresholds, just applied to rate instead of value. Fixed before any
+  test-split result is looked at; never adjusted afterwards.
+- SPEC.md's cross-check (did a related channel/agent also move in the
+  same window) can't be exercised here at all: every OPSSAT-AD
+  fragment is a single channel in isolation, so there's nothing else
+  to corroborate against within one fragment. Every jump-check hit on
+  this dataset is therefore, by construction, uncorroborated -- it can
+  only ever be "logged for investigation," never "flagged." Reported
+  plainly as untested, not worked around. The cross-check itself gets
+  tested later against ESA-ADB, which records multiple channels at
+  the same time.
+- Nominal fragments the jump check flags are counted as false LOGS,
+  not false alarms -- that word stays for the level check's output,
+  which really can reach "flagged." Keeps the severity vocabulary
+  honest.
+- GRACIE's own code is not touched in this pass.
+
 Run from the repo root, after download_opssat_ad.py:
 
     python -m real_data_tests.opssat_ad.run_opssat_ad_test
@@ -74,6 +106,7 @@ import csv
 import math
 import os
 from collections import defaultdict
+from datetime import datetime
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 SEGMENTS_CSV = os.path.join(DATA_DIR, "segments.csv")
@@ -107,6 +140,29 @@ class Fragment:
         self.anomalous = anomalous
         self.is_train = is_train
         self.values = []
+        self.timestamps = []
+
+    def extreme_jump_rate(self):
+        """This fragment's single biggest consecutive-sample rate of
+        change, in value-units per second. None if it has fewer than
+        two samples, or every consecutive pair shares a timestamp
+        (rate undefined)."""
+        rates = []
+        for i in range(len(self.values) - 1):
+            dt = (self.timestamps[i + 1] - self.timestamps[i]).total_seconds()
+            if dt == 0:
+                continue
+            rates.append(abs(self.values[i + 1] - self.values[i]) / dt)
+        return max(rates) if rates else None
+
+    def max_jump_rate_exceeds(self, limit):
+        for i in range(len(self.values) - 1):
+            dt = (self.timestamps[i + 1] - self.timestamps[i]).total_seconds()
+            if dt == 0:
+                continue
+            if abs(self.values[i + 1] - self.values[i]) / dt > limit:
+                return True
+        return False
 
 
 def load_fragments():
@@ -125,6 +181,9 @@ def load_fragments():
                 )
                 fragments[seg_id] = frag
             frag.values.append(float(row["value"]))
+            frag.timestamps.append(
+                datetime.fromisoformat(row["timestamp"].replace("Z", "+00:00"))
+            )
     return list(fragments.values())
 
 
@@ -155,6 +214,35 @@ def flagged(fragment, thresholds):
     return any(v > t["high"] or v < t["low"] for v in fragment.values)
 
 
+def derive_jump_limits(train_fragments, pct):
+    """Per channel, from nominal TRAINING fragments only: the pct
+    percentile of each fragment's own extreme jump rate (value-units
+    per second). Same method as derive_thresholds(), applied to rate
+    instead of raw value -- see module docstring."""
+    extremes = defaultdict(list)
+    for frag in train_fragments:
+        if frag.anomalous:
+            continue
+        rate = frag.extreme_jump_rate()
+        if rate is not None:
+            extremes[frag.channel].append(rate)
+
+    limits = {}
+    for channel in extremes:
+        limits[channel] = {
+            "limit": percentile(extremes[channel], pct),
+            "n_nominal_train_fragments": len(extremes[channel]),
+        }
+    return limits
+
+
+def jump_flagged(fragment, jump_limits):
+    channel_limit = jump_limits.get(fragment.channel)
+    if channel_limit is None:
+        return False
+    return fragment.max_jump_rate_exceeds(channel_limit["limit"])
+
+
 def score(test_fragments, thresholds):
     """Per channel and overall: caught / missed / false_alarm / quiet
     (true negative) counts, scored per fragment."""
@@ -177,29 +265,67 @@ def score(test_fragments, thresholds):
     return per_channel, missed_fragments
 
 
-def characterise_misses(missed_fragments):
+def classify_shape(fragment):
     """Manual characterisation, not a dataset label (OPSSAT-AD has no
     anomaly-type field) -- SPEC.md's expected finding ("sudden spikes
     caught, slow drift missed") can't be read off a column. Heuristic:
     a fragment whose single biggest step between consecutive samples
     is large relative to its own overall spread looks spike-like;
     otherwise it looks more like a gradual drift."""
-    spike_like, drift_like = 0, 0
-    for frag in missed_fragments:
-        values = frag.values
-        if len(values) < 2:
-            drift_like += 1
-            continue
-        spread = max(values) - min(values)
-        if spread == 0:
-            drift_like += 1
-            continue
-        biggest_step = max(abs(values[i + 1] - values[i]) for i in range(len(values) - 1))
-        if biggest_step / spread > 0.5:
-            spike_like += 1
-        else:
-            drift_like += 1
+    values = fragment.values
+    if len(values) < 2:
+        return "drift-like"
+    spread = max(values) - min(values)
+    if spread == 0:
+        return "drift-like"
+    biggest_step = max(abs(values[i + 1] - values[i]) for i in range(len(values) - 1))
+    return "spike-like" if biggest_step / spread > 0.5 else "drift-like"
+
+
+def characterise_misses(missed_fragments):
+    spike_like = sum(1 for f in missed_fragments if classify_shape(f) == "spike-like")
+    drift_like = len(missed_fragments) - spike_like
     return spike_like, drift_like
+
+
+def score_with_jump_check(test_fragments, thresholds, jump_limits):
+    """Per channel: among anomalous fragments, caught by the level
+    check only, the jump check only, either, or missed by both. Among
+    nominal fragments, false alarms (level) vs. false logs (jump) --
+    kept as separate words, since only the level check can ever reach
+    "flagged" here (see module docstring on why the cross-check can't
+    run on this dataset)."""
+    per_channel = defaultdict(lambda: {
+        "caught_level_only": 0, "caught_jump_only": 0, "caught_both": 0,
+        "missed_both": 0, "false_alarm_level": 0, "false_log_jump": 0, "quiet_both": 0,
+    })
+    missed_by_level = []
+
+    for frag in test_fragments:
+        level_hit = flagged(frag, thresholds)
+        jump_hit = jump_flagged(frag, jump_limits)
+        bucket = per_channel[frag.channel]
+
+        if frag.anomalous:
+            if not level_hit:
+                missed_by_level.append(frag)
+            if level_hit and not jump_hit:
+                bucket["caught_level_only"] += 1
+            elif jump_hit and not level_hit:
+                bucket["caught_jump_only"] += 1
+            elif level_hit and jump_hit:
+                bucket["caught_both"] += 1
+            else:
+                bucket["missed_both"] += 1
+        else:
+            if level_hit:
+                bucket["false_alarm_level"] += 1
+            if jump_hit:
+                bucket["false_log_jump"] += 1
+            if not level_hit and not jump_hit:
+                bucket["quiet_both"] += 1
+
+    return per_channel, missed_by_level
 
 
 def print_scorecard(label, per_channel, missed_fragments, thresholds):
@@ -227,6 +353,56 @@ def print_scorecard(label, per_channel, missed_fragments, thresholds):
     )
 
 
+def print_jump_scorecard(label, per_channel, jump_limits, missed_by_level):
+    print(f"\n--- {label} -- level + jump-check scorecard (threshold-based detection) ---")
+    print("(threshold-based detection approach, not GRACIE's own code -- see module docstring)")
+    print("(jump-check hits here are logged only, never flagged: the cross-check needs a "
+          "second channel, which single-channel OPSSAT-AD fragments don't have)")
+
+    totals = {k: 0 for k in [
+        "caught_level_only", "caught_jump_only", "caught_both", "missed_both",
+        "false_alarm_level", "false_log_jump", "quiet_both",
+    ]}
+    for channel in sorted(per_channel):
+        b = per_channel[channel]
+        jl = jump_limits.get(channel)
+        for k in totals:
+            totals[k] += b[k]
+        caught_either = b["caught_level_only"] + b["caught_jump_only"] + b["caught_both"]
+        limit_str = f"{jl['limit']:.6g}/s (from {jl['n_nominal_train_fragments']} fragments)" if jl else "n/a"
+        print(
+            f"  {channel}: caught_either={caught_either} "
+            f"(level_only={b['caught_level_only']} jump_only={b['caught_jump_only']} "
+            f"both={b['caught_both']}) missed_both={b['missed_both']} "
+            f"false_alarm_level={b['false_alarm_level']} false_log_jump={b['false_log_jump']} "
+            f"quiet_both={b['quiet_both']} (jump limit={limit_str})"
+        )
+    caught_either_total = totals["caught_level_only"] + totals["caught_jump_only"] + totals["caught_both"]
+    print(
+        f"  TOTAL: caught_either={caught_either_total} "
+        f"(level_only={totals['caught_level_only']} jump_only={totals['caught_jump_only']} "
+        f"both={totals['caught_both']}) missed_both={totals['missed_both']} "
+        f"false_alarm_level={totals['false_alarm_level']} false_log_jump={totals['false_log_jump']} "
+        f"quiet_both={totals['quiet_both']}"
+    )
+
+    spike_caught, spike_total, drift_caught, drift_total = 0, 0, 0, 0
+    for frag in missed_by_level:
+        shape = classify_shape(frag)
+        caught_now = jump_flagged(frag, jump_limits)
+        if shape == "spike-like":
+            spike_total += 1
+            spike_caught += caught_now
+        else:
+            drift_total += 1
+            drift_caught += caught_now
+    print(
+        f"  Of the fragments the LEVEL check missed: "
+        f"spike-like {spike_caught}/{spike_total} now caught by the jump check, "
+        f"drift-like {drift_caught}/{drift_total} now caught by the jump check."
+    )
+
+
 def main():
     if not os.path.exists(SEGMENTS_CSV):
         raise SystemExit(
@@ -248,6 +424,14 @@ def main():
         thresholds = derive_thresholds(train_fragments, high_pct, low_pct)
         per_channel, missed_fragments = score(test_fragments, thresholds)
         print_scorecard(label, per_channel, missed_fragments, thresholds)
+
+        # high_pct doubles as the jump-limit percentile for this setting
+        # (95 for STRICT, 99 for LOOSE) -- same pairing used throughout.
+        jump_limits = derive_jump_limits(train_fragments, high_pct)
+        combined_per_channel, missed_by_level = score_with_jump_check(
+            test_fragments, thresholds, jump_limits
+        )
+        print_jump_scorecard(label, combined_per_channel, jump_limits, missed_by_level)
 
 
 if __name__ == "__main__":

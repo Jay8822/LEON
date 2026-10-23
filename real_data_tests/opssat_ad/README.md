@@ -38,8 +38,15 @@ Raw data is never committed to this repo — `data/` here is gitignored.
 
 - None of the 9 channels are temperature or radiation. No channel is
   relabelled as one; results are reported per real channel name.
-- Thresholds are derived statistically from this dataset's own
-  training split, fixed before any test-split result is looked at —
-  not GRACIE's real numbers, not hardware-calibrated.
+- Thresholds (level and jump) are derived statistically from this
+  dataset's own training split, fixed before any test-split result is
+  looked at — not GRACIE's real numbers, not hardware-calibrated.
 - "Spike vs. drift" characterisation of missed anomalies is a manual
   heuristic in the script, not a label the dataset provides.
+- The rate-of-change jump check's cross-check half (SPEC.md's
+  "Rate-of-change sense" section) is untested here, by construction:
+  every fragment is a single channel in isolation, so there's nothing
+  else to corroborate a jump against. Every jump-check hit on this
+  dataset can only ever be "logged," never "flagged." The cross-check
+  itself is expected to be tested later against ESA-ADB, which records
+  multiple channels at the same time.
