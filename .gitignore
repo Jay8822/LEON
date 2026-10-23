@@ -17,3 +17,6 @@ crew_sessions.json
 venv/
 .venv/
 .vscode/
+
+# Scratch file used for review exchanges with Jay — not project content.
+Ccode update.txt

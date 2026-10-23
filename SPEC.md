@@ -2,6 +2,8 @@
 
 Source of truth for the LEON agents. Written by James (Jay) Pratt in his own words, with AI assistance (Claude) translating intent into spec language. Where this spec differs from the current code, the code is the thing that needs changing, not the spec. Gaps are marked **Status: not built**.
 
+Companion document: `ASSUMPTIONS.md` lists what the design assumes but never checks.
+
 Version: draft, October 2026.
 
 ---
@@ -9,6 +11,20 @@ Version: draft, October 2026.
 ## Core principle
 
 Anything that isn't normal is flagged. Anything that rises without reason is flagged. Everything is logged, regardless.
+
+---
+
+## General principles
+
+- Everything and everybody is treated the same. Agents and humans get the same rules, checks and logging. Bypasses change speed, never rules: they are still logged, still leave a note, and still need signing off.
+- Each agent's rule book defines "normal". The rule book is that agent's laws; anything outside it is abnormal by definition.
+- The rule book changes for each craft and mission type.
+- Every number carries its units, so a units mix-up is caught automatically.
+- Every received message is checked against the message sent, as well as the usual rule-book check and retest.
+- Speed matching: any agent that sends instructions must be able to respond as fast as the agent receiving them.
+- Questioning instructions: if an instruction follows the rules but looks wrong, the receiver questions it. The sender rechecks and resends. If it comes back the same, it is carried out, monitored for a set time to check it caused no faults, then checked again a while later. A clash between an instruction and the readings is itself a fault. This applies to human instructions too.
+- System-wide heartbeat: any component that goes silent is pinged continuously by the others until it answers, and vice versa.
+- Power priority: the always-on components (EDEN, orchestrator, SystemCoordinator) get first claim on power, in any crisis, not just hover.
 
 ---
 
@@ -34,6 +50,7 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - Three severities: **flagged**, **logged for investigation** (a spike that returns to normal), and **nominal**.
 - A rise is judged against context from other agents on the bus, not in isolation. Expected causes (engine burn from ETHAN, radiation cloud, manoeuvre) are logged. No explanation on the bus means flagged as an early warning.
 - Crossing a safe parameter by more than a set margin is flagged regardless of context.
+- Deep health sweep: a stream of small faults is itself abnormal. GRACIE then runs a full health test down to every part she manages, so, for example, a blown fuse is found. Ship-wide — every agent runs its own sweep under the same trigger (see Cross-referencing principle).
 - Status: **not built** (current code requires temp AND radiation together; that was synthetic-test scaffolding). Context-aware flagging, the logged-for-investigation severity and the independent per-parameter check are all work packages.
 
 ---
@@ -46,7 +63,7 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - Correlation logic (the deliberate inverse of GRACIE's "expected = logged" rule):
   - Rise is a **direct, confirmed result of the engine**: **raised**. Treated as more serious, because it is a confirmed real problem.
   - Correlates but is **not** a direct engine result: **noted by both agents concerned and logged**, not raised.
-- Failure modes split into two timing tiers (see Timing below).
+- Timing: fast faults (pressure, uncontrolled thrust, burn-out) get millisecond responses. Slow faults (thermal drift, degradation) get seconds, with settling time (see Timing below). Any possible boom fault, including a false pressure reading, means safe mode: a false shutdown is accepted over a real boom.
 - Status: **not built**. Current code only responds to commands.
 
 ---
@@ -58,7 +75,8 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - Fault conditions: veering off course, running at an angle, any deviation from the directed course, losing track of the destination, or a major course correction being required.
 - **Self-correction first**: she instructs ETHAN to correct course using whatever is onboard (thrusters, main engine thrust) before escalating.
 - Also scans **every** other agent's raised faults, to check whether a fault elsewhere originated from her instruction (engine bay, comms, anywhere).
-- **HOLD** is a last resort, only after self-correction has failed and human interaction is taking longer than a set time. HOLD means the ship comes to a complete stop and holds its **current position** (not its course) until released.
+- **HOLD** is a last resort, only after self-correction has failed and human interaction is taking longer than a set time. HOLD means the ship comes to a complete stop and holds its **current position** (not its course) until released. See "Ship safe states" for the full taxonomy of Hold / Hold course / Safe mode.
+- Position scan, three cases: (1) wrong star suspected: scan for what matches the original instructions, and correct if it doesn't match. (2) Everything matches: carry on. (3) Right star and heading, but slightly off course, for example from gravity: slow drift, quietly monitored and checked regularly. A wrong star corrected with no human involved gets a three-way sign-off plus a log entry. Note: the position check must use a source independent of the possibly-wrong star, such as a second star, or position worked out from speed and time.
 - Status: **not built**. Current code drops straight to HOLD on any fault, which contradicts this spec.
 
 ---
@@ -71,6 +89,7 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - When HALIA raises something, the agent checks it. If the agent and a human both say it's fine, it is logged and closed, **but a review stub is left** to find out why HALIA raised it, in case her boundaries have a hole.
 - **LLM containment rule**: no LLM component may touch any other agent except via specifically instructed data, and that bridge is **single-use, one direction at a time**. Each crossing is an individually authorised one-shot channel. No standing connection.
 - LLM active on manned missions only. May be offered to ground control when a threshold number of agents are in use.
+- Anything shown on a screen comes directly from the agent, never from HALIA; HALIA only speaks the result. Her system is completely separate apart from the single bridge. She cannot read EDEN's logs even if asked, and keeps her own logs, time-synced with the others. Identity checks: video both ways, plus voice recognition, fingerprint, passcode and retina where available.
 - Status: **not built**. Current code relays crew commands and reports status only.
 
 ---
@@ -79,8 +98,16 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 
 - HALIA never reaches into an agent directly. Everything goes through the coordinator.
 - For every request it: checks the request is authorised, lets exactly one crossing through, then closes. This is what makes the single-use bridge actually single-use. It is a safety-critical component.
+- A crossing needs both the crew's request and the rules to agree; the crew's rules and HALIA's must match. If the coordinator fails, the door fails shut, and only a crew or ground control sign-off reopens it. A stuck crossing is forced closed when its time runs out, then flagged, logged and investigated.
 - Runs consistent diagnostics every few minutes. Surfaced to crew as a small green light flash and a soft chirp, quiet enough not to wake anyone. Runs in the background for ground control on unmanned missions.
 - Status: **not built**. Current code has an open `send_command()` with no authorisation check.
+
+---
+
+## Bus
+
+- Agents switch to the bypass, which is a separate physical path wired to the logs, if the bus fails — and the ship goes to safe mode.
+- Status: **not built**. No separate physical bypass path exists in code.
 
 ---
 
@@ -90,7 +117,8 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - Priority messages are pushed to the front of the queue.
 - **Sees all and knows all.** It has to, otherwise it could send the wrong thing to the wrong place.
 - Real job: quality control **before** EDEN sees anything. Holds EDEN's rules as its priority signals, plus its own harder parameters.
-- Status: **not built**. `agents/orchestrator.py` is a scripted two-step diagnostic runner and is **not** this component.
+- Orchestrator failure: the ship goes to safe mode and a human is needed. EDEN covers meanwhile, working from logs and test results in priority order, and pings the orchestrator until it answers. EDEN receives all traffic in this case; acceptable, because traffic drops in safe mode.
+- Status: **built, not wired into agents** — the escalation logic lives in `EscalationOrchestrator` (`agents/escalation_orchestrator.py`). `agents/orchestrator.py` is a scripted two-step diagnostic runner and is **not** this component.
 
 ### Orchestrator bypass
 
@@ -105,6 +133,8 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - Validates each report against the reporting agent's rules **and** her own parameters. Both must align before she treats it as real.
 - Holds a copy of every agent's rule set, plus her own harder rule set, including the plus/minus tolerance around each agent's parameters. This lets her judge priority, and stops any agent acting outside protocol.
 - Confirms that anything raised has been fixed, even when an agent fixed it itself. Keeps one authoritative log.
+- Challenging EDEN: an agent that sees EDEN's ruling doesn't match the rules challenges it. The challenge is passed to a human, and a retest runs automatically, so both results are ready when the human picks it up. If no human can be reached, the orchestrator stands in for EDEN: it checks against its own rules and asks the agent to retest. Logged, flagged and investigated.
+- Loop detection: if the same agent triggers safe mode a second time, that agent becomes the suspect. If the rules check out and sign-off is complete, the agent is inspected against its own rules and checked for cross-wiring.
 - Status: **not built**. Current code acts directly on GRACIE's FAULT report with no validation.
 
 ---
@@ -128,11 +158,50 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 
 Philosophy behind the limits: escalating to a human is a cost-benefit decision. "Flagged for human interaction is asking for help on a budget." Where conflict is more saturated, it is raised sooner rather than exhausting every internal retry.
 
-Status: **not built**.
+Status: **built, not wired into agents** (`EscalationOrchestrator`, `agents/escalation_orchestrator.py`).
+
+---
+
+## Ship safe states
+
+From mildest to most serious:
+
+| State | What happens |
+|---|---|
+| Hold course | Keep the current heading, at reduced speed |
+| Hold | Stop and stay at the current position |
+| Safe mode | Everything stops and tests itself, priority tests first. Low power. Stay as close to the original position as possible without wasting fuel, so comms in a blackout zone don't take longer than needed |
+
+"The craft holds", wherever it appears in this spec, means Hold.
+
+Two kinds of Hold, with different release conditions:
+- **Planned hold**: set by a crew or ground control instruction. Ends when that instruction says.
+- **Fault hold**: triggered by a fault. Ends only when it is signed off, per the Sign-off rules below.
+
+---
+
+## Sign-off rules
+
+| Situation | Sign-off |
+|---|---|
+| Agent fixed it itself | Agent + EDEN |
+| A human interacted with the fault at any point | Four-way: human, orchestrator, agent, EDEN |
+| Human can't be reached within the delay window, and it isn't a boom fault | Three-way: orchestrator, agent, EDEN |
+| Boom fault (anything that could harm the ship or people) | Safe mode. Must wait for a human. Always four-way |
+| Fault fixable with other agents' help | Fixed, flagged, logged |
+| Any party needed for a sign-off is unavailable | Safe mode. Something is wrong that could get worse if ignored |
+
+The human delay window (row 3) is a separate configurable parameter, no default — it depends on the mission's comms delay.
+
+"Unavailable" (last row) is defined by the heartbeat (see General principles): a party that doesn't answer pings within its own heartbeat window is unavailable. A party that answers but hasn't signed off yet is simply "not confirmed" — the normal retest ladder, not this row. The heartbeat window is also a separate configurable parameter, no default.
+
+Not a clash: a non-urgent fault with EDEN silent is flagged while the craft keeps running. Nothing is being released, so no sign-off is needed and safe mode does not trigger.
 
 ---
 
 ## Fault lifecycle and release
+
+See "Ship safe states" and "Sign-off rules" above for the taxonomy these mechanisms use.
 
 ### Standard release (agent-resolved faults)
 
@@ -153,7 +222,8 @@ Reason: humans can miss things (a door left open, a flap not closed, a switch mi
 
 If one party has not confirmed once the other three have, all four retest.
 
-- **Major fault**, still not confirmed after the retest: craft stays held, flagged for further investigation. No override path for major faults.
+- **Boom fault** (the most serious kind of major fault — anything that could harm the ship or people): no retest ladder, no give-up. Safe mode, and it always waits for a human — see Sign-off rules above.
+- **Other major faults**, still not confirmed after the retest: craft stays held, flagged for further investigation. No override path.
 - **Non-urgent fault**: a manual override becomes available for a human to use, but only after a *double* retest (retest twice, not once). The override is optional — if nobody uses it and the double retest still fails, the craft automatically treats the fault as major, except it holds course at reduced speed instead of coming to a full stop (see "Hold course" below).
 - In every other case (confirmations still pending, no gap yet to react to), the hold stays as it was.
 
@@ -174,7 +244,7 @@ Once a human uses the override, the originating agent reruns its test, to check 
 
 EDEN's main log is the master index. Every entry traces back to its originating agent with a timestamp. Nothing is anonymous.
 
-Status: **built in the orchestrator, not yet wired into the real agents**. The four-way sign-off retest ladder, "Hold course" state, and post-override rerun are implemented in `EscalationOrchestrator` (`start_signoff()`, `confirm()`, `use_override()`, `override_unused()`, `check_after_override()`, `light_flag_tick()` — `agents/escalation_orchestrator.py`), tested in `agents/escalation_orchestrator_test.py`. "Standard release" and "Traceability" above are not part of this build.
+Status: **built, not wired into agents**. The four-way sign-off retest ladder, "Hold course" state, and post-override rerun are implemented in `EscalationOrchestrator` (`start_signoff()`, `confirm()`, `use_override()`, `override_unused()`, `check_after_override()`, `light_flag_tick()` — `agents/escalation_orchestrator.py`), tested in `agents/escalation_orchestrator_test.py`. The boom-fault exception above is newly specified, not yet built — this was a documents-only pass. "Standard release" and "Traceability" above are not part of this build either.
 
 ---
 
@@ -204,7 +274,7 @@ The orchestrator applies a timeout, starting the moment it sends to EDEN (the kn
 
 "Flagged" means queued for a person to review. "Passed" means a person is actively alerted.
 
-Status: **built**. `EscalationOrchestrator.send_to_eden()` / `check_eden_silence()` in `agents/escalation_orchestrator.py`, tested in `agents/escalation_orchestrator_test.py`.
+Status: **built, not wired into agents**. `EscalationOrchestrator.send_to_eden()` / `check_eden_silence()` in `agents/escalation_orchestrator.py`, tested in `agents/escalation_orchestrator_test.py`.
 
 ---
 
@@ -221,33 +291,73 @@ Deadlines come from how fast the **failure mode** unfolds, not from how fast the
 
 ## Hover — standby state
 
-- Works like a TV on standby. A system drops to low power until an instruction or a scheduled activation.
-- The responsible agent still monitors its domain in hover, at reduced level (basics and important parts only).
-- EDEN and SystemCoordinator never hover. GRACIE can flip in and out but is mainly on. ETHAN can shut down fully and wakes on prompt. LUNAE always keeps at least one eye open. Some agents only power down when the whole ship does.
-- Power not in use goes back into the main batteries.
-- Cooling systems always stay on. Fuel systems follow ETHAN's state.
-- Status: **not built**.
+Hover works like a TV on standby. It diverts power away from parts of a system that are not in use. Spare power goes back to the main batteries.
+
+Entering hover:
+- An agent decides for itself to enter hover.
+- EDEN must sign off first.
+- A note goes to the orchestrator, so every component knows that agent is in hover.
+- An agent with a live fault may not enter hover. It follows normal fault procedure until the fault is fixed or a manual override is used.
+
+Monitoring in hover:
+- Parts with no power have nothing to monitor.
+- Anything still powered is monitored as normal.
+
+Per-component rules:
+- EDEN, the orchestrator and the SystemCoordinator never hover.
+- LUNAE: navigation always stays online.
+- GRACIE: may hover, but mostly stays on.
+- ETHAN: may shut the engines down, but never shuts himself down. He stays ready for thrust instructions, and is woken by an instruction from GRACIE, LUNAE or EDEN.
+- HALIA: may hover, but always listens for the crew or ground control, who wake her.
+- Cooling systems always stay on. Fuel systems follow the engine state.
+
+Status: **not built**.
 
 ---
 
 ## Cross-referencing principle
 
-Never judge in isolation. Each agent checks its own domain against the wider picture. GRACIE correlates a rise against what the ship is doing. ETHAN correlates his engine reading against GRACIE's. LUNAE correlates other agents' faults against her own instructions.
+Never judge in isolation. Each agent checks its own domain against the wider picture. GRACIE correlates a rise against what the ship is doing. ETHAN correlates his engine reading against GRACIE's. LUNAE correlates other agents' faults against her own instructions. A deep health sweep (see GRACIE) runs ship-wide, every agent sweeping its own domain, when a stream of small faults suggests something bigger.
 
 ---
 
 ## Known exceptions
 
-- **ETHAN** skips the normal orchestrator retry ladder for "I need a human now" and critical malfunctions. Deliberate, and documented as an exception. The bypass is logged to the orchestrator (see above).
+- **ETHAN** skips the normal orchestrator retry ladder for "I need a human now" and critical malfunctions. Deliberate, and documented as an exception. The bypass is logged to the orchestrator (see above). This changes speed, not rules — the bypass is still logged, still leaves a note, and still needs signing off (see General principles).
 
 ---
 
 ## Open items (not yet specified)
 
 - Real numbers for every threshold currently written as "safe threshold", "margin", "X amount" or "a set time". Need hardware data.
-- Assumptions list: what the system takes for granted without checking. In progress; GRACIE done (sensors honest, stuck sensor, messages arrive, clocks agree, context from other agents accurate, EDEN's confirmation real, logging never fails).
+- Assumptions list: what the system takes for granted without checking. Complete as of 22 October 2026 — see `ASSUMPTIONS.md`.
 - Formal specification and verification approach. Partner work.
 - Assurance case approach. Partner work.
+
+---
+
+## Wiring plan and ghost mode
+
+- The raising agent classifies its own fault as major or non-urgent, from its rule book. Unknown means major.
+- GRACIE fixes and logs her own warnings. Only faults go to the orchestrator.
+- Ghost mode: the old wiring keeps control of the ship. The orchestrator sees the same real traffic, questions the old system, and logs what it would have done, even when it disagrees.
+- Ghost mode has its own temporary log, archived permanently once the orchestrator takes over.
+- Handover criterion: every difference between the old wiring and the orchestrator is explained. Jay reviews the comparison and decides when the orchestrator takes control.
+- Wiring order: GRACIE, EDEN, ETHAN, LUNAE, then HALIA and SystemCoordinator.
+- Status: **not built**.
+
+---
+
+## Real-data testing
+
+- Three public, labelled datasets, in order: ESA OPS-SAT (OPSSAT-AD), NASA SMAP/MSL, then ESA-ADB.
+- Honest limit: public data is anonymised and scaled, so the test is of GRACIE's detection logic, not of true temperature or radiation monitoring.
+- Pass means an honest scorecard (faults caught, faults missed, false alarms), not a target score. Written up as "first tests against real spacecraft data", not "validated".
+- Expected result: sudden spikes caught, slow drift missed. That finding justifies the drift-detection work.
+- ESA-ADB is large. The laptop has 6 GB of memory, so read it in chunks, start with one mission and a handful of channels, and expect slow runs.
+- Do not commit raw data to the repo. Use a download script, and cite every dataset properly.
+- Once GRACIE is wired, run the same data through ghost mode too.
+- Status: **not built**.
 
 ---
 
