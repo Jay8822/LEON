@@ -20,3 +20,6 @@ venv/
 
 # Scratch file used for review exchanges with Jay — not project content.
 Ccode update.txt
+
+# Jay's private handover brief — not for the public repo.
+HANDOVER.md
