@@ -5,7 +5,9 @@ import random
 import time
 
 from agents.eden import EdenAgent
+from agents.escalation_orchestrator import EscalationOrchestrator
 from agents.ethan_ai import EthanAgent
+from agents.ghost_mode import GhostModeHarness
 from agents.gracie import GracieAgent
 from agents.halia import HaliaAgent
 from agents.lunae import LunaeAgent
@@ -13,6 +15,13 @@ from agents.system_coordinator import SystemCoordinator
 from core.bus import EventBus
 from core.logger import log
 from core.schemas import TelemetryPacket
+
+# Ghost mode (task 3 of HANDOVER.md's work queue): placeholder window/
+# cycle values, same "no real numbers yet" convention as
+# agents/escalation_orchestrator_test.py. Not hardware-derived.
+GHOST_MODE_MAJOR_FAULT_WINDOW_SECONDS = 5.0
+GHOST_MODE_NON_URGENT_FAULT_WINDOW_SECONDS = 30.0
+GHOST_MODE_LIGHT_FLAG_CYCLE_MINUTES = 15.0
 
 
 def build_system():
@@ -28,6 +37,22 @@ def build_system():
 
     bus.subscribe("telemetry/health", print_health)
     bus.subscribe("telemetry/health", eden.on_health_event)
+
+    # Ghost mode: GRACIE wired into EscalationOrchestrator, watching
+    # only. The orchestrator and the harness below do not control
+    # anything -- EDEN above is still the only thing that reacts.
+    # Subscribed *after* eden.on_health_event on purpose: the harness
+    # reads eden.status once EDEN has already reacted to this same
+    # event (see agents/ghost_mode.py's module docstring, point 2).
+    ghost_orchestrator = EscalationOrchestrator(
+        eden_rules={},
+        own_rules={},
+        major_fault_window_seconds=GHOST_MODE_MAJOR_FAULT_WINDOW_SECONDS,
+        non_urgent_fault_window_seconds=GHOST_MODE_NON_URGENT_FAULT_WINDOW_SECONDS,
+        light_flag_cycle_minutes=GHOST_MODE_LIGHT_FLAG_CYCLE_MINUTES,
+    )
+    ghost_mode = GhostModeHarness(bus, eden, ghost_orchestrator)
+
     bus.subscribe("cmd/propulsion", print_command)
     bus.subscribe("cmd/propulsion", ethan.on_command)
     bus.subscribe("state/system", print_state)
@@ -42,6 +67,7 @@ def build_system():
         "lunae": lunae,
         "eden": eden,
         "halia": halia,
+        "ghost_mode": ghost_mode,
     }
 
 

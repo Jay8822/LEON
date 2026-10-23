@@ -344,7 +344,7 @@ Never judge in isolation. Each agent checks its own domain against the wider pic
 - Ghost mode has its own temporary log, archived permanently once the orchestrator takes over.
 - Handover criterion: every difference between the old wiring and the orchestrator is explained. Jay reviews the comparison and decides when the orchestrator takes control.
 - Wiring order: GRACIE, EDEN, ETHAN, LUNAE, then HALIA and SystemCoordinator.
-- Status: **not built**.
+- Status: GRACIE — built, wired in ghost mode (`agents/ghost_mode.py`). Ghost mode only; the orchestrator does not control anything yet, and does not yet run an independent second check on GRACIE's faults (no real rule data exists — see that file's module docstring). EDEN, ETHAN, LUNAE, HALIA, SystemCoordinator — **not built**.
 
 ---
 
