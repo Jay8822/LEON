@@ -97,6 +97,32 @@ building:
   honest.
 - GRACIE's own code is not touched in this pass.
 
+Leash extension (SPEC.md's "Leash -- drift sense (stack-wide)"
+section, added alongside this), agreed with Jay before building:
+
+- Soft/hard ARE the leash's two settings (95th / 99th percentile of
+  nominal training fragments' own extreme windowed-average-slope) --
+  not a further strict/loose split on top. One pair of limits per
+  channel, not four.
+- Window (30s) and sustained duration (60s) are fixed test-fixture
+  design choices, not SPEC numbers and not hardware-calibrated --
+  checked the actual fragment-length distribution first (35s-1,335s,
+  median 225s) rather than guessing blind. A fragment needs at least
+  90s (window + duration) of data before the leash can register
+  anything; shorter fragments are reported as not-evaluable and
+  excluded from the leash tallies, not scored as quiet or missed.
+- "Sustained" means continuous: the windowed slope has to stay past a
+  limit for the whole duration without dropping back below it. A dip
+  resets the clock.
+- This new scorecard only scores leash-evaluable fragments. The
+  existing level-only and level+jump scorecards above are untouched
+  and already cover every fragment regardless of length.
+- Context-gating (an expected cause loosening the leash) can't be
+  tested here at all: each fragment is one channel with no other
+  agent present to report an expected cause. Reported as untested, not
+  worked around -- same pattern as the jump check's cross-check.
+- No agent's code is touched in this pass.
+
 Run from the repo root, after download_opssat_ad.py:
 
     python -m real_data_tests.opssat_ad.run_opssat_ad_test
@@ -117,6 +143,14 @@ SETTINGS = {
     "STRICT (95th/5th percentile)": (95, 5),
     "LOOSE (99th/1st percentile)": (99, 1),
 }
+
+# Leash (drift-sense) design choices -- test fixtures, not SPEC
+# numbers, not hardware-calibrated. See module docstring.
+LEASH_WINDOW_SECONDS = 30.0
+LEASH_SUSTAINED_SECONDS = 60.0
+LEASH_MIN_EVALUABLE_SECONDS = LEASH_WINDOW_SECONDS + LEASH_SUSTAINED_SECONDS
+LEASH_SOFT_PCT = 95
+LEASH_HARD_PCT = 99
 
 
 def percentile(values, pct):
@@ -162,6 +196,51 @@ class Fragment:
                 continue
             if abs(self.values[i + 1] - self.values[i]) / dt > limit:
                 return True
+        return False
+
+    def is_leash_evaluable(self):
+        if len(self.timestamps) < 2:
+            return False
+        duration = (self.timestamps[-1] - self.timestamps[0]).total_seconds()
+        return duration >= LEASH_MIN_EVALUABLE_SECONDS
+
+    def _windowed_slopes(self):
+        """(timestamp, slope) for every point with at least a full
+        LEASH_WINDOW_SECONDS of history behind it -- slope is the
+        change over that trailing window divided by the window's
+        actual span (>= LEASH_WINDOW_SECONDS, as tight as the sample
+        grid allows)."""
+        slopes = []
+        n = len(self.timestamps)
+        j = 0
+        for i in range(n):
+            while (j + 1 <= i and
+                   (self.timestamps[i] - self.timestamps[j + 1]).total_seconds()
+                   >= LEASH_WINDOW_SECONDS):
+                j += 1
+            dt = (self.timestamps[i] - self.timestamps[j]).total_seconds()
+            if dt >= LEASH_WINDOW_SECONDS:
+                slopes.append((self.timestamps[i], (self.values[i] - self.values[j]) / dt))
+        return slopes
+
+    def extreme_leash_slope(self):
+        """This fragment's single biggest windowed-average slope
+        (absolute value), or None if it has no full window at all."""
+        slopes = self._windowed_slopes()
+        return max(abs(s) for _, s in slopes) if slopes else None
+
+    def leash_pull(self, limit):
+        """True if the windowed slope stays past `limit`, continuously
+        (a dip resets the clock), for at least LEASH_SUSTAINED_SECONDS."""
+        run_start = None
+        for t, s in self._windowed_slopes():
+            if abs(s) > limit:
+                if run_start is None:
+                    run_start = t
+                elif (t - run_start).total_seconds() >= LEASH_SUSTAINED_SECONDS:
+                    return True
+            else:
+                run_start = None
         return False
 
 
@@ -328,6 +407,87 @@ def score_with_jump_check(test_fragments, thresholds, jump_limits):
     return per_channel, missed_by_level
 
 
+def derive_leash_limits(train_fragments, pct):
+    """Per channel, from nominal TRAINING fragments that are
+    leash-evaluable: the pct percentile of each fragment's own extreme
+    windowed-average slope. Same method as derive_thresholds() and
+    derive_jump_limits(), applied to windowed slope -- see module
+    docstring."""
+    extremes = defaultdict(list)
+    for frag in train_fragments:
+        if frag.anomalous or not frag.is_leash_evaluable():
+            continue
+        extreme = frag.extreme_leash_slope()
+        if extreme is not None:
+            extremes[frag.channel].append(extreme)
+
+    limits = {}
+    for channel in extremes:
+        limits[channel] = {
+            "limit": percentile(extremes[channel], pct),
+            "n_nominal_train_fragments": len(extremes[channel]),
+        }
+    return limits
+
+
+def score_with_leash(test_fragments, thresholds, jump_limits, soft_limits, hard_limits):
+    """Per channel, restricted to leash-evaluable fragments (see
+    module docstring -- not-evaluable fragments are counted but never
+    scored as caught/missed/false here). Among anomalous fragments:
+    caught_leash_only (level and jump both missed, leash caught),
+    caught_any (any of the three caught it), missed_all. Soft/hard
+    pull counts are reported separately regardless of overlap with
+    level/jump, per Jay's instruction. Among nominal fragments: soft
+    pulls are false logs, hard pulls are false flags -- not mutually
+    exclusive with each other, since a hard pull structurally also
+    crosses the (lower) soft limit."""
+    per_channel = defaultdict(lambda: {
+        "not_evaluable": 0,
+        "caught_leash_only_soft": 0, "caught_leash_only_hard": 0,
+        "caught_any": 0, "missed_all": 0,
+        "soft_pull_anomalous": 0, "hard_pull_anomalous": 0,
+        "false_log_leash_soft": 0, "false_flag_leash_hard": 0,
+    })
+    missed_by_level_and_jump_evaluable = []
+
+    for frag in test_fragments:
+        bucket = per_channel[frag.channel]
+        if not frag.is_leash_evaluable():
+            bucket["not_evaluable"] += 1
+            continue
+
+        soft_limit = soft_limits.get(frag.channel)
+        hard_limit = hard_limits.get(frag.channel)
+        soft_pull = soft_limit is not None and frag.leash_pull(soft_limit["limit"])
+        hard_pull = hard_limit is not None and frag.leash_pull(hard_limit["limit"])
+        level_hit = flagged(frag, thresholds)
+        jump_hit = jump_flagged(frag, jump_limits)
+
+        if frag.anomalous:
+            if soft_pull:
+                bucket["soft_pull_anomalous"] += 1
+            if hard_pull:
+                bucket["hard_pull_anomalous"] += 1
+            if level_hit or jump_hit or soft_pull or hard_pull:
+                bucket["caught_any"] += 1
+            else:
+                bucket["missed_all"] += 1
+            if not (level_hit or jump_hit):
+                missed_by_level_and_jump_evaluable.append(frag)
+                if soft_pull or hard_pull:
+                    if hard_pull:
+                        bucket["caught_leash_only_hard"] += 1
+                    else:
+                        bucket["caught_leash_only_soft"] += 1
+        else:
+            if soft_pull:
+                bucket["false_log_leash_soft"] += 1
+            if hard_pull:
+                bucket["false_flag_leash_hard"] += 1
+
+    return per_channel, missed_by_level_and_jump_evaluable
+
+
 def print_scorecard(label, per_channel, missed_fragments, thresholds):
     print(f"\n--- {label} -- threshold-based detection scorecard ---")
     print("(threshold-based detection approach, not GRACIE's own code -- see module docstring)")
@@ -403,6 +563,62 @@ def print_jump_scorecard(label, per_channel, jump_limits, missed_by_level):
     )
 
 
+def print_leash_scorecard(label, per_channel, soft_limits, hard_limits, missed_by_level_and_jump):
+    print(f"\n--- {label} -- level + jump + leash scorecard (threshold-based detection) ---")
+    print("(threshold-based detection approach, not GRACIE's own code -- see module docstring)")
+    print(f"(leash: {LEASH_WINDOW_SECONDS:.0f}s window, {LEASH_SUSTAINED_SECONDS:.0f}s sustained -- "
+          f"fragments under {LEASH_MIN_EVALUABLE_SECONDS:.0f}s are not-evaluable, excluded below)")
+    print("(context-gating is untested here: no second agent/channel exists to report an "
+          "expected cause on single-channel OPSSAT-AD fragments)")
+
+    totals = {k: 0 for k in [
+        "not_evaluable", "caught_leash_only_soft", "caught_leash_only_hard",
+        "caught_any", "missed_all", "soft_pull_anomalous", "hard_pull_anomalous",
+        "false_log_leash_soft", "false_flag_leash_hard",
+    ]}
+    for channel in sorted(per_channel):
+        b = per_channel[channel]
+        soft = soft_limits.get(channel)
+        hard = hard_limits.get(channel)
+        for k in totals:
+            totals[k] += b[k]
+        soft_str = f"{soft['limit']:.6g}/s (n={soft['n_nominal_train_fragments']})" if soft else "n/a"
+        hard_str = f"{hard['limit']:.6g}/s (n={hard['n_nominal_train_fragments']})" if hard else "n/a"
+        print(
+            f"  {channel}: caught_any={b['caught_any']} "
+            f"(leash_only soft={b['caught_leash_only_soft']} hard={b['caught_leash_only_hard']}) "
+            f"missed_all={b['missed_all']} not_evaluable={b['not_evaluable']} | "
+            f"soft_pull={b['soft_pull_anomalous']} hard_pull={b['hard_pull_anomalous']} "
+            f"false_log_soft={b['false_log_leash_soft']} false_flag_hard={b['false_flag_leash_hard']} "
+            f"(soft limit={soft_str}, hard limit={hard_str})"
+        )
+    print(
+        f"  TOTAL: caught_any={totals['caught_any']} "
+        f"(leash_only soft={totals['caught_leash_only_soft']} hard={totals['caught_leash_only_hard']}) "
+        f"missed_all={totals['missed_all']} not_evaluable={totals['not_evaluable']} | "
+        f"soft_pull={totals['soft_pull_anomalous']} hard_pull={totals['hard_pull_anomalous']} "
+        f"false_log_soft={totals['false_log_leash_soft']} false_flag_hard={totals['false_flag_leash_hard']}"
+    )
+
+    spike_caught, spike_total, drift_caught, drift_total = 0, 0, 0, 0
+    for frag in missed_by_level_and_jump:
+        soft = soft_limits.get(frag.channel)
+        hard = hard_limits.get(frag.channel)
+        caught_now = (soft is not None and frag.leash_pull(soft["limit"])) or \
+                     (hard is not None and frag.leash_pull(hard["limit"]))
+        if classify_shape(frag) == "spike-like":
+            spike_total += 1
+            spike_caught += caught_now
+        else:
+            drift_total += 1
+            drift_caught += caught_now
+    print(
+        f"  Of the leash-evaluable fragments LEVEL+JUMP together missed: "
+        f"spike-like {spike_caught}/{spike_total} now caught by the leash, "
+        f"drift-like {drift_caught}/{drift_total} now caught by the leash."
+    )
+
+
 def main():
     if not os.path.exists(SEGMENTS_CSV):
         raise SystemExit(
@@ -420,6 +636,11 @@ def main():
     print("OPSSAT-AD -- Ruszczak, Kotowski, Nalepa & Evans (2024), "
           "https://doi.org/10.5281/zenodo.12588359, CC-BY-4.0.")
 
+    # Soft/hard ARE the leash's two settings (see module docstring) --
+    # computed once, not per STRICT/LOOSE level+jump setting.
+    soft_limits = derive_leash_limits(train_fragments, LEASH_SOFT_PCT)
+    hard_limits = derive_leash_limits(train_fragments, LEASH_HARD_PCT)
+
     for label, (high_pct, low_pct) in SETTINGS.items():
         thresholds = derive_thresholds(train_fragments, high_pct, low_pct)
         per_channel, missed_fragments = score(test_fragments, thresholds)
@@ -432,6 +653,11 @@ def main():
             test_fragments, thresholds, jump_limits
         )
         print_jump_scorecard(label, combined_per_channel, jump_limits, missed_by_level)
+
+        leash_per_channel, missed_by_level_and_jump = score_with_leash(
+            test_fragments, thresholds, jump_limits, soft_limits, hard_limits
+        )
+        print_leash_scorecard(label, leash_per_channel, soft_limits, hard_limits, missed_by_level_and_jump)
 
 
 if __name__ == "__main__":

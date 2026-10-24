@@ -50,3 +50,16 @@ Raw data is never committed to this repo — `data/` here is gitignored.
   dataset can only ever be "logged," never "flagged." The cross-check
   itself is expected to be tested later against ESA-ADB, which records
   multiple channels at the same time.
+- The leash's context-gating (SPEC.md's "Leash — drift sense" section)
+  is untested here too, for the same reason: no second agent exists on
+  single-channel OPSSAT-AD fragments to report an expected cause.
+- At the window/duration chosen for this test (30s window, 60s
+  sustained), the leash registers zero pulls anywhere in the dataset —
+  soft or hard, train or test, nominal or anomalous. Checked directly,
+  not assumed a bug: the single strongest nominal training fragment
+  sustains its peak windowed slope for about 55 seconds, just under
+  the 60-second bar. OPS-SAT's fragments (median 225s) are mostly too
+  short, or too spike-shaped, for a sense tuned to sustained drift —
+  see `simulated_tests/leash_drift/` for a controlled test of the
+  mechanism itself, and ESA-ADB (later) for its real long-duration
+  test.

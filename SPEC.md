@@ -48,6 +48,7 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 
 - Any monitored parameter crossing its safe threshold is flagged **independently**. Temperature does not need radiation to also be high, and vice versa.
 - Rate-of-change: GRACIE also watches how fast a reading moves, not just its level — see "Rate-of-change sense (stack-wide)".
+- Leash: GRACIE also watches for slow, sustained drift, not just level and jump — see "Leash — drift sense (stack-wide)".
 - Three severities: **flagged**, **logged for investigation** (a spike that returns to normal), and **nominal**.
 - A rise is judged against context from other agents on the bus, not in isolation. Expected causes (engine burn from ETHAN, radiation cloud, manoeuvre) are logged. No explanation on the bus means flagged as an early warning.
 - Crossing a safe parameter by more than a set margin is flagged regardless of context.
@@ -64,6 +65,7 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - Correlation logic (the deliberate inverse of GRACIE's "expected = logged" rule):
   - Rise is a **direct, confirmed result of the engine**: **raised**. Treated as more serious, because it is a confirmed real problem.
   - Correlates but is **not** a direct engine result: **noted by both agents concerned and logged**, not raised.
+- Leash: a sustained drift is watched for too, with the same inverse correlation logic — a confirmed engine-caused drift stays tight even when GRACIE's matching leash loosens. See "Leash — drift sense (stack-wide)".
 - Timing: fast faults (pressure, uncontrolled thrust, burn-out) get millisecond responses. Slow faults (thermal drift, degradation) get seconds, with settling time (see Timing below). Any possible boom fault, including a false pressure reading, means safe mode: a false shutdown is accepted over a real boom.
 - Status: **not built**. Current code only responds to commands.
 
@@ -328,13 +330,37 @@ Status: **not built**.
   This keeps lone jumps quiet, which also guards against alert overload (see `ASSUMPTIONS.md` A64).
 - The time window looks both before and after the jump, centred on it. Because it looks forward, the flag-or-log decision isn't final until the window has passed. Acceptable, because the decision is only ever between a quiet log and a flag — never a safety action.
 - The normal step size for each channel comes from its rule book, measured as a rate (change per second), consistent with "every number carries its units". The time window for cross-checking is a separate setting. Neither has a default value.
+- A third sense, for drift too slow to be a jump but too sustained to be normal wobble, is the leash — see "Leash — drift sense (stack-wide)".
+- Status: **not built**.
+
+---
+
+## Leash — drift sense (stack-wide)
+
+- Every agent with readings now has three senses, each on a different timescale:
+
+| Sense | Asks | Catches |
+|---|---|---|
+| Level | How high is it? | Readings outside normal |
+| Jump | How fast did it move, just now? | Sudden spikes |
+| Leash | Where has it been heading, over a while? | Slow drift |
+
+- The leash ties each reading to its normal behaviour. Normal wobble is allowed: that's the slack (a dead-band, or short-term averaging), so the leash doesn't twitch constantly.
+- When a reading pulls steadily in one direction for a sustained time (its average slope over a sliding window exceeds the channel's limit for longer than a set duration), the leash is pulled.
+- Two strengths:
+  - Soft leash (a gentle, sustained pull): logged for investigation.
+  - Hard leash (a strong, sustained pull): flagged, entering the normal escalation chain (self-check → orchestrator → EDEN). No parallel path.
+- Context-gated: when a related agent reports an expected cause (as defined in the rule book, e.g. ETHAN in a burn), the leash on the affected readings is loosened. Loosened still means logged, never silenced.
+- Loosening one agent's leash never hides another agent's problem: when GRACIE's temperature leash loosens because ETHAN is burning, ETHAN's own engine leash stays tight, so a real engine overheat is still caught by ETHAN (consistent with ETHAN's inverse rule: a confirmed engine-caused rise is raised).
+- Each agent owns the leashes for its own sensors.
+- Window size, slope limits (in units per second), slack, sustained duration, and soft/hard levels all come from each channel's rule book. No default values.
 - Status: **not built**.
 
 ---
 
 ## Cross-referencing principle
 
-Never judge in isolation. Each agent checks its own domain against the wider picture. GRACIE correlates a rise against what the ship is doing. ETHAN correlates his engine reading against GRACIE's. LUNAE correlates other agents' faults against her own instructions. A deep health sweep (see GRACIE) runs ship-wide, every agent sweeping its own domain, when a stream of small faults suggests something bigger. A rate-of-change jump is cross-checked the same way (see "Rate-of-change sense (stack-wide)").
+Never judge in isolation. Each agent checks its own domain against the wider picture. GRACIE correlates a rise against what the ship is doing. ETHAN correlates his engine reading against GRACIE's. LUNAE correlates other agents' faults against her own instructions. A deep health sweep (see GRACIE) runs ship-wide, every agent sweeping its own domain, when a stream of small faults suggests something bigger. A rate-of-change jump is cross-checked the same way (see "Rate-of-change sense (stack-wide)"). A leash's context-gating works the same way — checking the wider picture before deciding how tightly to react (see "Leash — drift sense (stack-wide)").
 
 ---
 
