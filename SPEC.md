@@ -51,6 +51,7 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - Rate-of-change: GRACIE also watches how fast a reading moves, not just its level — see "Rate-of-change sense (stack-wide)".
 - Leash: GRACIE also watches for slow, sustained drift, not just level and jump — see "Leash — drift sense (stack-wide)".
 - Three severities: **flagged**, **logged for investigation** (a spike that returns to normal), and **nominal**.
+- Logged-for-investigation items are announced on the bus, with the current readings, for CHESTER to watch over — see "Leash — drift sense (stack-wide)" and CHESTER.
 - A rise is judged against context from other agents on the bus, not in isolation. Expected causes (engine burn from ETHAN, radiation cloud, manoeuvre) are logged. No explanation on the bus means flagged as an early warning.
 - Crossing a safe parameter by more than a set margin is flagged regardless of context.
 - Deep health sweep: a stream of small faults is itself abnormal. GRACIE then runs a full health test down to every part she manages, so, for example, a blown fuse is found. Ship-wide — every agent runs its own sweep under the same trigger (see Cross-referencing principle).
@@ -134,6 +135,7 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 ## CHESTER — ship-wide watcher, no authority
 
 - A watcher with no authority, like HALIA. It watches, remembers, keeps timers, and tells the relevant agent. The owning agent makes every decision. A PA for the agents, not a manager.
+- Agents announce their own faults and anomalies on the bus; CHESTER keeps watch over them. Right now, with CHESTER not built, those announcements are published with no listener.
 - He logs as he goes: every reading he reads and every timer he sets, for traceability.
 - Its job is the slow, long-memory work, to take strain off the other agents:
   - Leash timers — how long a pull has been going, and when it reaches the hard duration.
@@ -371,11 +373,13 @@ Status: **not built**.
 - Two strengths, by how long the SAME pull keeps going — not by how strong it is:
   - Soft leash: the pull is still going after the soft duration — logged for investigation.
   - Hard leash: the same pull is still going after the longer hard duration — flagged, entering the normal escalation chain (self-check → orchestrator → EDEN). No parallel path. The reasoning: give it a chance to settle; only escalate if it doesn't go away on its own.
+- A soft pull that settles back to normal before reaching hard is logged for investigation, and the channel returns to NOMINAL — it does not stay latched. The item, with its readings, is announced on the bus for CHESTER to watch over (agents announce; CHESTER keeps watch — see CHESTER). Exception: a channel already part of an active major fault — its own level FAULT latched, or linked to one via the rule book — stays with that fault's handling and latch, and is not handed off.
+- Level FAULT and hard leash still latch until cleared through the sign-off rules — unchanged.
 - Context-gated: when a related agent reports an expected cause (as defined in the rule book, e.g. ETHAN in a burn), the leash on the affected readings is loosened — downgrading a hard pull to soft. Loosened still means logged, never silenced.
 - Loosening one agent's leash never hides another agent's problem: when GRACIE's temperature leash loosens because ETHAN is burning, ETHAN's own engine leash stays tight, so a real engine overheat is still caught by ETHAN (consistent with ETHAN's inverse rule: a confirmed engine-caused rise is raised).
 - Each agent owns the leashes for its own sensors.
 - One slope limit per channel, a soft duration and a longer hard duration, and the slack, all come from each channel's rule book. No default values.
-- Status: GRACIE — built, on her own channels (`agents/gracie.py`): soft and hard by duration, latched, never auto-cleared. Context-gating is **not built** — it needs an expected-cause signal from another agent GRACIE doesn't have yet. Everyone else — **not built**.
+- Status: GRACIE — built, on her own channels (`agents/gracie.py`): soft and hard by duration; hard latches until cleared through the sign-off rules, soft clears itself and returns to NOMINAL if the pull settles back, announced for CHESTER either way (CHESTER himself isn't built, so for now that announcement has no listener). Context-gating is **not built** — it needs an expected-cause signal from another agent GRACIE doesn't have yet. Everyone else — **not built**.
 
 ---
 

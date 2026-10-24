@@ -49,19 +49,35 @@ DRIFT_RULE = ChannelRule(
     leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
 )
 
-RULE_BOOK = {"temp_c": TEMP_RULE, "radiation": RAD_RULE, "drift_channel": DRIFT_RULE}
+# A second drift-style channel, with REACHABLE level bounds (unlike
+# DRIFT_RULE's, set deliberately out of range), for the "settling soft
+# pull on a channel already in an active level FAULT" case.
+COMBO_RULE = ChannelRule(
+    name="combo_channel", units="u",
+    level_high=200.0, level_low=-200.0,
+    jump_limit=1_000.0,
+    leash_window_seconds=10.0, leash_slope_limit=1.0,
+    leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
+)
+
+RULE_BOOK = {
+    "temp_c": TEMP_RULE, "radiation": RAD_RULE,
+    "drift_channel": DRIFT_RULE, "combo_channel": COMBO_RULE,
+}
 
 
 def make_gracie():
     bus = EventBus()
     reports = []
+    chester_announcements = []
     bus.subscribe("telemetry/health", reports.append)
+    bus.subscribe("chester/watch", chester_announcements.append)
     gracie = GracieAgent(bus, RULE_BOOK)
-    return gracie, reports
+    return gracie, reports, chester_announcements
 
 
 def test_level_is_independent_per_channel():
-    gracie, _ = make_gracie()
+    gracie, _, _ = make_gracie()
     gracie.process_readings({"temp_c": 30, "radiation": 10}, timestamp=0)
     assert gracie.health_state == "NOMINAL"
 
@@ -80,7 +96,7 @@ def test_level_is_independent_per_channel():
 
 
 def test_clear_fault_per_channel_and_all():
-    gracie, _ = make_gracie()
+    gracie, _, _ = make_gracie()
     gracie.process_readings({"temp_c": 56, "radiation": 45}, timestamp=0)
     assert gracie.health_state == "FAULT"
 
@@ -97,7 +113,7 @@ def test_clear_fault_per_channel_and_all():
 
 
 def test_jump_is_momentary_not_latched():
-    gracie, _ = make_gracie()
+    gracie, _, _ = make_gracie()
     gracie.process_readings({"radiation": 0}, timestamp=0)
     assert gracie.health_state == "NOMINAL"
 
@@ -112,7 +128,7 @@ def test_jump_is_momentary_not_latched():
 
 
 def test_leash_soft_then_hard_by_duration():
-    gracie, _ = make_gracie()
+    gracie, _, _ = make_gracie()
     # A steady ramp of 2 units/s -- comfortably over leash_slope_limit
     # (1.0/s). window=10s, soft=20s, hard=40s. The pull begins once the
     # window first fills (t=10), so soft is expected at t=30 (10+20),
@@ -129,27 +145,55 @@ def test_leash_soft_then_hard_by_duration():
     print("  ok: leash reaches soft at its soft duration, hard at its (longer) hard duration")
 
 
-def test_leash_settles_back_before_hard_stays_at_soft():
-    gracie, _ = make_gracie()
+def test_leash_settles_back_before_hard_clears_and_announces_for_chester():
+    gracie, _, chester = make_gracie()
     t = 0
     # Ramp up past soft (reached at t=30, same as the test above).
     for t in range(0, 31):
         gracie.process_readings({"drift_channel": 2.0 * t}, timestamp=float(t))
     assert gracie._last_readings["drift_channel"]["severity"] == "WARNING"
+    assert chester == []
 
     # Now hold flat -- the windowed slope decays toward 0 well before
-    # hard's duration (40s) would otherwise be reached.
+    # hard's duration (40s) would otherwise be reached, so the pull
+    # settles back on its own.
     flat_value = 2.0 * t
     for extra in range(1, 15):
         gracie.process_readings({"drift_channel": flat_value}, timestamp=float(t + extra))
 
-    assert gracie._last_readings["drift_channel"]["severity"] == "WARNING", \
-        "settling back must not auto-clear -- only clear_fault does that"
-    print("  ok: a pull that settles back before hard stays logged at soft, not auto-cleared")
+    assert gracie._last_readings["drift_channel"]["severity"] == "NOMINAL", \
+        "a soft pull that settles back must clear itself, not stay stuck at WARNING"
+    assert len(chester) == 1, chester
+    assert chester[0]["kind"] == "leash_settled"
+    assert chester[0]["channel"] == "drift_channel"
+    assert "readings" in chester[0]
+    print("  ok: a settling soft pull clears to NOMINAL and announces once on chester/watch")
+
+
+def test_leash_settles_back_stays_with_an_active_level_fault():
+    gracie, _, chester = make_gracie()
+    t = 0
+    # combo_channel starts already past its level FAULT (level_high=200)
+    # and keeps climbing at the same 2 units/s ramp, so it independently
+    # builds a leash pull on top of an already-latched level fault.
+    for t in range(0, 31):
+        gracie.process_readings({"combo_channel": 250.0 + 2.0 * t}, timestamp=float(t))
+    assert gracie._last_readings["combo_channel"]["severity"] == "FAULT"  # from LEVEL, not leash
+
+    # Hold flat -- the leash pull settles, same as the test above, but
+    # the level fault is still independently active throughout.
+    flat_value = 250.0 + 2.0 * t
+    for extra in range(1, 15):
+        gracie.process_readings({"combo_channel": flat_value}, timestamp=float(t + extra))
+
+    assert gracie._last_readings["combo_channel"]["severity"] == "FAULT", \
+        "a settling leash pull must not clear a channel that's independently still FAULT"
+    assert chester == [], "no hand-off to CHESTER while the channel is part of an active major fault"
+    print("  ok: a settling soft pull stays with an already-active level FAULT, not handed off")
 
 
 def test_report_carries_actual_readings():
-    gracie, reports = make_gracie()
+    gracie, reports, _ = make_gracie()
     gracie.process_readings({"temp_c": 30, "radiation": 10}, timestamp=0)
     last = reports[-1]
     assert last["system_health"] == "NOMINAL"
@@ -166,7 +210,7 @@ def test_report_carries_actual_readings():
 
 
 def test_unrecognized_channel_is_ignored_not_guessed_at():
-    gracie, _ = make_gracie()
+    gracie, _, _ = make_gracie()
     gracie.process_readings({"temp_c": 30, "mystery_channel": 999}, timestamp=0)
     assert "mystery_channel" not in gracie._last_readings
     assert gracie.health_state == "NOMINAL"
@@ -179,7 +223,8 @@ def main():
         test_clear_fault_per_channel_and_all,
         test_jump_is_momentary_not_latched,
         test_leash_soft_then_hard_by_duration,
-        test_leash_settles_back_before_hard_stays_at_soft,
+        test_leash_settles_back_before_hard_clears_and_announces_for_chester,
+        test_leash_settles_back_stays_with_an_active_level_fault,
         test_report_carries_actual_readings,
         test_unrecognized_channel_is_ignored_not_guessed_at,
     ]

@@ -29,8 +29,8 @@ GRACIE doesn't have yet -- out of scope until they're wired in, same
 order as everything else in SPEC.md's "Wiring plan and ghost mode".
 """
 
-from dataclasses import dataclass
-from typing import Dict
+from dataclasses import dataclass, field
+from typing import Dict, Tuple
 
 
 @dataclass(frozen=True)
@@ -44,6 +44,14 @@ class ChannelRule:
     leash_slope_limit: float  # units per second
     leash_soft_duration_seconds: float
     leash_hard_duration_seconds: float
+    # Other channels this one is linked to, per SPEC.md's Leash
+    # section: a settling soft pull on a channel linked to one
+    # currently in an active major fault stays with that fault's
+    # handling, rather than clearing itself. Unlike the numeric
+    # limits above, an empty link set is a genuine, non-arbitrary
+    # default (no claimed relationship), not an invented number, so
+    # this field alone may default.
+    linked_channels: Tuple[str, ...] = field(default_factory=tuple)
 
 
 RuleBook = Dict[str, ChannelRule]

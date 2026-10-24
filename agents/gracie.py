@@ -57,6 +57,18 @@ Interpretive calls made, agreed with Jay before building (see
    current level/leash latch plus whether it jumped this cycle --
    resolving SPEC.md's open item that GRACIE's reports should carry
    the actual readings, not just the aggregate state.
+9. Added 2026-10-25 (same day, second pass): a soft leash pull that
+   settles back to normal before reaching hard no longer leaves the
+   channel stuck at WARNING. It's announced on "chester/watch" (with
+   the current readings) for CHESTER to pick up -- SPEC.md's "agents
+   announce; CHESTER keeps watch" -- and the channel's latch clears to
+   NOMINAL itself. Exception: a channel already part of an active
+   major fault (its own level FAULT latched, or linked to one via
+   ChannelRule.linked_channels) stays with that fault's latch instead
+   -- not handed off, not cleared. Hard leash and level FAULT are
+   unchanged: both still latch until an explicit clear_fault, same as
+   before. CHESTER isn't built, so for now the announcement is
+   published with no listener -- that's expected, not a bug.
 
 No invented numbers: every ChannelRule field is required, no
 defaults (see agents/gracie_rulebook.py). Real callers and tests alike
@@ -181,22 +193,50 @@ class GracieAgent:
             return (value - anchor_v) / dt
         return None
 
+    def _is_part_of_active_major_fault(self, state: _ChannelState) -> bool:
+        """This channel's own level FAULT is latched, or it's linked
+        (ChannelRule.linked_channels) to another channel currently
+        latched FAULT -- either way, a settling soft pull here stays
+        with that fault's handling rather than clearing itself."""
+        if state.latched_severity == "FAULT":
+            return True
+        return any(
+            (linked_state := self._states.get(linked)) is not None
+            and linked_state.latched_severity == "FAULT"
+            for linked in state.rule.linked_channels
+        )
+
     def _process_leash(self, channel: str, state: _ChannelState, timestamp: float,
-                        slope: Optional[float]) -> None:
+                        slope: Optional[float]) -> Optional[str]:
         """Soft and hard are checked independently each cycle (not
         mutually exclusive) so a pull that keeps going produces both
         transitions, each at its own correct timestamp -- matching
         the batch scorer's separate soft/hard episode detection.
         soft_active/hard_active edge-trigger per pull (reset when the
-        pull itself ends); latched_severity only ever ratchets up,
-        and only clear_fault resets it -- see _ChannelState's
-        docstring for why these are kept separate."""
+        pull itself ends); latched_severity only ever ratchets up on
+        its own, and only clear_fault resets it -- EXCEPT a soft-only
+        pull settling back, which clears itself (module docstring,
+        point 9) unless the channel is part of an active major fault.
+        Returns "settled" when the caller should announce for CHESTER,
+        otherwise None."""
         rule = state.rule
         if slope is None or abs(slope) <= rule.leash_slope_limit:
+            was_soft_only = state.soft_active and not state.hard_active
             state.pull_run_start = None
             state.soft_active = False
             state.hard_active = False
-            return
+            if not was_soft_only:
+                return None
+            if self._is_part_of_active_major_fault(state):
+                self.logger.info(
+                    f"{channel}: soft leash pull settled, but the channel is part of "
+                    f"an active major fault -- staying latched, not handed off to CHESTER"
+                )
+                return None
+            self.logger.info(f"{channel}: soft leash pull settled back to NOMINAL -- announcing for CHESTER")
+            state.latched_severity = "NOMINAL"
+            return "settled"
+
         if state.pull_run_start is None:
             state.pull_run_start = timestamp
         elapsed = timestamp - state.pull_run_start
@@ -211,6 +251,7 @@ class GracieAgent:
             self.logger.info(f"{channel}: LEASH HARD transition at t={timestamp} (slope={slope:.6g})")
             if _SEVERITY_RANK[state.latched_severity] < _SEVERITY_RANK["FAULT"]:
                 state.latched_severity = "FAULT"
+        return None
 
     # --- main entry point ----------------------------------------------
     def process_readings(self, readings: Dict[str, float], timestamp: float):
@@ -231,7 +272,7 @@ class GracieAgent:
             self._process_level(channel, state, value)
             jump_event = self._process_jump(state, timestamp, value)
             slope = self._update_window_and_get_slope(state, timestamp, value)
-            self._process_leash(channel, state, timestamp, slope)
+            leash_event = self._process_leash(channel, state, timestamp, slope)
 
             if jump_event:
                 cycle_jump_channels.add(channel)
@@ -243,6 +284,9 @@ class GracieAgent:
                 "severity": state.latched_severity,
                 "jump": jump_event,
             }
+
+            if leash_event == "settled":
+                self._announce_for_chester(channel, timestamp)
 
         self._recompute_aggregate(cycle_jump_channels)
         self.report_health(timestamp)
@@ -260,6 +304,20 @@ class GracieAgent:
                 worst = severity
         self.health_state = worst
         return worst
+
+    def _announce_for_chester(self, channel: str, timestamp: float):
+        """SPEC.md: "Agents announce their own faults and anomalies on
+        the bus; CHESTER keeps watch over them." No listener exists
+        yet (CHESTER isn't built) -- publishing anyway is deliberate,
+        not a bug, per the approved plan."""
+        self.logger.info(f"{channel}: announcing on chester/watch (no listener yet)")
+        self.bus.publish("chester/watch", {
+            "kind": "leash_settled",
+            "agent": "GRACIE",
+            "channel": channel,
+            "timestamp": timestamp,
+            "readings": dict(self._last_readings),
+        })
 
     def report_health(self, timestamp=None):
         if timestamp is None:

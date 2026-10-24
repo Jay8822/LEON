@@ -15,7 +15,10 @@ Licence: CC BY 3.0 IGO.
 Companion paper: Kotowski et al., "European Space Agency Benchmark for
 Anomaly Detection in Satellite Telemetry," arXiv:2406.17826 (2024).
 
-Three missions, one zip each, 11.6 GB total (sizes/MD5s below are
+Only Missions 1 and 2 -- the two the ESA-ADB benchmark actually uses.
+Mission3 is excluded deliberately: per the benchmark paper, it has
+too few anomalies and too many communication gaps to be useful, and
+isn't part of the benchmark at all. 7.9 GB total (sizes/MD5s below are
 exactly what Zenodo publishes for this record -- confirmed by reading
 the record directly, not assumed from secondary sources, which
 disagreed with each other on total size).
@@ -70,12 +73,6 @@ FILES = [
         "https://zenodo.org/records/12528696/files/ESA-Mission2.zip?download=1",
         "0b7505b7f0731ca037ee889ca2a520ce",
         "4.1 GB",
-    ),
-    (
-        "ESA-Mission3.zip",
-        "https://zenodo.org/records/12528696/files/ESA-Mission3.zip?download=1",
-        "34b8a8857e2242fb1f00b368b7421595",
-        "3.7 GB",
     ),
 ]
 

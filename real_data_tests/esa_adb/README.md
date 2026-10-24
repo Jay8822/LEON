@@ -19,12 +19,12 @@ Anomaly Detection in Satellite Telemetry," arXiv:2406.17826 (2024).
 
 Licence: CC BY 3.0 IGO.
 
-Three ESA missions, one zip archive each (ESA-Mission1/2/3.zip),
-11.6 GB total. Mission1 has 76 telemetry channels (58 monitored for
-anomalies), Mission2 has 100 (47 monitored); Mission3 has few,
-trivial anomalies and many communication gaps, and per the benchmark
-paper is excluded from the actual benchmark the other two are used
-for.
+Only Missions 1 and 2 (one zip archive each, 7.9 GB total) — the two
+the ESA-ADB benchmark actually uses. Mission1 has 76 telemetry
+channels (58 monitored for anomalies), Mission2 has 100 (47
+monitored). The dataset's Mission3 is deliberately not downloaded
+here: per the benchmark paper it has few, trivial anomalies and many
+communication gaps, and isn't part of the benchmark at all.
 
 ## Running it
 
@@ -34,7 +34,7 @@ This step only downloads; it does not unpack or load anything:
     python -m real_data_tests.esa_adb.download_esa_adb
 
 Each file is streamed straight to disk in 8 MB chunks, never held
-whole in memory — three ~4 GB downloads on a 6 GB machine would be
+whole in memory — two ~4 GB downloads on a 6 GB machine would be
 risky otherwise, before any actual analysis even starts. Expect this
 to take a long time; it's meant to run in the background.
 
@@ -44,7 +44,7 @@ to take a long time; it's meant to run in the background.
   test against this data are separate, later work, and will need to
   read it in chunks (one mission, a handful of channels at a time) —
   not loaded whole, per SPEC.md's own caution.
-- Total size (11.6 GB) is the Zenodo record's own figure, checked
-  directly — some secondary sources claimed 31 GB total; the record
-  itself is authoritative and is what the download script and MD5s
-  are built against.
+- Total size (7.9 GB for Missions 1 and 2) is the Zenodo record's own
+  figure, checked directly — some secondary sources claimed 31 GB for
+  all three missions combined; the record itself is authoritative and
+  is what the download script and MD5s are built against.
