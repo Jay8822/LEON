@@ -14,6 +14,13 @@ shapes. The real long-duration test is ESA-ADB, later.
 
 ## How it works
 
+Updated 2026-10-24: the leash was redefined from two slope-based
+limits (soft/hard) to one slope limit plus two durations — soft/hard
+came out almost identical as slopes on real data, so the original
+version of this test couldn't show them working separately. This
+version plants drifts of different *durations*, at the same
+comfortable slope margin, to test that distinction directly.
+
 - Normal wobble is built from real behaviour: consecutive-sample
   deltas are bootstrap-resampled from real OPSSAT-AD nominal training
   data (one real channel at a time, 1-second-sampled fragments only),
@@ -22,14 +29,18 @@ shapes. The real long-duration test is ESA-ADB, later.
 - Two channels: CADC0872 (magnetometer) and CADC0894 (photodiode) —
   the only photodiode channel that has any 1-second-sampled data at
   all.
-- Leash limits (soft/hard) are derived from pure-noise chunks, before
+- One slope limit per channel, derived from pure-noise chunks before
   any drift is planted, using the exact same `derive_leash_limits()`
   the real OPS-SAT test uses. A fixed derivation seed (0), separate
   from every scenario seed.
-- Planted drifts are sized as fixed multiples of those already-derived
-  limits: obvious (10x), moderate (2x), very slow (1.5x soft), tiny
-  (0.5x soft — expected to go uncaught), and one that ramps up then
-  returns to normal on its own.
+- Every catchable planted drift uses the same comfortable margin (5x
+  the limit) — what varies is duration: below_soft (too brief for
+  even soft), soft_only (past soft, short of hard), reaches_hard (past
+  hard), tiny (0.5x the limit — below it entirely, expected uncaught
+  regardless of duration), and one that ramps past hard then returns
+  to normal on its own. Durations were chosen while building this test
+  fixture (checking they land clearly on one side of the 60s/150s
+  boundary), not by tuning against any scored result.
 - One ~2-hour (7,200s), 1Hz timeline per channel per seed. Five fixed
   seeds, reported individually and totalled. Nothing is tuned after
   looking at results.
@@ -44,15 +55,9 @@ Needs `real_data_tests/opssat_ad/data/segments.csv` to already exist
 
 ## Honest limits
 
-- Soft and hard limits came out very close together for both channels
-  (the nominal extreme-slope distribution's 95th and 99th percentiles
-  are tight). As a result, the "very slow" case (1.5x the soft limit)
-  also exceeded the hard limit in every seed — nothing in this run
-  was caught at "soft" only. Testing the soft/hard distinction
-  specifically would need a multiple chosen closer to 1x soft and
-  comfortably below hard.
 - This only tests the leash mechanism's sensitivity to the shapes
-  planted here (steady ramps, one that reverses). Real drift may not
-  look like a clean linear ramp.
+  planted here (steady ramps at a fixed 5x margin, one that reverses).
+  Real drift may not ramp this cleanly or sit this comfortably above
+  the limit.
 - Context-gating isn't tested here either — there's no second agent
   in this simulation to report an expected cause.

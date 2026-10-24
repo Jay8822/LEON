@@ -63,3 +63,10 @@ Raw data is never committed to this repo — `data/` here is gitignored.
   see `simulated_tests/leash_drift/` for a controlled test of the
   mechanism itself, and ESA-ADB (later) for its real long-duration
   test.
+- The leash was later redefined (one slope limit, soft/hard as
+  durations, not separate slope limits — see `run_opssat_ad_test.py`'s
+  module docstring). That redefinition was deliberately NOT re-run
+  against this dataset: the finding above already stands (the
+  strongest fragment anywhere falls short of even the shorter, soft
+  duration), so re-running would not change it. The duration model is
+  exercised instead in `simulated_tests/leash_drift/`.

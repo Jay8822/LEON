@@ -11,7 +11,12 @@ mechanism's sensitivity under known, planted conditions -- not
 performance on a real spacecraft. Never mixed into the real-data
 scorecards in real_data_tests/.
 
-Design, agreed with Jay before building:
+Design, agreed with Jay before building (updated 2026-10-24: the
+leash itself was redefined by Jay from two slope-based limits to one
+slope limit plus two durations, because soft/hard came out almost
+identical as slopes and the test couldn't show them working
+separately -- see SPEC.md's "Leash" section and
+run_opssat_ad_test.py's module docstring):
 
 - Normal wobble is built from REAL behaviour, not an invented noise
   model: consecutive-sample deltas are bootstrap-resampled (with
@@ -27,25 +32,30 @@ Design, agreed with Jay before building:
   have any 1-second-sampled data at all: of the 6 photodiode channels,
   only CADC0894 does (the other 5 are 5-second-sampled only), so it's
   the one usable photodiode source for this test.
-- Leash settings (soft/hard limits) are derived BEFORE any drift is
-  planted, the same way as the OPS-SAT test: pure-noise chunks (no
-  drift at all) are treated as fragments and fed through the same
+- The leash's one slope limit is derived BEFORE any drift is planted,
+  the same way as the OPS-SAT test: pure-noise chunks (no drift at
+  all) are treated as fragments and fed through the same
   derive_leash_limits() used there. A fixed derivation seed (0) is
   used for this step, separate from every seed used for the actual
   scored scenario below, so limit derivation isn't tied to the same
   randomness being scored.
-- Planted drifts are then sized as fixed multiples of those
-  already-derived limits (e.g. "10x hard limit"), not as independently
-  invented physical quantities -- the point is to test the mechanism's
-  sensitivity relative to its own derived bar, not to claim a specific
-  real-world drift magnitude.
-- One ~2-hour (7,200 second) timeline per channel per seed, 1Hz,
-  built once per (channel, seed) pair: clean control stretches
-  (no added drift) alternating with five planted events -- obvious,
-  moderate, very slow, tiny (below the soft limit, expected to go
-  uncaught), and one that ramps up then returns to normal on its own.
-  Only the noise realisation varies with the seed; the event schedule
-  and sizes are fixed.
+- Planted drifts are sized as fixed multiples of that already-derived
+  limit (e.g. "5x the limit"), not as independently invented physical
+  quantities. Since soft/hard is now about DURATION, not strength,
+  every catchable event uses the same comfortable slope margin (5x the
+  limit) -- what varies between events is how long each one lasts,
+  chosen (empirically, while building this test fixture, not by
+  tuning against any scored result) to land clearly on one side or the
+  other of the soft/hard duration boundary.
+- One ~2-hour (7,200 second) timeline per channel per seed, 1Hz, built
+  once per (channel, seed) pair: clean control stretches (no added
+  drift) alternating with five planted events -- below_soft (too
+  brief to reach even the soft duration), soft_only (reaches soft, not
+  hard), reaches_hard (reaches hard), tiny (below the slope limit
+  entirely, expected to go uncaught regardless of duration), and one
+  that ramps up past hard then returns to normal on its own. Only the
+  noise realisation varies with the seed; the event schedule and sizes
+  are fixed.
 """
 
 import csv
@@ -56,8 +66,7 @@ from datetime import datetime, timedelta
 from real_data_tests.opssat_ad.run_opssat_ad_test import (
     Fragment,
     derive_leash_limits,
-    LEASH_SOFT_PCT,
-    LEASH_HARD_PCT,
+    LEASH_SLOPE_PCT,
 )
 
 OPSSAT_SEGMENTS_CSV = os.path.join(
@@ -73,19 +82,28 @@ DERIVATION_SEED = 0  # fixed, separate from every scenario seed below
 DERIVATION_CHUNK_SECONDS = 300  # matches real data's median fragment duration
 DERIVATION_N_CHUNKS = 30
 
-# (name, start_s, duration_s, strength, shape)
-# strength is a multiple of the hard or soft limit (see build_scenario);
-# shape is "ramp" (0 -> target, holds), or "return" (0 -> target -> 0).
+# Comfortable margin above the single slope limit for every event
+# that should register at all -- isolates "how long" from "how
+# strong," since strength is no longer what distinguishes soft/hard.
+EVENT_MULTIPLE = 5.0
+TINY_MULTIPLE = 0.5  # below the limit entirely -- never starts a pull
+
+# (name, start_s, duration_s, multiple, shape)
+# shape is "ramp" (0 -> target, holds), or "return" (0 -> target -> 0,
+# ramping up for the first half of duration_s, back down for the rest).
+# Durations chosen (while building this fixture, not from any scored
+# result) to land clearly on one side of the soft (60s) / hard (150s)
+# duration boundary -- see module docstring.
 PLANTED_EVENTS = [
-    ("obvious",    600,  300,  ("hard", 10.0), "ramp"),
-    ("moderate",  1500,  900,  ("hard", 2.0),  "ramp"),
-    ("very_slow", 3000, 1200,  ("soft", 1.5),  "ramp"),
-    ("tiny",      4800,  300,  ("soft", 0.5),  "ramp"),  # below the soft limit -- expected uncaught
-    ("returns",   5700,  600,  ("hard", 3.0),  "return"),
+    ("below_soft",   500,   20, EVENT_MULTIPLE, "ramp"),   # too brief for even soft
+    ("soft_only",   1000,  100, EVENT_MULTIPLE, "ramp"),   # past soft, short of hard
+    ("reaches_hard", 1600, 250, EVENT_MULTIPLE, "ramp"),   # past hard
+    ("tiny",         2500, 300, TINY_MULTIPLE,  "ramp"),   # below the limit -- expected uncaught
+    ("returns",       3300, 500, EVENT_MULTIPLE, "return"),  # past hard, then back to normal
 ]
 # Control stretches: every second of TOTAL_SECONDS not covered by a
-# planted event above (0-600, 900-1500, 2400-3000, 4200-4800,
-# 5100-5700, 6300-7200).
+# planted event above (0-500, 520-1000, 1100-1600, 1850-2500,
+# 2800-3300, 3800-7200).
 
 
 def load_real_delta_pool(channel):
@@ -139,11 +157,11 @@ def _make_fragment_from_series(values, start_time=None):
     return frag
 
 
-def derive_limits_for_channel(channel, delta_pool):
+def derive_limit_for_channel(channel, delta_pool):
     """Pure-noise chunks, no drift at all, fed through the exact same
     derive_leash_limits() the real OPS-SAT test uses -- see module
     docstring. Fixed derivation seed, independent of any scenario
-    seed."""
+    seed. One limit now, not a soft/hard pair."""
     rng = random.Random(DERIVATION_SEED)
     chunks = []
     for _ in range(DERIVATION_N_CHUNKS):
@@ -152,9 +170,8 @@ def derive_limits_for_channel(channel, delta_pool):
         frag.channel = channel
         chunks.append(frag)
 
-    soft = derive_leash_limits(chunks, LEASH_SOFT_PCT)
-    hard = derive_leash_limits(chunks, LEASH_HARD_PCT)
-    return soft[channel]["limit"], hard[channel]["limit"]
+    limits = derive_leash_limits(chunks, LEASH_SLOPE_PCT)
+    return limits[channel]["limit"]
 
 
 def _event_offset(start_s, duration_s, shape, slope, t):
@@ -178,27 +195,29 @@ def _event_offset(start_s, duration_s, shape, slope, t):
     raise ValueError(f"unknown shape {shape!r}")
 
 
-def build_scenario(channel, delta_pool, soft_limit, hard_limit, seed):
+def build_scenario(channel, delta_pool, limit, seed):
     """One ~2-hour simulated timeline for `channel`, with the fixed
     planted events added on top of bootstrap noise. Returns
     (timestamps, values, events) where events is a list of dicts with
-    name/start_s/end_s/target_slope/shape/expected_catchable."""
+    name/start_s/end_s/target_slope/shape/expected_soft/expected_hard."""
     rng = random.Random(seed)
     values = _build_noise_series(delta_pool, TOTAL_SECONDS, rng)
 
     events = []
-    for name, start_s, duration_s, (which, multiple), shape in PLANTED_EVENTS:
-        base_limit = hard_limit if which == "hard" else soft_limit
-        slope = base_limit * multiple
+    for name, start_s, duration_s, multiple, shape in PLANTED_EVENTS:
+        slope = limit * multiple
         end_s = start_s + duration_s
         for t in range(start_s, min(end_s, TOTAL_SECONDS)):
             values[t] += _event_offset(start_s, duration_s, shape, slope, t)
         events.append({
             "name": name, "start_s": start_s, "end_s": end_s,
             "target_slope": slope, "shape": shape,
-            # "tiny" is deliberately below the soft limit -- every
-            # other event is at or above it, so expected to register.
-            "expected_catchable": name != "tiny",
+            # By design (see module docstring): below_soft is too
+            # brief for even soft; soft_only reaches soft but not
+            # hard; reaches_hard and returns both reach hard; tiny is
+            # below the limit entirely, so it's never even a pull.
+            "expected_soft": name in ("soft_only", "reaches_hard", "returns"),
+            "expected_hard": name in ("reaches_hard", "returns"),
         })
 
     start_time = datetime(2000, 1, 1)

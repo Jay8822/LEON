@@ -39,6 +39,7 @@ Anything that isn't normal is flagged. Anything that rises without reason is fla
 | HALIA | Crew and ground control interface. The only agent with an LLM, and no authority to act |
 | SystemCoordinator | HALIA's bridge and containment gatekeeper; periodic diagnostics |
 | Orchestrator | Separate seventh component. Traffic controller and quality control ahead of EDEN |
+| CHESTER | Eighth component. Ship-wide watcher with no authority: keeps timers and long memory, tells the relevant agent |
 
 Each agent is self-sufficient in its own domain and can act without permission. Anything it cannot resolve alone goes up the chain.
 
@@ -127,6 +128,21 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 
 - Two cases bypass the gate: ETHAN's "I need a human now" escalation, and **any critical malfunction** from any agent.
 - A bypass goes straight to where it needs to go, and **leaves a note** to the orchestrator that it happened. The orchestrator never loses awareness; it only does not get to gate the fast path.
+
+---
+
+## CHESTER — ship-wide watcher, no authority
+
+- A watcher with no authority, like HALIA. It watches, remembers, keeps timers, and tells the relevant agent. The owning agent makes every decision. A PA for the agents, not a manager.
+- Its job is the slow, long-memory work, to take strain off the other agents:
+  - Leash timers — how long a pull has been going, and when it reaches the hard duration.
+  - Items logged for investigation, so they aren't forgotten.
+  - Repeating coincidences between unrelated jumps ("spike on X, jump on Y, again").
+  - Light-flag reminders on every timed self-check cycle.
+- Does not do the fast checks. Level and jump stay with each agent, because they can't wait for a middleman (e.g. ETHAN's millisecond responses).
+- How it differs from the orchestrator: the orchestrator handles traffic, priority and escalation in the moment; CHESTER handles memory over time.
+- If CHESTER goes down: the system-wide heartbeat pings it until it comes back; if it doesn't, it's flagged for human interaction. Agents carry on with their own fast checks meanwhile. No safe mode, because CHESTER never makes decisions.
+- Status: **not built**.
 
 ---
 
@@ -346,14 +362,14 @@ Status: **not built**.
 | Leash | Where has it been heading, over a while? | Slow drift |
 
 - The leash ties each reading to its normal behaviour. Normal wobble is allowed: that's the slack (a dead-band, or short-term averaging), so the leash doesn't twitch constantly.
-- When a reading pulls steadily in one direction for a sustained time (its average slope over a sliding window exceeds the channel's limit for longer than a set duration), the leash is pulled.
-- Two strengths:
-  - Soft leash (a gentle, sustained pull): logged for investigation.
-  - Hard leash (a strong, sustained pull): flagged, entering the normal escalation chain (self-check → orchestrator → EDEN). No parallel path.
-- Context-gated: when a related agent reports an expected cause (as defined in the rule book, e.g. ETHAN in a burn), the leash on the affected readings is loosened. Loosened still means logged, never silenced.
+- When a reading's average slope over a sliding window crosses the channel's single slope limit and keeps going, the leash begins.
+- Two strengths, by how long the SAME pull keeps going — not by how strong it is:
+  - Soft leash: the pull is still going after the soft duration — logged for investigation.
+  - Hard leash: the same pull is still going after the longer hard duration — flagged, entering the normal escalation chain (self-check → orchestrator → EDEN). No parallel path. The reasoning: give it a chance to settle; only escalate if it doesn't go away on its own.
+- Context-gated: when a related agent reports an expected cause (as defined in the rule book, e.g. ETHAN in a burn), the leash on the affected readings is loosened — downgrading a hard pull to soft. Loosened still means logged, never silenced.
 - Loosening one agent's leash never hides another agent's problem: when GRACIE's temperature leash loosens because ETHAN is burning, ETHAN's own engine leash stays tight, so a real engine overheat is still caught by ETHAN (consistent with ETHAN's inverse rule: a confirmed engine-caused rise is raised).
 - Each agent owns the leashes for its own sensors.
-- Window size, slope limits (in units per second), slack, sustained duration, and soft/hard levels all come from each channel's rule book. No default values.
+- One slope limit per channel, a soft duration and a longer hard duration, and the slack, all come from each channel's rule book. No default values.
 - Status: **not built**.
 
 ---
@@ -374,6 +390,7 @@ Never judge in isolation. Each agent checks its own domain against the wider pic
 
 - Real numbers for every threshold currently written as "safe threshold", "margin", "X amount" or "a set time". Need hardware data.
 - GRACIE's health reports should carry the actual readings (temperature, radiation), not just the NOMINAL/WARNING/FAULT state. Right now they don't, which is why ghost mode's comparison log is health-state only — see `agents/ghost_mode.py`'s module docstring, point 4.
+- `ASSUMPTIONS.md` needs a CHESTER section (e.g. its timers stay accurate, it never loses an item it's tracking).
 - Assumptions list: what the system takes for granted without checking. Complete as of 22 October 2026 — see `ASSUMPTIONS.md`.
 - Formal specification and verification approach. Partner work.
 - Assurance case approach. Partner work.
