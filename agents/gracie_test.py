@@ -173,7 +173,8 @@ def test_leash_settles_back_before_hard_clears_and_announces_for_chester():
     for t in range(0, 31):
         gracie.process_readings({"drift_channel": 2.0 * t}, timestamp=float(t))
     assert gracie._last_readings["drift_channel"]["severity"] == "WARNING"
-    assert chester == []
+    # Entering WARNING is announced the moment it happens, not held back.
+    assert [e["kind"] for e in chester] == ["warning_entered"], chester
 
     # Now hold flat -- the windowed slope decays toward 0 well before
     # hard's duration (40s) would otherwise be reached, so the pull
@@ -184,11 +185,14 @@ def test_leash_settles_back_before_hard_clears_and_announces_for_chester():
 
     assert gracie._last_readings["drift_channel"]["severity"] == "NOMINAL", \
         "a soft pull that settles back must clear itself, not stay stuck at WARNING"
-    assert len(chester) == 1, chester
-    assert chester[0]["kind"] == "leash_settled"
-    assert chester[0]["channel"] == "drift_channel"
-    assert "readings" in chester[0]
-    print("  ok: a settling soft pull clears to NOMINAL and announces once on chester/watch")
+    # Settling announces both: the leash-specific event, and the more
+    # general "left WARNING" one -- same settling moment, two kinds.
+    kinds = [e["kind"] for e in chester]
+    assert kinds == ["warning_entered", "leash_settled", "warning_left"], kinds
+    for e in chester:
+        assert e["channel"] == "drift_channel"
+        assert "readings" in e
+    print("  ok: entering/leaving WARNING and the leash settling are each announced once")
 
 
 def test_leash_settles_back_stays_with_an_active_level_fault():
@@ -234,10 +238,43 @@ def test_leash_settles_back_stays_with_a_linked_channels_active_fault():
     for extra in range(1, 15):
         gracie.process_readings({"linked_a": flat_value}, timestamp=float(t + extra))
 
+    # A's own entering-WARNING is announced as usual; only the settle
+    # (leaving WARNING) is held back by B's active fault.
+    assert [e["kind"] for e in chester] == ["warning_entered"], chester
     assert gracie._last_readings["linked_a"]["severity"] == "WARNING", \
         "A must stay latched while B, which A is linked to, is still an active major fault"
-    assert chester == [], "no hand-off to CHESTER while a linked channel has an active major fault"
-    print("  ok: a settling soft pull stays latched when linked to a DIFFERENT channel's active fault")
+    # No SECOND announcement from the settle -- still just the one
+    # "warning_entered" from earlier; no "leash_settled"/"warning_left".
+    assert [e["kind"] for e in chester] == ["warning_entered"], chester
+    print("  ok: a settling soft pull stays latched when linked to a DIFFERENT channel's active fault, "
+          "with no hand-off announcement")
+
+
+def test_jump_announces_on_chester_watch():
+    gracie, _, chester = make_gracie()
+    gracie.process_readings({"radiation": 0}, timestamp=0)
+    assert chester == []
+    gracie.process_readings({"radiation": 10}, timestamp=1)  # rate=10/s > jump_limit=3/s
+    assert [e["kind"] for e in chester] == ["jump"], chester
+    assert chester[0]["channel"] == "radiation"
+    assert chester[0]["agent"] == "GRACIE"
+    gracie.process_readings({"radiation": 10}, timestamp=2)  # no change -- no new jump
+    assert [e["kind"] for e in chester] == ["jump"], "no new announcement without a new jump"
+    print("  ok: every jump announces once on chester/watch, not repeated without a new jump")
+
+
+def test_clear_fault_announces_warning_left():
+    gracie, _, chester = make_gracie()
+    t = 0
+    for t in range(0, 31):
+        gracie.process_readings({"drift_channel": 2.0 * t}, timestamp=float(t))
+    assert gracie._last_readings["drift_channel"]["severity"] == "WARNING"
+    assert [e["kind"] for e in chester] == ["warning_entered"], chester
+
+    gracie.clear_fault("drift_channel")
+    assert gracie._last_readings["drift_channel"]["severity"] == "NOMINAL"
+    assert [e["kind"] for e in chester] == ["warning_entered", "warning_left"], chester
+    print("  ok: an explicit clear_fault() also announces leaving WARNING")
 
 
 def test_report_carries_actual_readings():
@@ -274,6 +311,8 @@ def main():
         test_leash_settles_back_before_hard_clears_and_announces_for_chester,
         test_leash_settles_back_stays_with_an_active_level_fault,
         test_leash_settles_back_stays_with_a_linked_channels_active_fault,
+        test_jump_announces_on_chester_watch,
+        test_clear_fault_announces_warning_left,
         test_report_carries_actual_readings,
         test_unrecognized_channel_is_ignored_not_guessed_at,
     ]

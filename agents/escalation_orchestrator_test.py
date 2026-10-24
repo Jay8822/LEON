@@ -385,6 +385,24 @@ def test_signoff_override_used_then_fault_persists_light_flags_repeat():
     print("  ok: sign-off — after override, fault persists -> flagged, then re-flagged every cycle")
 
 
+# --- ignored-agent check (CHESTER) ------------------------------------------
+
+def test_ping_agent_confirmed_active():
+    orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
+    result = orch.ping_agent("LUNAE", responded=True)
+    assert result.outcome == "CONFIRMED_ACTIVE" and result.reason == "ping_responded", result
+    log = [e for e in orch.decision_log() if e["agent"] == "LUNAE"]
+    assert log, "the ping attempt itself must be logged, not just its outcome"
+    print("  ok: ping_agent — a response confirms the agent is active, logged")
+
+
+def test_ping_agent_unresponsive():
+    orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
+    result = orch.ping_agent("LUNAE", responded=False)
+    assert result.outcome == "UNRESPONSIVE" and result.reason == "ping_unanswered", result
+    print("  ok: ping_agent — no response is logged as unresponsive, not silently dropped")
+
+
 # --- logging: timestamp + originating agent on every entry -------------------
 
 def test_every_log_entry_has_timestamp_and_agent():
@@ -424,6 +442,8 @@ def main():
         test_signoff_override_unused_falls_to_hold_course,
         test_signoff_override_used_then_fault_gone_is_cleared,
         test_signoff_override_used_then_fault_persists_light_flags_repeat,
+        test_ping_agent_confirmed_active,
+        test_ping_agent_unresponsive,
         test_every_log_entry_has_timestamp_and_agent,
     ]
     for test in tests:

@@ -67,8 +67,17 @@ Interpretive calls made, agreed with Jay before building (see
    ChannelRule.linked_channels) stays with that fault's latch instead
    -- not handed off, not cleared. Hard leash and level FAULT are
    unchanged: both still latch until an explicit clear_fault, same as
-   before. CHESTER isn't built, so for now the announcement is
-   published with no listener -- that's expected, not a bug.
+   before.
+10. Added 2026-10-25 (third pass, CHESTER now being built): GRACIE
+    announces more on "chester/watch", not just a settled leash pull --
+    every jump event, and every time a channel enters or leaves
+    WARNING (by any means: a leash soft transition entering it, or
+    leaving it by settling, escalating to hard, or an explicit
+    clear_fault). Same once-per-transition rule throughout -- no
+    repeat announcements for a condition that's still ongoing. None of
+    this changes any verdict or latching; it only adds more kinds of
+    announcement alongside the existing "leash_settled" one. Proven
+    not to change any equivalence result in gracie_equivalence_test.py.
 
 No invented numbers: every ChannelRule field is required, no
 defaults (see agents/gracie_rulebook.py). Real callers and tests alike
@@ -135,20 +144,23 @@ class GracieAgent:
     def clear_fault(self, channel: Optional[str] = None):
         """Clears one channel's latch, or every channel's if `channel`
         is omitted -- preserves the old no-argument call shape."""
+        timestamp = int(time.time())
         channels = [channel] if channel is not None else list(self._states.keys())
         for ch in channels:
             state = self._states.get(ch)
             if state is None:
                 continue
+            prior_severity = state.latched_severity
             state.latched_severity = "NOMINAL"
             state.pull_run_start = None
             state.soft_active = False
             state.hard_active = False
             if ch in self._last_readings:
                 self._last_readings[ch]["severity"] = "NOMINAL"
+            self._announce_warning_transition(ch, timestamp, prior_severity, "NOMINAL")
         self.logger.info(f"Cleared fault for {channel if channel else 'all channels'}")
         self._recompute_aggregate()
-        self.report_health()
+        self.report_health(timestamp)
 
     # --- the three senses, per channel --------------------------------
     def _process_level(self, channel: str, state: _ChannelState, value: float):
@@ -268,6 +280,7 @@ class GracieAgent:
                 )
                 continue
             rule = state.rule
+            prior_severity = state.latched_severity
 
             self._process_level(channel, state, value)
             jump_event = self._process_jump(state, timestamp, value)
@@ -285,8 +298,11 @@ class GracieAgent:
                 "jump": jump_event,
             }
 
+            if jump_event:
+                self._announce_for_chester(channel, timestamp, "jump")
             if leash_event == "settled":
-                self._announce_for_chester(channel, timestamp)
+                self._announce_for_chester(channel, timestamp, "leash_settled")
+            self._announce_warning_transition(channel, timestamp, prior_severity, state.latched_severity)
 
         self._recompute_aggregate(cycle_jump_channels)
         self.report_health(timestamp)
@@ -305,14 +321,23 @@ class GracieAgent:
         self.health_state = worst
         return worst
 
-    def _announce_for_chester(self, channel: str, timestamp: float):
+    def _announce_warning_transition(self, channel: str, timestamp: float,
+                                      prior_severity: str, new_severity: str):
+        """Fires once per transition, either direction -- regardless of
+        which sense caused it (today, only leash soft/hard/settle and
+        clear_fault ever change latched_severity to or from WARNING)."""
+        if prior_severity != "WARNING" and new_severity == "WARNING":
+            self._announce_for_chester(channel, timestamp, "warning_entered")
+        elif prior_severity == "WARNING" and new_severity != "WARNING":
+            self._announce_for_chester(channel, timestamp, "warning_left")
+
+    def _announce_for_chester(self, channel: str, timestamp: float, kind: str):
         """SPEC.md: "Agents announce their own faults and anomalies on
-        the bus; CHESTER keeps watch over them." No listener exists
-        yet (CHESTER isn't built) -- publishing anyway is deliberate,
-        not a bug, per the approved plan."""
-        self.logger.info(f"{channel}: announcing on chester/watch (no listener yet)")
+        the bus; CHESTER keeps watch over them." `kind` is one of
+        "jump", "warning_entered", "warning_left", "leash_settled"."""
+        self.logger.info(f"{channel}: announcing '{kind}' on chester/watch")
         self.bus.publish("chester/watch", {
-            "kind": "leash_settled",
+            "kind": kind,
             "agent": "GRACIE",
             "channel": channel,
             "timestamp": timestamp,

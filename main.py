@@ -4,6 +4,7 @@
 import random
 import time
 
+from agents.chester import ChesterAgent
 from agents.eden import EdenAgent
 from agents.escalation_orchestrator import EscalationOrchestrator
 from agents.ethan_ai import EthanAgent
@@ -23,6 +24,19 @@ from core.schemas import TelemetryPacket
 GHOST_MODE_MAJOR_FAULT_WINDOW_SECONDS = 5.0
 GHOST_MODE_NON_URGENT_FAULT_WINDOW_SECONDS = 30.0
 GHOST_MODE_LIGHT_FLAG_CYCLE_MINUTES = 15.0
+
+# CHESTER: placeholder settings, same "no real numbers yet" convention.
+# SPEC.md: "10 minutes is the intended starting value" for the ghost-
+# memory refresh -- not claimed as real here either, just a shorter
+# value so the demo can actually show a refresh happening.
+CHESTER_REFRESH_PERIOD_SECONDS = 60.0
+CHESTER_MAX_LAYERS = 5
+
+
+def _chester_nothing_is_irrelevant(entry):
+    """Placeholder end-of-mission tidy filter: nothing is dropped from
+    ghost memory yet. A real rule-book-driven filter is future work."""
+    return False
 
 # GRACIE's rule book (any-sensor upgrade): placeholder demo values,
 # same "no real numbers yet" convention as everything else above --
@@ -76,6 +90,15 @@ def build_system():
     )
     ghost_mode = GhostModeHarness(bus, eden, ghost_orchestrator)
 
+    # CHESTER: watches "chester/watch" (GRACIE already announces on it)
+    # and the orchestrator's ignored-agent ping. No authority -- purely
+    # observing, same spirit as ghost mode above.
+    chester = ChesterAgent(
+        bus, ghost_orchestrator,
+        CHESTER_REFRESH_PERIOD_SECONDS, CHESTER_MAX_LAYERS,
+        _chester_nothing_is_irrelevant,
+    )
+
     bus.subscribe("cmd/propulsion", print_command)
     bus.subscribe("cmd/propulsion", ethan.on_command)
     bus.subscribe("state/system", print_state)
@@ -91,6 +114,7 @@ def build_system():
         "eden": eden,
         "halia": halia,
         "ghost_mode": ghost_mode,
+        "chester": chester,
     }
 
 
@@ -144,6 +168,7 @@ def run_simulation(bus, agents, cycles=10, delay=1.0):
             telemetry.timestamp,
         )
         agents["lunae"].process_telemetry(telemetry)
+        agents["chester"].tick(telemetry.timestamp)
         time.sleep(delay)
 
 

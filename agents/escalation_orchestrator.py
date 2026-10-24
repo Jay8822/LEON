@@ -93,6 +93,13 @@ the originating agent reruns its check; gone -> cleared, still present
 alert) on every self-check cycle until dealt with. The cycle interval
 is another required, no-default constructor parameter, same "no real
 numbers yet" rule as the rest of this file.
+
+Added 2026-10-25: SPEC.md's CHESTER section, "ignored-agent check"
+(ping_agent()). CHESTER notifies this orchestrator when an agent
+ignores him; the orchestrator's job is just to log the ping attempt
+and its outcome -- it has no bus access to actually perform the ping
+itself, same as every other method here takes its inputs from the
+caller rather than reaching out on its own.
 """
 
 import time
@@ -505,3 +512,20 @@ class EscalationOrchestrator:
             f"light flag (recurring every {self.light_flag_cycle_minutes}min, not an active alert)",
         )
         return ChainResult("FLAGGED", "light_flag_cycle", state.report)
+
+    # --- ignored-agent check (CHESTER) --------------------------------------
+    def ping_agent(self, agent: str, responded: bool) -> ChainResult:
+        """SPEC.md's CHESTER section: "If an agent ignores him: he
+        notifies the orchestrator, which pings that agent to confirm
+        it's active." This orchestrator has no bus access anywhere in
+        this file (every other method is driven by values the caller
+        supplies, not by reaching out itself) -- consistent with that,
+        `responded` is the result of the actual ping, supplied by the
+        caller (CHESTER), not performed here. Logged either way, so
+        the attempt itself is never silently lost."""
+        report = AgentReport(agent=agent, value=None)
+        if responded:
+            self._log("decision", report, "ping confirmed agent is active")
+            return ChainResult("CONFIRMED_ACTIVE", "ping_responded", report)
+        self._log("decision", report, "ping unanswered -- agent unresponsive")
+        return ChainResult("UNRESPONSIVE", "ping_unanswered", report)

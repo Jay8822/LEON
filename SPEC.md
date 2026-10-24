@@ -51,7 +51,7 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - Rate-of-change: GRACIE also watches how fast a reading moves, not just its level — see "Rate-of-change sense (stack-wide)".
 - Leash: GRACIE also watches for slow, sustained drift, not just level and jump — see "Leash — drift sense (stack-wide)".
 - Three severities: **flagged**, **logged for investigation** (a spike that returns to normal), and **nominal**.
-- Logged-for-investigation items are announced on the bus, with the current readings, for CHESTER to watch over — see "Leash — drift sense (stack-wide)" and CHESTER.
+- Logged-for-investigation items are announced on the bus, with the current readings, for CHESTER to watch over — every jump, and every time a channel enters or leaves a logged/flagged state, once per transition, never repeated for a condition that's still ongoing — see "Leash — drift sense (stack-wide)" and CHESTER.
 - A rise is judged against context from other agents on the bus, not in isolation. Expected causes (engine burn from ETHAN, radiation cloud, manoeuvre) are logged. No explanation on the bus means flagged as an early warning.
 - Crossing a safe parameter by more than a set margin is flagged regardless of context.
 - Deep health sweep: a stream of small faults is itself abnormal. GRACIE then runs a full health test down to every part she manages, so, for example, a blown fuse is found. Ship-wide — every agent runs its own sweep under the same trigger (see Cross-referencing principle).
@@ -149,7 +149,7 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - If an agent ignores him: he notifies the orchestrator, which pings that agent to confirm it's active, and a flag is added to CHESTER's log.
 - How it differs from the orchestrator: the orchestrator handles traffic, priority and escalation in the moment; CHESTER handles memory over time.
 - If CHESTER goes down: the system-wide heartbeat pings it until it comes back; if it doesn't, it's flagged for human interaction. Agents carry on with their own fast checks meanwhile. No safe mode, because CHESTER never makes decisions.
-- Status: **not built**.
+- Status: **built** (`agents/chester.py`) — watches "chester/watch" generically (tested against GRACIE's real announcements, not just synthetic ones); ghost memory (layers, refresh, storage-full rule, end-of-mission tidy, raw log untouched); light-flag reminders for open items; the ignored-agent check through `EscalationOrchestrator.ping_agent()` (now built too, not a stub); answers a heartbeat ping if one arrives. Wired into `main.py` alongside GRACIE and ghost mode. **Not built**: the system-wide heartbeat mechanism itself (nothing pings anyone yet, for any component); CHESTER receiving anything beyond what GRACIE currently announces (jump, entering/leaving a logged or flagged state, a settled leash pull) — other agents don't announce anything yet; whether leash timing itself ever moves from GRACIE into CHESTER, rather than CHESTER just keeping his own parallel record of it, is undecided.
 
 ---
 
