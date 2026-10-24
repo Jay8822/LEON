@@ -35,12 +35,15 @@ comfortable slope margin, to test that distinction directly.
   from every scenario seed.
 - Every catchable planted drift uses the same comfortable margin (5x
   the limit) — what varies is duration: below_soft (too brief for
-  even soft), soft_only (past soft, short of hard), reaches_hard (past
+  even soft), soft_only (past soft, short of hard, by holding at its
+  new level forever), settles_back (past soft, then subsides back to
+  normal before hard — the key case for "give it a chance to settle,
+  escalate only if it doesn't go away on its own"), reaches_hard (past
   hard), tiny (0.5x the limit — below it entirely, expected uncaught
-  regardless of duration), and one that ramps past hard then returns
-  to normal on its own. Durations were chosen while building this test
-  fixture (checking they land clearly on one side of the 60s/150s
-  boundary), not by tuning against any scored result.
+  regardless of duration), and returns (ramps past hard, then back to
+  normal). Durations were chosen while building this test fixture
+  (checking they land clearly on one side of the 60s/150s boundary),
+  not by tuning against any scored result.
 - One ~2-hour (7,200s), 1Hz timeline per channel per seed. Five fixed
   seeds, reported individually and totalled. Nothing is tuned after
   looking at results.

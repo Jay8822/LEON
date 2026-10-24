@@ -49,13 +49,16 @@ run_opssat_ad_test.py's module docstring):
   other of the soft/hard duration boundary.
 - One ~2-hour (7,200 second) timeline per channel per seed, 1Hz, built
   once per (channel, seed) pair: clean control stretches (no added
-  drift) alternating with five planted events -- below_soft (too
-  brief to reach even the soft duration), soft_only (reaches soft, not
-  hard), reaches_hard (reaches hard), tiny (below the slope limit
-  entirely, expected to go uncaught regardless of duration), and one
-  that ramps up past hard then returns to normal on its own. Only the
-  noise realisation varies with the seed; the event schedule and sizes
-  are fixed.
+  drift) alternating with six planted events -- below_soft (too brief
+  to reach even the soft duration), soft_only (reaches soft, not hard,
+  by holding at its new level forever), settles_back (reaches soft,
+  then subsides back to normal before reaching hard -- the key case
+  for "give it a chance to settle, escalate only if it doesn't go
+  away on its own"), reaches_hard (reaches hard), tiny (below the
+  slope limit entirely, expected to go uncaught regardless of
+  duration), and returns (ramps past hard, then back to normal). Only
+  the noise realisation varies with the seed; the event schedule and
+  sizes are fixed.
 """
 
 import csv
@@ -90,20 +93,26 @@ TINY_MULTIPLE = 0.5  # below the limit entirely -- never starts a pull
 
 # (name, start_s, duration_s, multiple, shape)
 # shape is "ramp" (0 -> target, holds), or "return" (0 -> target -> 0,
-# ramping up for the first half of duration_s, back down for the rest).
+# ramping up for the first half of duration_s, back down for the rest
+# -- each half is its own windowed-slope episode, since the trailing
+# window straddling the turnaround briefly cancels out, resetting the
+# "continuous" run).
 # Durations chosen (while building this fixture, not from any scored
 # result) to land clearly on one side of the soft (60s) / hard (150s)
 # duration boundary -- see module docstring.
 PLANTED_EVENTS = [
-    ("below_soft",   500,   20, EVENT_MULTIPLE, "ramp"),   # too brief for even soft
-    ("soft_only",   1000,  100, EVENT_MULTIPLE, "ramp"),   # past soft, short of hard
-    ("reaches_hard", 1600, 250, EVENT_MULTIPLE, "ramp"),   # past hard
-    ("tiny",         2500, 300, TINY_MULTIPLE,  "ramp"),   # below the limit -- expected uncaught
-    ("returns",       3300, 500, EVENT_MULTIPLE, "return"),  # past hard, then back to normal
+    ("below_soft",    500,   20, EVENT_MULTIPLE, "ramp"),    # too brief for even soft
+    ("soft_only",     1000,  100, EVENT_MULTIPLE, "ramp"),   # past soft, short of hard
+    ("reaches_hard",  1600,  250, EVENT_MULTIPLE, "ramp"),   # past hard
+    ("settles_back",  2000,  180, EVENT_MULTIPLE, "return"), # past soft, settles before hard -- each
+                                                              # 90s half-phase clears soft, neither
+                                                              # reaches hard's 150s on its own
+    ("tiny",          2500,  300, TINY_MULTIPLE,  "ramp"),   # below the limit -- expected uncaught
+    ("returns",       3300,  500, EVENT_MULTIPLE, "return"), # past hard, then back to normal
 ]
 # Control stretches: every second of TOTAL_SECONDS not covered by a
-# planted event above (0-500, 520-1000, 1100-1600, 1850-2500,
-# 2800-3300, 3800-7200).
+# planted event above (0-500, 520-1000, 1100-1600, 1850-2000,
+# 2180-2500, 2800-3300, 3800-7200).
 
 
 def load_real_delta_pool(channel):
@@ -213,10 +222,12 @@ def build_scenario(channel, delta_pool, limit, seed):
             "name": name, "start_s": start_s, "end_s": end_s,
             "target_slope": slope, "shape": shape,
             # By design (see module docstring): below_soft is too
-            # brief for even soft; soft_only reaches soft but not
-            # hard; reaches_hard and returns both reach hard; tiny is
-            # below the limit entirely, so it's never even a pull.
-            "expected_soft": name in ("soft_only", "reaches_hard", "returns"),
+            # brief for even soft; soft_only and settles_back reach
+            # soft but not hard (settles_back specifically tests "give
+            # it a chance to settle" -- it subsides before hard);
+            # reaches_hard and returns both reach hard; tiny is below
+            # the limit entirely, so it's never even a pull.
+            "expected_soft": name in ("soft_only", "settles_back", "reaches_hard", "returns"),
             "expected_hard": name in ("reaches_hard", "returns"),
         })
 
