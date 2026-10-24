@@ -27,6 +27,10 @@ venv/
 # real_data_tests/*/download_*.py for source and licence.
 real_data_tests/*/data/
 
+# Checkpointed test-run results (resumable, regenerable) -- not
+# committed while a run is still in progress; revisit once finished.
+real_data_tests/*/results/
+
 # Scratch file used for review exchanges with Jay — not project content.
 Ccode update.txt
 
