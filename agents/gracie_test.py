@@ -60,9 +60,30 @@ COMBO_RULE = ChannelRule(
     leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
 )
 
+# Two channels for the LINKED-channel exception: A's own level bounds
+# are unreachable (same convention as DRIFT_RULE), but A is linked to
+# B via linked_channels, so B's level FAULT should hold A's settling
+# leash pull latched too, same as if it were A's own fault.
+LINKED_A_RULE = ChannelRule(
+    name="linked_a", units="u",
+    level_high=1_000_000.0, level_low=-1_000_000.0,
+    jump_limit=1_000.0,
+    leash_window_seconds=10.0, leash_slope_limit=1.0,
+    leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
+    linked_channels=("linked_b",),
+)
+LINKED_B_RULE = ChannelRule(
+    name="linked_b", units="u",
+    level_high=200.0, level_low=-200.0,
+    jump_limit=1_000.0,
+    leash_window_seconds=10.0, leash_slope_limit=1.0,
+    leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
+)
+
 RULE_BOOK = {
     "temp_c": TEMP_RULE, "radiation": RAD_RULE,
     "drift_channel": DRIFT_RULE, "combo_channel": COMBO_RULE,
+    "linked_a": LINKED_A_RULE, "linked_b": LINKED_B_RULE,
 }
 
 
@@ -192,6 +213,33 @@ def test_leash_settles_back_stays_with_an_active_level_fault():
     print("  ok: a settling soft pull stays with an already-active level FAULT, not handed off")
 
 
+def test_leash_settles_back_stays_with_a_linked_channels_active_fault():
+    gracie, _, chester = make_gracie()
+    # B gets its own level FAULT first -- A is linked to B, not the
+    # other way round, and A's own level bounds are unreachable, so
+    # any latching on A can only come from its own leash pull or from
+    # B via linked_channels.
+    gracie.process_readings({"linked_b": 300.0}, timestamp=-1)
+    assert gracie._last_readings["linked_b"]["severity"] == "FAULT"
+
+    t = 0
+    # A independently builds a leash pull past soft, same ramp as the
+    # other leash tests, with B's fault already active throughout.
+    for t in range(0, 31):
+        gracie.process_readings({"linked_a": 2.0 * t}, timestamp=float(t))
+    assert gracie._last_readings["linked_a"]["severity"] == "WARNING"
+
+    # Hold flat -- A's pull settles back on its own.
+    flat_value = 2.0 * t
+    for extra in range(1, 15):
+        gracie.process_readings({"linked_a": flat_value}, timestamp=float(t + extra))
+
+    assert gracie._last_readings["linked_a"]["severity"] == "WARNING", \
+        "A must stay latched while B, which A is linked to, is still an active major fault"
+    assert chester == [], "no hand-off to CHESTER while a linked channel has an active major fault"
+    print("  ok: a settling soft pull stays latched when linked to a DIFFERENT channel's active fault")
+
+
 def test_report_carries_actual_readings():
     gracie, reports, _ = make_gracie()
     gracie.process_readings({"temp_c": 30, "radiation": 10}, timestamp=0)
@@ -225,6 +273,7 @@ def main():
         test_leash_soft_then_hard_by_duration,
         test_leash_settles_back_before_hard_clears_and_announces_for_chester,
         test_leash_settles_back_stays_with_an_active_level_fault,
+        test_leash_settles_back_stays_with_a_linked_channels_active_fault,
         test_report_carries_actual_readings,
         test_unrecognized_channel_is_ignored_not_guessed_at,
     ]
