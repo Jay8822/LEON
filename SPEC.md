@@ -134,12 +134,17 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 ## CHESTER — ship-wide watcher, no authority
 
 - A watcher with no authority, like HALIA. It watches, remembers, keeps timers, and tells the relevant agent. The owning agent makes every decision. A PA for the agents, not a manager.
+- He logs as he goes: every reading he reads and every timer he sets, for traceability.
 - Its job is the slow, long-memory work, to take strain off the other agents:
   - Leash timers — how long a pull has been going, and when it reaches the hard duration.
   - Items logged for investigation, so they aren't forgotten.
   - Repeating coincidences between unrelated jumps ("spike on X, jump on Y, again").
   - Light-flag reminders on every timed self-check cycle.
+- Ghost memory: a temporary working memory that refreshes every 10 minutes under optimal conditions (rule-book setting; 10 minutes is the intended starting value). Old layers are never fully deleted: they fade into a ghost memory he can still access after a restart, overload or power disruption, so he can pick up where he left off.
+- Storage-full rule: storage is finite. The oldest ghost layers may be cleared to make room only once they are safely in his permanent log. He flags for a human when nearing full. Nothing is ever dropped silently.
+- End of each mission or day: he tidies his ghost memory, removing data the rule book defines as irrelevant, and commits it to the permanent record. The raw log is never edited or deleted; only the ghost memory (his working summary) is trimmed.
 - Does not do the fast checks. Level and jump stay with each agent, because they can't wait for a middleman (e.g. ETHAN's millisecond responses).
+- If an agent ignores him: he notifies the orchestrator, which pings that agent to confirm it's active, and a flag is added to CHESTER's log.
 - How it differs from the orchestrator: the orchestrator handles traffic, priority and escalation in the moment; CHESTER handles memory over time.
 - If CHESTER goes down: the system-wide heartbeat pings it until it comes back; if it doesn't, it's flagged for human interaction. Agents carry on with their own fast checks meanwhile. No safe mode, because CHESTER never makes decisions.
 - Status: **not built**.
@@ -390,7 +395,6 @@ Never judge in isolation. Each agent checks its own domain against the wider pic
 
 - Real numbers for every threshold currently written as "safe threshold", "margin", "X amount" or "a set time". Need hardware data.
 - GRACIE's health reports should carry the actual readings (temperature, radiation), not just the NOMINAL/WARNING/FAULT state. Right now they don't, which is why ghost mode's comparison log is health-state only — see `agents/ghost_mode.py`'s module docstring, point 4.
-- `ASSUMPTIONS.md` needs a CHESTER section (e.g. its timers stay accurate, it never loses an item it's tracking).
 - Assumptions list: what the system takes for granted without checking. Complete as of 22 October 2026 — see `ASSUMPTIONS.md`.
 - Formal specification and verification approach. Partner work.
 - Assurance case approach. Partner work.

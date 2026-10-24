@@ -1,6 +1,6 @@
 # LEON: Assumptions list
 
-An assumption is something that must be true for the design to work, that the design never checks. Found by red-teaming each component: how would I break it, and what was it relying on? Completed 22 October 2026. Not exhaustive; verification partners are expected to add more.
+An assumption is something that must be true for the design to work, that the design never checks. Found by red-teaming each component: how would I break it, and what was it relying on? First pass completed 22 October 2026; CHESTER section (A66–A73) added 24 October 2026. Not exhaustive; verification partners are expected to add more.
 
 [key] marks the most important. "Answer" is the design response, where one exists. "Open" means not yet answered.
 
@@ -88,3 +88,13 @@ An assumption is something that must be true for the design to work, that the de
 - A63. A wrong human instruction gets questioned. Answer: yes, same as any agent.
 - A64. [key] Humans respond and take notice; too many alerts get ignored. Answer: light flags keep minor items quiet.
 - A65. The manual override is used sensibly. Answer: post-override rerun.
+
+## CHESTER
+- A66. [key] CHESTER's memory survives a restart. Answer: he logs as he goes, plus ghost memory (see SPEC).
+- A67. When he comes back, he accounts for the time he was off. Answer: ghost memory and his own log let him pick up where he left off.
+- A68. He keeps track of everything at peak, and never silently drops an item when full. Answer: storage-full rule (see SPEC).
+- A69. [key] Agents act on what he tells them. Answer: if an agent ignores him, he notifies the orchestrator, which pings that agent to confirm it's active; a flag is added to CHESTER's log.
+- A70. He tells the right agent; relies on the rule book's ownership map being correct. Open.
+- A71. The message itself is right, with no mix-up between tracked items. Answer: everything and everybody is treated the same, so the receiving agent checks and questions his messages like any other.
+- A72. His clock is right; every timer depends on it. Open: system-wide time sync, linked to A5.
+- A73. [key] He can't be used as a back door: he sees everything, so his messages are information only, never instructions. Design principle.
