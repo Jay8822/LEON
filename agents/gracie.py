@@ -1,56 +1,273 @@
 # agents/gracie.py
-# Updated 2026-07-26 — fixed WARNING state, added FAULT latch. Jay Pratt + AI (Claude, Anthropic).
+# Rewritten 2026-10-25 — any-sensor upgrade. Jay Pratt + AI (Claude Sonnet 5, Anthropic).
+"""GRACIE — health monitor. Rewritten from the old fixed temp_c/
+radiation, AND-condition scaffolding to SPEC.md's any-sensor design:
+any set of channels, driven by a rule book (agents/gracie_rulebook.py),
+each judged independently against her three senses (level, jump,
+leash).
+
+Interpretive calls made, agreed with Jay before building (see
+"Ccode update.txt" history):
+
+1. The legacy "system_health" field (NOMINAL/WARNING/FAULT) that EDEN,
+   SystemCoordinator and ghost mode all key off is UNCHANGED in shape
+   and meaning. It's now a worst-case roll-up across every channel:
+   any channel FLAGGED (level crossed, or a leash pull that reached
+   its hard duration) -> FAULT; any channel LOGGED (a jump this
+   cycle, or a leash pull that reached its soft duration) -> WARNING;
+   otherwise NOMINAL. None of EDEN/SystemCoordinator/ghost mode are
+   touched by this change.
+2. Input is a new, GRACIE-specific shape -- process_readings(readings,
+   timestamp), readings a plain {channel_name: value} dict -- not the
+   shared TelemetryPacket LUNAE also consumes. Checked directly: LUNAE
+   only reads system_health/nav_state/timestamp off that packet, never
+   temp_c or radiation, so core/schemas.py and LUNAE are untouched.
+3. Level and leash LATCH per channel (persist until clear_fault),
+   same discipline the old single FAULT latch already had. Jump does
+   NOT latch -- SPEC.md describes it as a momentary "spike" event
+   ("logged for investigation immediately"), not an ongoing condition,
+   and uncorroborated jump (the only kind GRACIE can judge alone,
+   point 7 below) can only ever reach "logged for investigation" --
+   never "flagged" -- same vocabulary already used for the jump check
+   in real_data_tests/opssat_ad/run_opssat_ad_test.py.
+4. "Fires once at the moment of transition" (agreed answer to
+   ambiguity 5) means the TRANSITION itself is logged once, not
+   re-logged every cycle while a pull continues -- but the LATCHED
+   severity it sets still persists in every report until cleared,
+   exactly like today's FAULT latch. CHESTER's (not built yet) job is
+   the recurring reminder; GRACIE doesn't duplicate it.
+5. Jump and leash are rewritten here as INCREMENTAL, stateful
+   per-channel trackers -- a bounded rolling window of recent
+   (timestamp, value) pairs, plus a running "how long has this pull
+   lasted" clock -- rather than the batch, whole-fragment-array logic
+   in run_opssat_ad_test.py / simulated_tests/leash_drift/. Same
+   underlying maths (see _update_window_and_get_slope's docstring for
+   exactly how it reproduces the batch windowed-slope calculation
+   step for step); proven equivalent in agents/gracie_equivalence_test.py.
+6. clear_fault(channel=None): omitted channel clears every channel's
+   latch (preserves the old no-argument call shape); a given channel
+   clears only that one.
+7. Jump's cross-check (did a related channel/agent also move) and
+   leash's context-gating (an expected cause from another agent) are
+   NOT implemented here -- both need other agents' signals GRACIE
+   doesn't have access to yet. Out of scope until those agents are
+   wired in, same order as the rest of SPEC.md's wiring plan.
+8. Every report (every cycle, NOMINAL included, same as always)
+   carries a "readings" key: per channel, its value, units, and its
+   current level/leash latch plus whether it jumped this cycle --
+   resolving SPEC.md's open item that GRACIE's reports should carry
+   the actual readings, not just the aggregate state.
+
+No invented numbers: every ChannelRule field is required, no
+defaults (see agents/gracie_rulebook.py). Real callers and tests alike
+must supply real or clearly-labelled fixture values.
+"""
 
 import time
+from collections import deque
+from dataclasses import dataclass, field
+from typing import Deque, Dict, List, Optional, Tuple
 
 from core.bus import EventBus
 from core.logger import setup_agent_logger
+from agents.gracie_rulebook import ChannelRule, RuleBook
+
+# Severity ranks for the worst-case roll-up -- matches the legacy
+# system_health vocabulary EDEN/SystemCoordinator/ghost mode already
+# expect. "LOGGED" (jump, soft leash) maps to WARNING; "FLAGGED"
+# (level, hard leash) maps to FAULT -- see module docstring, point 1.
+_SEVERITY_RANK = {"NOMINAL": 0, "WARNING": 1, "FAULT": 2}
+
+
+@dataclass
+class _ChannelState:
+    rule: ChannelRule
+    latched_severity: str = "NOMINAL"  # level + leash latch; clear_fault resets it
+    last_sample: Optional[Tuple[float, float]] = None  # (timestamp, value), for jump
+    window: Deque[Tuple[float, float]] = field(default_factory=deque)  # for leash's windowed slope
+    pull_run_start: Optional[float] = None  # leash's "how long has this pull lasted" clock
+    # Edge-detectors for the CURRENT pull specifically -- reset to False
+    # whenever the pull itself drops below the limit (same per-episode
+    # edge-triggering as the batch scripts' find_pull_episodes()).
+    # Deliberately separate from latched_severity: latched_severity is
+    # a one-way ratchet that only clear_fault can undo, so a channel
+    # already latched FAULT from an earlier pull would otherwise hide
+    # whether a *later, independent* pull also reached soft/hard --
+    # which matters for comparing against the batch scripts (which
+    # have no latching concept at all) in gracie_equivalence_test.py.
+    soft_active: bool = False
+    hard_active: bool = False
 
 
 class GracieAgent:
-    def __init__(self, bus: EventBus):
+    def __init__(self, bus: EventBus, rule_book: RuleBook):
         self.logger = setup_agent_logger("gracie")
         self.bus = bus
+        self.rule_book = rule_book
+        self._states: Dict[str, _ChannelState] = {
+            name: _ChannelState(rule=rule) for name, rule in rule_book.items()
+        }
         self.health_state = "NOMINAL"
+        self._last_readings: Dict[str, dict] = {}
         self.bus.subscribe("gracie/command", self.on_command)
 
+    # --- commands -----------------------------------------------------
     def on_command(self, payload):
         command = payload.get("command")
         self.logger.info(f"Received command: {command} with payload {payload}")
         if command == "run_diagnostics":
             self.report_health()
         elif command == "clear_fault":
-            self.health_state = "NOMINAL"
-            self.logger.info("FAULT cleared, health reset to NOMINAL.")
-            self.report_health()
+            self.clear_fault(payload.get("channel"))
 
-    def process_telemetry(self, telemetry):
-        # Basic rules: health checks. FAULT latches until an explicit
-        # clear_fault command, so a single good reading cannot mask it.
-        prior_state = self.health_state
-        if telemetry.temp_c > 55 and telemetry.radiation > 40:
-            self.health_state = "FAULT"
-        elif self.health_state != "FAULT":
-            if telemetry.temp_c > 50 or telemetry.radiation > 30:
-                self.health_state = "WARNING"
-            else:
-                self.health_state = "NOMINAL"
-        self.logger.info(f"Processed telemetry (temp: {telemetry.temp_c}, rad: {telemetry.radiation}) "
-                         f"State: {prior_state} => {self.health_state}")
-        self.report_health(telemetry.timestamp)
+    def clear_fault(self, channel: Optional[str] = None):
+        """Clears one channel's latch, or every channel's if `channel`
+        is omitted -- preserves the old no-argument call shape."""
+        channels = [channel] if channel is not None else list(self._states.keys())
+        for ch in channels:
+            state = self._states.get(ch)
+            if state is None:
+                continue
+            state.latched_severity = "NOMINAL"
+            state.pull_run_start = None
+            state.soft_active = False
+            state.hard_active = False
+            if ch in self._last_readings:
+                self._last_readings[ch]["severity"] = "NOMINAL"
+        self.logger.info(f"Cleared fault for {channel if channel else 'all channels'}")
+        self._recompute_aggregate()
+        self.report_health()
+
+    # --- the three senses, per channel --------------------------------
+    def _process_level(self, channel: str, state: _ChannelState, value: float):
+        rule = state.rule
+        if value > rule.level_high or value < rule.level_low:
+            if state.latched_severity != "FAULT":
+                self.logger.info(
+                    f"{channel}: LEVEL transition -> FAULT "
+                    f"(value={value}{rule.units}, high={rule.level_high}, low={rule.level_low})"
+                )
+            state.latched_severity = "FAULT"
+
+    def _process_jump(self, state: _ChannelState, timestamp: float, value: float) -> bool:
+        """True if the rate since the last sample exceeds the jump
+        limit -- a momentary event, never latched (see module
+        docstring, point 3)."""
+        if state.last_sample is None:
+            state.last_sample = (timestamp, value)
+            return False
+        last_t, last_v = state.last_sample
+        state.last_sample = (timestamp, value)
+        dt = timestamp - last_t
+        if dt == 0:
+            return False
+        return abs(value - last_v) / dt > state.rule.jump_limit
+
+    def _update_window_and_get_slope(self, state: _ChannelState, timestamp: float, value: float) -> Optional[float]:
+        """Incremental equivalent of run_opssat_ad_test.py's
+        Fragment._windowed_slopes(): the window deque's oldest entry
+        is always the TIGHTEST valid anchor -- the same point that
+        script's two-pointer `j` would be at, for the same reason
+        (pop from the left only while the *next* entry is still at
+        least leash_window_seconds away from `timestamp`). Proven
+        equivalent in agents/gracie_equivalence_test.py."""
+        window = state.window
+        while len(window) >= 2 and (timestamp - window[1][0]) >= state.rule.leash_window_seconds:
+            window.popleft()
+        window.append((timestamp, value))
+        anchor_t, anchor_v = window[0]
+        dt = timestamp - anchor_t
+        if dt >= state.rule.leash_window_seconds:
+            return (value - anchor_v) / dt
+        return None
+
+    def _process_leash(self, channel: str, state: _ChannelState, timestamp: float,
+                        slope: Optional[float]) -> None:
+        """Soft and hard are checked independently each cycle (not
+        mutually exclusive) so a pull that keeps going produces both
+        transitions, each at its own correct timestamp -- matching
+        the batch scorer's separate soft/hard episode detection.
+        soft_active/hard_active edge-trigger per pull (reset when the
+        pull itself ends); latched_severity only ever ratchets up,
+        and only clear_fault resets it -- see _ChannelState's
+        docstring for why these are kept separate."""
+        rule = state.rule
+        if slope is None or abs(slope) <= rule.leash_slope_limit:
+            state.pull_run_start = None
+            state.soft_active = False
+            state.hard_active = False
+            return
+        if state.pull_run_start is None:
+            state.pull_run_start = timestamp
+        elapsed = timestamp - state.pull_run_start
+
+        if elapsed >= rule.leash_soft_duration_seconds and not state.soft_active:
+            state.soft_active = True
+            self.logger.info(f"{channel}: LEASH SOFT transition at t={timestamp} (slope={slope:.6g})")
+            if _SEVERITY_RANK[state.latched_severity] < _SEVERITY_RANK["WARNING"]:
+                state.latched_severity = "WARNING"
+        if elapsed >= rule.leash_hard_duration_seconds and not state.hard_active:
+            state.hard_active = True
+            self.logger.info(f"{channel}: LEASH HARD transition at t={timestamp} (slope={slope:.6g})")
+            if _SEVERITY_RANK[state.latched_severity] < _SEVERITY_RANK["FAULT"]:
+                state.latched_severity = "FAULT"
+
+    # --- main entry point ----------------------------------------------
+    def process_readings(self, readings: Dict[str, float], timestamp: float):
+        """readings: {channel_name: value}. Channels not in the rule
+        book are logged and ignored -- no guessing at a channel GRACIE
+        has no rule for."""
+        cycle_jump_channels = set()
+
+        for channel, value in readings.items():
+            state = self._states.get(channel)
+            if state is None:
+                self.logger.warning(
+                    f"Reading for unrecognized channel '{channel}' -- no rule book entry, ignored."
+                )
+                continue
+            rule = state.rule
+
+            self._process_level(channel, state, value)
+            jump_event = self._process_jump(state, timestamp, value)
+            slope = self._update_window_and_get_slope(state, timestamp, value)
+            self._process_leash(channel, state, timestamp, slope)
+
+            if jump_event:
+                cycle_jump_channels.add(channel)
+                self.logger.info(f"{channel}: JUMP event (value={value}{rule.units})")
+
+            self._last_readings[channel] = {
+                "value": value,
+                "units": rule.units,
+                "severity": state.latched_severity,
+                "jump": jump_event,
+            }
+
+        self._recompute_aggregate(cycle_jump_channels)
+        self.report_health(timestamp)
+
+    def _recompute_aggregate(self, cycle_jump_channels=frozenset()):
+        """Worst case across every known channel -- not just the ones
+        in this cycle's readings, since a channel's latch persists
+        even on a cycle where it wasn't sampled."""
+        worst = "NOMINAL"
+        for channel, state in self._states.items():
+            severity = state.latched_severity
+            if channel in cycle_jump_channels and _SEVERITY_RANK[severity] < _SEVERITY_RANK["WARNING"]:
+                severity = "WARNING"
+            if _SEVERITY_RANK[severity] > _SEVERITY_RANK[worst]:
+                worst = severity
+        self.health_state = worst
+        return worst
 
     def report_health(self, timestamp=None):
-        # Single publish path for every trigger (telemetry, run_diagnostics,
-        # clear_fault) on the single topic every subscriber — SystemCoordinator
-        # *and* EDEN — listens on. Previously run_diagnostics/clear_fault
-        # published to a separate "health/update" topic that only the
-        # coordinator watched, so a diagnostic-triggered FAULT report never
-        # reached EDEN the way a telemetry-triggered one did.
         if timestamp is None:
             timestamp = int(time.time())
         self.logger.info(f"Reporting health: {self.health_state}")
         self.bus.publish("telemetry/health", {
             "system_health": self.health_state,
             "source": "GRACIE",
-            "timestamp": timestamp
+            "timestamp": timestamp,
+            "readings": dict(self._last_readings),
         })

@@ -44,13 +44,16 @@ Interpretive calls made this pass, agreed with Jay before building
    harness doesn't classify anything itself; it only logs that the
    question doesn't yet apply to GRACIE.
 
-4. No raw temp/radiation readings in the log. GracieAgent.report_health()
-   only ever publishes {"system_health", "source", "timestamp"} to
-   "telemetry/health" — it does not carry the TelemetryPacket's
-   temp_c/radiation values, and nothing else puts them on the bus
-   either. Changing that would mean changing GracieAgent's publish
-   payload, which this task is not authorized to do. Agreed with Jay:
-   log health-state only for now, not the underlying readings.
+4. No raw readings in this harness's own log. At the time this was
+   built, GracieAgent.report_health() only ever published
+   {"system_health", "source", "timestamp"} to "telemetry/health", so
+   there was nothing to log beyond health-state. GRACIE's later
+   any-sensor upgrade (agents/gracie.py) added a "readings" key with
+   her actual per-channel values -- this harness still doesn't read
+   or log it, by original design choice now, not for lack of data.
+   Nothing here needed to change for that upgrade: see
+   test_real_upgraded_gracie_payload_still_triggers_ghost_mode in
+   ghost_mode_test.py.
 
 5. Scope is deliberately narrow: one FAULT in, one orchestrator verdict
    out (decide()'s result), logged against EDEN's real action. No

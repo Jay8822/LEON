@@ -9,6 +9,7 @@ from agents.escalation_orchestrator import EscalationOrchestrator
 from agents.ethan_ai import EthanAgent
 from agents.ghost_mode import GhostModeHarness
 from agents.gracie import GracieAgent
+from agents.gracie_rulebook import ChannelRule
 from agents.halia import HaliaAgent
 from agents.lunae import LunaeAgent
 from agents.system_coordinator import SystemCoordinator
@@ -23,13 +24,35 @@ GHOST_MODE_MAJOR_FAULT_WINDOW_SECONDS = 5.0
 GHOST_MODE_NON_URGENT_FAULT_WINDOW_SECONDS = 30.0
 GHOST_MODE_LIGHT_FLAG_CYCLE_MINUTES = 15.0
 
+# GRACIE's rule book (any-sensor upgrade): placeholder demo values,
+# same "no real numbers yet" convention as everything else above --
+# not hardware-calibrated, chosen only to roughly match
+# simulate_environment()'s random ranges below so the demo still
+# occasionally crosses a threshold, same as the old scaffolding did.
+GRACIE_RULE_BOOK = {
+    "temp_c": ChannelRule(
+        name="temp_c", units="C",
+        level_high=55.0, level_low=-50.0,
+        jump_limit=10.0,
+        leash_window_seconds=5.0, leash_slope_limit=2.0,
+        leash_soft_duration_seconds=10.0, leash_hard_duration_seconds=20.0,
+    ),
+    "radiation": ChannelRule(
+        name="radiation", units="rad",
+        level_high=40.0, level_low=0.0,
+        jump_limit=10.0,
+        leash_window_seconds=5.0, leash_slope_limit=2.0,
+        leash_soft_duration_seconds=10.0, leash_hard_duration_seconds=20.0,
+    ),
+}
+
 
 def build_system():
     """Create the one bus every agent shares, and wire the agents to it."""
     bus = EventBus()
 
     coordinator = SystemCoordinator(bus)
-    gracie = GracieAgent(bus)
+    gracie = GracieAgent(bus, GRACIE_RULE_BOOK)
     ethan = EthanAgent(bus)
     lunae = LunaeAgent(bus)
     eden = EdenAgent(bus)
@@ -113,7 +136,13 @@ def print_crew_response(payload):
 def run_simulation(bus, agents, cycles=10, delay=1.0):
     for _ in range(cycles):
         telemetry = simulate_environment()
-        agents["gracie"].process_telemetry(telemetry)
+        # GRACIE now takes her own, any-sensor input shape rather than
+        # the shared TelemetryPacket -- see agents/gracie.py's module
+        # docstring, point 2. LUNAE's own call is unchanged.
+        agents["gracie"].process_readings(
+            {"temp_c": telemetry.temp_c, "radiation": telemetry.radiation},
+            telemetry.timestamp,
+        )
         agents["lunae"].process_telemetry(telemetry)
         time.sleep(delay)
 

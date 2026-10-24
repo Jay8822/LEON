@@ -21,6 +21,8 @@ import time
 from agents.eden import EdenAgent
 from agents.escalation_orchestrator import EscalationOrchestrator
 from agents.ghost_mode import GhostModeHarness
+from agents.gracie import GracieAgent
+from agents.gracie_rulebook import ChannelRule
 from core.bus import EventBus
 
 TEST_MAJOR_WINDOW_SECONDS = 5.0
@@ -103,6 +105,43 @@ def test_warning_and_nominal_are_ignored():
     print("  ok: WARNING/NOMINAL never reach the orchestrator — only faults do, per SPEC.md")
 
 
+# --- the real, any-sensor GracieAgent still triggers ghost mode -------------
+
+def test_real_upgraded_gracie_payload_still_triggers_ghost_mode():
+    """GRACIE was rewritten (any-sensor, rule-book-driven) after this
+    harness was built. Her payload grew a new "readings" key, but the
+    top-level contract ghost mode actually reads -- system_health/
+    source/timestamp -- is unchanged (see agents/gracie.py's module
+    docstring, point 1). This drives a REAL GracieAgent, not a
+    synthetic payload, to prove that holds."""
+    bus = EventBus()
+    rule_book = {
+        "temp_c": ChannelRule(
+            name="temp_c", units="C",
+            level_high=55.0, level_low=-50.0,
+            jump_limit=1000.0,
+            leash_window_seconds=1.0, leash_slope_limit=1000.0,
+            leash_soft_duration_seconds=1000.0, leash_hard_duration_seconds=2000.0,
+        ),
+    }
+    gracie = GracieAgent(bus, rule_book)
+    eden = EdenAgent(bus)
+    orchestrator = make_orchestrator()
+    bus.subscribe("telemetry/health", eden.on_health_event)
+    harness = GhostModeHarness(bus, eden, orchestrator)
+
+    gracie.process_readings({"temp_c": 30}, timestamp=0)  # NOMINAL -- nothing should fire
+    assert harness.comparison_log() == []
+    assert eden.status == "MONITORING"
+
+    gracie.process_readings({"temp_c": 100}, timestamp=1)  # crosses level_high -> FAULT
+    assert eden.status == "SAFE_MODE"
+    comparisons = harness.comparison_log()
+    assert len(comparisons) == 1, comparisons
+    assert comparisons[0]["agree"] is True, comparisons[0]
+    print("  ok: a real, upgraded GracieAgent's FAULT still reaches the orchestrator and agrees with EDEN")
+
+
 # --- subscription-order dependency ------------------------------------------
 
 def test_ghost_mode_depends_on_subscription_order_after_eden():
@@ -165,6 +204,7 @@ def main():
     tests = [
         test_fault_report_reaches_orchestrator_and_agrees_with_eden,
         test_fault_from_non_gracie_source_is_still_handled,
+        test_real_upgraded_gracie_payload_still_triggers_ghost_mode,
         test_warning_and_nominal_are_ignored,
         test_ghost_mode_depends_on_subscription_order_after_eden,
         test_harness_failure_never_affects_eden_or_the_bus,

@@ -54,7 +54,7 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - A rise is judged against context from other agents on the bus, not in isolation. Expected causes (engine burn from ETHAN, radiation cloud, manoeuvre) are logged. No explanation on the bus means flagged as an early warning.
 - Crossing a safe parameter by more than a set margin is flagged regardless of context.
 - Deep health sweep: a stream of small faults is itself abnormal. GRACIE then runs a full health test down to every part she manages, so, for example, a blown fuse is found. Ship-wide — every agent runs its own sweep under the same trigger (see Cross-referencing principle).
-- Status: **not built** (current code requires temp AND radiation together; that was synthetic-test scaffolding). Context-aware flagging, the logged-for-investigation severity and the independent per-parameter check are all work packages.
+- Status: **built** — any-sensor, rule-book-driven, independent per-channel level/jump/leash (`agents/gracie.py`, `agents/gracie_rulebook.py`). Proven to give the same answers as the batch scripts it was rewritten from (`agents/gracie_equivalence_test.py`, against both real OPSSAT-AD data and the simulated leash test). Wired into the real `main.py` demo; confirmed still compatible with ghost mode. **Not built**: context-aware flagging (judging a rise against what other agents report — the bullet above), jump's cross-check, leash's context-gating (all three need other agents' signals GRACIE doesn't have yet), the deep health sweep, and CHESTER's recurring reminders for anything GRACIE logs (CHESTER himself isn't built).
 
 ---
 
@@ -352,7 +352,7 @@ Status: **not built**.
 - The time window looks both before and after the jump, centred on it. Because it looks forward, the flag-or-log decision isn't final until the window has passed. Acceptable, because the decision is only ever between a quiet log and a flag — never a safety action.
 - The normal step size for each channel comes from its rule book, measured as a rate (change per second), consistent with "every number carries its units". The time window for cross-checking is a separate setting. Neither has a default value.
 - A third sense, for drift too slow to be a jump but too sustained to be normal wobble, is the leash — see "Leash — drift sense (stack-wide)".
-- Status: **not built**.
+- Status: GRACIE — built, on her own channels (`agents/gracie.py`). The cross-check (a related agent/channel corroborating in the same window) is **not built** — it needs other agents' signals GRACIE doesn't have yet. Everyone else — **not built**.
 
 ---
 
@@ -375,7 +375,7 @@ Status: **not built**.
 - Loosening one agent's leash never hides another agent's problem: when GRACIE's temperature leash loosens because ETHAN is burning, ETHAN's own engine leash stays tight, so a real engine overheat is still caught by ETHAN (consistent with ETHAN's inverse rule: a confirmed engine-caused rise is raised).
 - Each agent owns the leashes for its own sensors.
 - One slope limit per channel, a soft duration and a longer hard duration, and the slack, all come from each channel's rule book. No default values.
-- Status: **not built**.
+- Status: GRACIE — built, on her own channels (`agents/gracie.py`): soft and hard by duration, latched, never auto-cleared. Context-gating is **not built** — it needs an expected-cause signal from another agent GRACIE doesn't have yet. Everyone else — **not built**.
 
 ---
 
@@ -394,7 +394,6 @@ Never judge in isolation. Each agent checks its own domain against the wider pic
 ## Open items (not yet specified)
 
 - Real numbers for every threshold currently written as "safe threshold", "margin", "X amount" or "a set time". Need hardware data.
-- GRACIE's health reports should carry the actual readings (temperature, radiation), not just the NOMINAL/WARNING/FAULT state. Right now they don't, which is why ghost mode's comparison log is health-state only — see `agents/ghost_mode.py`'s module docstring, point 4.
 - Assumptions list: what the system takes for granted without checking. Complete as of 22 October 2026 — see `ASSUMPTIONS.md`.
 - Formal specification and verification approach. Partner work.
 - Assurance case approach. Partner work.
