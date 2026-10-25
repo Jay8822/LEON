@@ -1,6 +1,6 @@
 # LEON: Assumptions list
 
-An assumption is something that must be true for the design to work, that the design never checks. Found by red-teaming each component: how would I break it, and what was it relying on? First pass completed 22 October 2026; CHESTER section (A66–A73) added 24 October 2026. Not exhaustive; verification partners are expected to add more.
+An assumption is something that must be true for the design to work, that the design never checks. Found by red-teaming each component: how would I break it, and what was it relying on? First pass completed 22 October 2026; CHESTER section (A66–A73) added 24 October 2026; Ageing section (A74–A76) added 25 October 2026. Not exhaustive; verification partners are expected to add more.
 
 [key] marks the most important. "Answer" is the design response, where one exists. "Open" means not yet answered.
 
@@ -98,3 +98,8 @@ An assumption is something that must be true for the design to work, that the de
 - A71. The message itself is right, with no mix-up between tracked items. Answer: everything and everybody is treated the same, so the receiving agent checks and questions his messages like any other.
 - A72. His clock is right; every timer depends on it. Open: system-wide time sync, linked to A5.
 - A73. [key] He can't be used as a back door: he sees everything, so his messages are information only, never instructions. Design principle.
+
+## Ageing and long missions
+- A74. Published ageing rates for a kind of part apply to this craft. Open: ageing depends on orbit, design and size, so rates are set per craft in the rule book.
+- A75. [key] A slow real fault isn't mistaken for ageing and absorbed into the new "normal" (the boiling-frog problem). Answer: rule-book updates need human sign-off, the historical baseline is kept, and accelerating ageing is flagged.
+- A76. [key] A channel already latched on a false fault can still reveal a new, real fault. Open. Found in the ESA-ADB run: false latches on two channels appear to have hidden genuine anomalies.
