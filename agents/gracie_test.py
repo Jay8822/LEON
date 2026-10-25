@@ -166,6 +166,51 @@ def test_leash_soft_then_hard_by_duration():
     print("  ok: leash reaches soft at its soft duration, hard at its (longer) hard duration")
 
 
+def test_clear_fault_default_resets_the_leash_timer():
+    gracie, _, _ = make_gracie()
+    for t in range(0, 31):
+        gracie.process_readings({"drift_channel": 2.0 * t}, timestamp=float(t))
+    assert gracie._last_readings["drift_channel"]["severity"] == "WARNING"
+
+    gracie.clear_fault("drift_channel")  # reset_leash_timer defaults to True
+    assert gracie._last_readings["drift_channel"]["severity"] == "NOMINAL"
+
+    # The pull never stopped (still ramping at the same slope), but the
+    # clock restarted fresh at t=31 (the first sample after the
+    # clear) -- hard (31 + 40) is now expected at t=71, NOT anywhere
+    # near the original t=50.
+    for t in range(31, 50):
+        gracie.process_readings({"drift_channel": 2.0 * t}, timestamp=float(t))
+    assert gracie._last_readings["drift_channel"]["severity"] == "NOMINAL", \
+        "the default clear_fault() resets the clock, so nothing should have re-fired yet by the old t=50"
+    for t in range(50, 72):
+        gracie.process_readings({"drift_channel": 2.0 * t}, timestamp=float(t))
+    assert gracie._last_readings["drift_channel"]["severity"] == "FAULT", \
+        "hard should now arrive ~40s after the fresh start at t=31, i.e. at t=71"
+    print("  ok: clear_fault()'s default (reset_leash_timer=True) resets the leash clock, unchanged")
+
+
+def test_clear_fault_can_leave_the_leash_timer_running():
+    gracie, _, _ = make_gracie()
+    for t in range(0, 31):
+        gracie.process_readings({"drift_channel": 2.0 * t}, timestamp=float(t))
+    assert gracie._last_readings["drift_channel"]["severity"] == "WARNING"
+
+    gracie.clear_fault("drift_channel", reset_leash_timer=False)
+    assert gracie._last_readings["drift_channel"]["severity"] == "NOMINAL"
+
+    # The pull keeps going, uninterrupted, at the same slope. Because
+    # the clock was NOT reset, hard still arrives at the ORIGINAL t=50
+    # (10 + 40), not 40s after the clear.
+    for t in range(31, 50):
+        gracie.process_readings({"drift_channel": 2.0 * t}, timestamp=float(t))
+        assert gracie._last_readings["drift_channel"]["severity"] == "NOMINAL", (t,)
+    gracie.process_readings({"drift_channel": 2.0 * 50}, timestamp=50.0)
+    assert gracie._last_readings["drift_channel"]["severity"] == "FAULT", \
+        "hard must still arrive at the original t=50 -- the clock kept running through the clear"
+    print("  ok: clear_fault(reset_leash_timer=False) clears the latch but leaves the leash clock running")
+
+
 def test_leash_settles_back_before_hard_clears_and_announces_for_chester():
     gracie, _, chester = make_gracie()
     t = 0
@@ -308,6 +353,8 @@ def main():
         test_clear_fault_per_channel_and_all,
         test_jump_is_momentary_not_latched,
         test_leash_soft_then_hard_by_duration,
+        test_clear_fault_default_resets_the_leash_timer,
+        test_clear_fault_can_leave_the_leash_timer_running,
         test_leash_settles_back_before_hard_clears_and_announces_for_chester,
         test_leash_settles_back_stays_with_an_active_level_fault,
         test_leash_settles_back_stays_with_a_linked_channels_active_fault,

@@ -71,6 +71,33 @@ Design, agreed with Jay before building:
    behaviour change, explicitly out of scope -- so this is reported as
    a limitation, not quietly worked around.
 
+8. Added 2026-10-25 (follow-up pass): two fixes, both found while
+   reviewing the first run's results (see RESULTS.md's known-gap
+   note).
+   - The daily clear now calls `clear_fault(reset_leash_timer=False)`
+     (agents/gracie.py's new option, added for exactly this) instead
+     of `clear_fault()` -- the latch still clears every day, but the
+     leash pull-duration clock keeps running, so point 7's limitation
+     above no longer applies.
+   - score_test_period() now tags every event by which sense caused
+     it -- level, jump, leash, independently, plus "any" (the real
+     aggregate, gracie.health_state, which DOES include jump's
+     momentary bump) -- instead of reading only
+     `_last_readings[channel]["severity"]`, which never reflected
+     jump at all. Each cause is reported as "caught_logged" (reached
+     at least WARNING) and "caught_flagged" (reached FAULT)
+     separately, since jump can only ever log, level can only ever
+     flag, and leash can do either.
+   - Also found and fixed while rereading this for the above: point 2
+     always said Communication Gap rows are "dropped entirely, train
+     and test alike," but the TEST loop never actually did that --
+     only derive_rules() (training) excluded them. The first run fed
+     gap rows through GracieAgent during test scoring and scored
+     "Communication Gap" as if it were a real labelled category.
+     Mission1 only has 4 gap events total, so the effect on the first
+     run's numbers is likely small, but it was never checked before
+     now -- not claiming otherwise.
+
 Window/duration choice: OPSSAT-AD's leash constants (30s window, 60s/
 150s durations) are far too short for data running in years with
 per-channel median sampling gaps from under a second to tens of
@@ -300,57 +327,94 @@ def score_test_period(channel, rule_values, timestamps, values, labels, cutoff):
     bus = EventBus()
     gracie = GracieAgent(bus, {channel: rule})
 
-    transitions = []  # (timestamp, severity) whenever severity actually changes
-    last_severity = "NOMINAL"
+    # Events are tagged by cause, independently, per the agreed design:
+    #   level -- always reaches FAULT directly (level never sets WARNING).
+    #   jump  -- always "logged" (WARNING-equivalent); jump never reaches
+    #            FAULT on its own. Checked via _last_readings[...]["jump"],
+    #            which was computed every cycle but never read for scoring
+    #            in the first pass -- see RESULTS.md's known-gap note.
+    #   leash -- can reach either WARNING (soft) or FAULT (hard); detected
+    #            as a latched_severity transition that ISN'T explained by
+    #            a level crossing this same cycle.
+    #   any   -- the real aggregate (gracie.health_state), which DOES
+    #            include jump's momentary bump, unlike latched_severity
+    #            alone (the field the first pass read).
+    level_events, jump_events, leash_events, any_events = [], [], [], []
+    prior_latched = "NOMINAL"
+    prior_aggregate = "NOMINAL"
     last_day = None
 
     for t, v in zip(timestamps, values):
         if t < cutoff:
             continue
+        if label_at(t, labels) == "Communication Gap":
+            continue  # dropped entirely, train and test alike -- not a reading at all
         day = t.date()
         if last_day is not None and day != last_day:
-            gracie.clear_fault()  # daily stand-in for sign-off -- see module docstring, point 7
+            # Daily stand-in for sign-off -- clears the latch only,
+            # leaving the leash's pull-duration clock running (module
+            # docstring, point 7; agents/gracie.py module docstring,
+            # point 11).
+            gracie.clear_fault(reset_leash_timer=False)
         last_day = day
 
+        level_hit_now = v > rule.level_high or v < rule.level_low
+
         gracie.process_readings({channel: v}, timestamp=t.timestamp())
-        severity = gracie._last_readings[channel]["severity"]
-        if severity != last_severity:
-            transitions.append((t, severity))
-            last_severity = severity
 
-    test_labels = [(cat, s, e) for cat, s, e in labels if e >= cutoff]
+        new_latched = gracie._last_readings[channel]["severity"]
+        jump_now = gracie._last_readings[channel]["jump"]
+        new_aggregate = gracie.health_state
 
-    def caught_at(start, end, want_severity):
+        if new_latched != prior_latched and new_latched in ("WARNING", "FAULT"):
+            (level_events if level_hit_now else leash_events).append((t, new_latched))
+        prior_latched = new_latched
+
+        if jump_now:
+            jump_events.append((t, "WARNING"))
+
+        if new_aggregate != prior_aggregate and new_aggregate in ("WARNING", "FAULT"):
+            any_events.append((t, new_aggregate))
+        prior_aggregate = new_aggregate
+
+    # Communication Gap isn't scored as a category either -- it isn't
+    # a reading at all, so there's nothing for GRACIE to have caught
+    # or missed.
+    test_labels = [(cat, s, e) for cat, s, e in labels if e >= cutoff and cat != "Communication Gap"]
+    cause_events = {"level": level_events, "jump": jump_events, "leash": leash_events, "any": any_events}
+
+    def severities_in_window(events, start, end):
         lo, hi = start.timestamp() - GRACE_SECONDS, end.timestamp() + GRACE_SECONDS
-        return any(sev == want_severity and lo <= t.timestamp() <= hi for t, sev in transitions)
+        return [sev for t, sev in events if lo <= t.timestamp() <= hi]
 
-    scorecard = {"Anomaly": {"total": 0, "caught_warning": 0, "caught_fault": 0},
-                 "Rare Event": {"total": 0, "caught_warning": 0, "caught_fault": 0}}
+    scorecard = {}
     for category, start, end in test_labels:
-        bucket = scorecard.setdefault(category, {"total": 0, "caught_warning": 0, "caught_fault": 0})
+        bucket = scorecard.setdefault(category, {
+            "total": 0,
+            **{cause: {"caught_logged": 0, "caught_flagged": 0} for cause in cause_events}
+        })
         bucket["total"] += 1
-        if caught_at(start, end, "WARNING") or caught_at(start, end, "FAULT"):
-            bucket["caught_warning"] += 1
-        if caught_at(start, end, "FAULT"):
-            bucket["caught_fault"] += 1
+        for cause, events in cause_events.items():
+            hits = severities_in_window(events, start, end)
+            if hits:
+                bucket[cause]["caught_logged"] += 1
+            if "FAULT" in hits:
+                bucket[cause]["caught_flagged"] += 1
 
-    false_warning, false_fault = 0, 0
-    for t, sev in transitions:
-        if sev not in ("WARNING", "FAULT"):
-            continue
-        if label_at(t, test_labels) is not None:
-            continue  # inside a labelled window -- not a false positive
-        if sev == "WARNING":
-            false_warning += 1
-        else:
-            false_fault += 1
+    false_counts = {cause: {"false_logged": 0, "false_flagged": 0} for cause in cause_events}
+    for cause, events in cause_events.items():
+        for t, sev in events:
+            if label_at(t, test_labels) is not None:
+                continue  # inside a labelled window -- not a false positive
+            false_counts[cause]["false_flagged" if sev == "FAULT" else "false_logged"] += 1
 
     return {
         "rule": rule_values,
         "scorecard": scorecard,
-        "false_warning": false_warning,
-        "false_fault": false_fault,
-        "n_transitions": len(transitions),
+        "false_counts": false_counts,
+        "n_level_events": len(level_events),
+        "n_jump_events": len(jump_events),
+        "n_leash_events": len(leash_events),
     }
 
 

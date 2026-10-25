@@ -78,6 +78,19 @@ Interpretive calls made, agreed with Jay before building (see
     this changes any verdict or latching; it only adds more kinds of
     announcement alongside the existing "leash_settled" one. Proven
     not to change any equivalence result in gracie_equivalence_test.py.
+11. Added 2026-10-25 (fourth pass, ESA-ADB follow-up run):
+    clear_fault(channel=None, reset_leash_timer=True) -- the default
+    preserves the original behaviour exactly for every existing
+    caller (clearing the latch also resets the leash's pull-duration
+    clock and edge-detectors). Pass reset_leash_timer=False to clear
+    only the latch, leaving an ongoing pull's clock running -- for a
+    periodic stand-in sign-off (e.g. once per day over a multi-year
+    recording) where resetting the latch shouldn't also erase a pull
+    that's been building for longer than the clear interval. Found
+    while running real_data_tests/esa_adb/'s first pass (see that
+    folder's RESULTS.md) -- the daily clear_fault() there was
+    silently preventing any drift from ever reaching hard duration if
+    it needed to straddle a day boundary to get there.
 
 No invented numbers: every ChannelRule field is required, no
 defaults (see agents/gracie_rulebook.py). Real callers and tests alike
@@ -141,9 +154,21 @@ class GracieAgent:
         elif command == "clear_fault":
             self.clear_fault(payload.get("channel"))
 
-    def clear_fault(self, channel: Optional[str] = None):
+    def clear_fault(self, channel: Optional[str] = None, reset_leash_timer: bool = True):
         """Clears one channel's latch, or every channel's if `channel`
-        is omitted -- preserves the old no-argument call shape."""
+        is omitted -- preserves the old no-argument call shape.
+
+        `reset_leash_timer` defaults to True, preserving exactly the
+        original behaviour for every existing caller: clearing the
+        latch also resets the leash's "how long has this pull lasted"
+        clock and its soft/hard edge-detectors. Pass False to clear
+        only the latch and leave the leash timer running -- for a
+        periodic stand-in sign-off (e.g. once per day, in a long
+        real-data test) where resetting the latch shouldn't also
+        erase a pull that's been building for longer than the clear
+        interval. Added for real_data_tests/esa_adb/'s daily
+        clear_fault() calls, which found this gap: see that folder's
+        RESULTS.md."""
         timestamp = int(time.time())
         channels = [channel] if channel is not None else list(self._states.keys())
         for ch in channels:
@@ -152,9 +177,10 @@ class GracieAgent:
                 continue
             prior_severity = state.latched_severity
             state.latched_severity = "NOMINAL"
-            state.pull_run_start = None
-            state.soft_active = False
-            state.hard_active = False
+            if reset_leash_timer:
+                state.pull_run_start = None
+                state.soft_active = False
+                state.hard_active = False
             if ch in self._last_readings:
                 self._last_readings[ch]["severity"] = "NOMINAL"
             self._announce_warning_transition(ch, timestamp, prior_severity, "NOMINAL")
