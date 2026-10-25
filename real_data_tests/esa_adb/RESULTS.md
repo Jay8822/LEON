@@ -14,6 +14,15 @@ of what actually happened when it ran.
 > zero**. A follow-up run that tags each catch by sense (level, jump,
 > leash) is planned; the numbers below will be updated once it's run.
 > Not editing the figures now — recording the gap plainly instead.
+>
+> **SECOND KNOWN GAP, FOUND THE SAME WAY:** Communication Gap rows
+> were never actually dropped from test scoring — only from training
+> derivation — despite the method always calling for them to be
+> dropped entirely, train and test alike. The first run fed them
+> through GracieAgent and scored "Communication Gap" as a real
+> category. Mission1 has only 4 gap events total, so the likely
+> effect on the figures below is small, but it was never checked
+> before now. Fixed for the follow-up run; not editing these figures.
 
 ## Run
 
