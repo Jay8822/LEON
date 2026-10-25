@@ -6,6 +6,17 @@
 folder's `README.md` for the full method; this file is the write-up
 of what actually happened when it ran.
 
+> **KNOWN GAP IN THE FIGURES BELOW, FOUND AFTER THIS RUN:** this
+> first pass scored severity by reading a field that only reflects
+> GRACIE's LEVEL and LEASH senses — JUMP's contribution lives in a
+> separate aggregate field that this scoring never read. So jump's
+> effect on every catch and false-alarm count below is **missing, not
+> zero**. A follow-up run that tags each catch by sense (level, jump,
+> leash) is planned; the numbers below will be updated once it's run.
+> Not editing the figures now — recording the gap plainly instead.
+
+## Run
+
 ## Run
 
 All 16 channels (8 per mission), both settings (STRICT, LOOSE), zero
