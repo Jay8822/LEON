@@ -50,12 +50,13 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - Any monitored parameter crossing its safe threshold is flagged **independently**. Temperature does not need radiation to also be high, and vice versa.
 - Rate-of-change: GRACIE also watches how fast a reading moves, not just its level — see "Rate-of-change sense (stack-wide)".
 - Leash: GRACIE also watches for slow, sustained drift, not just level and jump — see "Leash — drift sense (stack-wide)".
+- Ageing: her rule book is recalibrated over a long mission as components age and "normal" shifts — see Ageing.
 - Three severities: **flagged**, **logged for investigation** (a spike that returns to normal), and **nominal**.
 - Logged-for-investigation items are announced on the bus, with the current readings, for CHESTER to watch over — every jump, and every time a channel enters or leaves a logged/flagged state, once per transition, never repeated for a condition that's still ongoing — see "Leash — drift sense (stack-wide)" and CHESTER.
 - A rise is judged against context from other agents on the bus, not in isolation. Expected causes (engine burn from ETHAN, radiation cloud, manoeuvre) are logged. No explanation on the bus means flagged as an early warning.
 - Crossing a safe parameter by more than a set margin is flagged regardless of context.
 - Deep health sweep: a stream of small faults is itself abnormal. GRACIE then runs a full health test down to every part she manages, so, for example, a blown fuse is found. Ship-wide — every agent runs its own sweep under the same trigger (see Cross-referencing principle).
-- Status: **built** — any-sensor, rule-book-driven, independent per-channel level/jump/leash (`agents/gracie.py`, `agents/gracie_rulebook.py`). Proven to give the same answers as the batch scripts it was rewritten from (`agents/gracie_equivalence_test.py`, against both real OPSSAT-AD data and the simulated leash test). Wired into the real `main.py` demo; confirmed still compatible with ghost mode. **Not built**: context-aware flagging (judging a rise against what other agents report — the bullet above), jump's cross-check, leash's context-gating (all three need other agents' signals GRACIE doesn't have yet), the deep health sweep, and CHESTER's recurring reminders for anything GRACIE logs (CHESTER himself isn't built).
+- Status: **built** — any-sensor, rule-book-driven, independent per-channel level/jump/leash (`agents/gracie.py`, `agents/gracie_rulebook.py`). Proven to give the same answers as the batch scripts it was rewritten from (`agents/gracie_equivalence_test.py`, against both real OPSSAT-AD data and the simulated leash test). Wired into the real `main.py` demo; confirmed still compatible with ghost mode. **Not built**: context-aware flagging (judging a rise against what other agents report — the bullet above), jump's cross-check, leash's context-gating (all three need other agents' signals GRACIE doesn't have yet), the deep health sweep, and ageing. CHESTER (built, `agents/chester.py`) already watches and light-flags what GRACIE announces today.
 
 ---
 
@@ -135,7 +136,7 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 ## CHESTER — ship-wide watcher, no authority
 
 - A watcher with no authority, like HALIA. It watches, remembers, keeps timers, and tells the relevant agent. The owning agent makes every decision. A PA for the agents, not a manager.
-- Agents announce their own faults and anomalies on the bus; CHESTER keeps watch over them. Right now, with CHESTER not built, those announcements are published with no listener.
+- Agents announce their own faults and anomalies on the bus; CHESTER keeps watch over them. Built and watching GRACIE's announcements today; other agents don't announce anything yet.
 - He logs as he goes: every reading he reads and every timer he sets, for traceability.
 - Its job is the slow, long-memory work, to take strain off the other agents:
   - Leash timers — how long a pull has been going, and when it reaches the hard duration.
@@ -145,6 +146,7 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - Ghost memory: a temporary working memory that refreshes every 10 minutes under optimal conditions (rule-book setting; 10 minutes is the intended starting value). Old layers are never fully deleted: they fade into a ghost memory he can still access after a restart, overload or power disruption, so he can pick up where he left off.
 - Storage-full rule: storage is finite. The oldest ghost layers may be cleared to make room only once they are safely in his permanent log. He flags for a human when nearing full. Nothing is ever dropped silently.
 - End of each mission or day: he tidies his ghost memory, removing data the rule book defines as irrelevant, and commits it to the permanent record. The raw log is never edited or deleted; only the ghost memory (his working summary) is trimmed.
+- Owns long-term ageing tracking and each sensor's historical baseline — memory over time, same as everything else here. See Ageing.
 - Does not do the fast checks. Level and jump stay with each agent, because they can't wait for a middleman (e.g. ETHAN's millisecond responses).
 - If an agent ignores him: he notifies the orchestrator, which pings that agent to confirm it's active, and a flag is added to CHESTER's log.
 - How it differs from the orchestrator: the orchestrator handles traffic, priority and escalation in the moment; CHESTER handles memory over time.
@@ -379,7 +381,24 @@ Status: **not built**.
 - Loosening one agent's leash never hides another agent's problem: when GRACIE's temperature leash loosens because ETHAN is burning, ETHAN's own engine leash stays tight, so a real engine overheat is still caught by ETHAN (consistent with ETHAN's inverse rule: a confirmed engine-caused rise is raised).
 - Each agent owns the leashes for its own sensors.
 - One slope limit per channel, a soft duration and a longer hard duration, and the slack, all come from each channel's rule book. No default values.
-- Status: GRACIE — built, on her own channels (`agents/gracie.py`): soft and hard by duration; hard latches until cleared through the sign-off rules, soft clears itself and returns to NOMINAL if the pull settles back, announced for CHESTER either way (CHESTER himself isn't built, so for now that announcement has no listener). Context-gating is **not built** — it needs an expected-cause signal from another agent GRACIE doesn't have yet. Everyone else — **not built**.
+- Ageing is a separate, much slower process: the leash catches a pull happening now; ageing is the rule book's own limits shifting gradually over the mission. See Ageing.
+- Status: GRACIE — built, on her own channels (`agents/gracie.py`): soft and hard by duration; hard latches until cleared through the sign-off rules, soft clears itself and returns to NOMINAL if the pull settles back, announced for CHESTER either way, and CHESTER (built) does watch it. Context-gating is **not built** — it needs an expected-cause signal from another agent GRACIE doesn't have yet. Everyone else — **not built**.
+
+---
+
+## Ageing
+
+- Components age, so "normal" shifts over a long mission (e.g. solar output falls, battery voltage shifts, coatings change the craft's thermal behaviour; identical parts can age at different rates depending on where they're mounted).
+- Each sensor's rule book holds an expected ageing rate, from published figures for that kind of part, set per craft and mission. No default values.
+- Long-term drift is compared against that expected ageing:
+  - within the expected rate: logged as ageing (CHESTER tracks it).
+  - faster than expected: flagged.
+  - ageing that speeds up: flagged.
+- Ageing is gradual and sustained; faults are sudden. Limits are recalibrated from long, steady trends, never from spikes.
+- Two baselines per sensor: a current baseline, used for alerts, and a historical baseline, for the craft's lifecycle. Updating the current baseline never overwrites the historical one.
+- When a sensor is confirmed as ageing, its rule book is updated from that point, ONLY with a human sign-off. The system never moves its own goalposts.
+- CHESTER owns long-term ageing tracking and the historical baseline, since that's memory over time.
+- Status: **not built**.
 
 ---
 
