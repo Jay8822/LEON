@@ -102,7 +102,7 @@ An assumption is something that must be true for the design to work, that the de
 ## Ageing and long missions
 - A74. Published ageing rates for a kind of part apply to this craft. Open: ageing depends on orbit, design and size, so rates are set per craft in the rule book.
 - A75. [key] A slow real fault isn't mistaken for ageing and absorbed into the new "normal" (the boiling-frog problem). Answer: rule-book updates need human sign-off, the historical baseline is kept, and accelerating ageing is flagged.
-- A76. [key] A channel already latched on a false fault can still reveal a new, real fault. Open. Found in the ESA-ADB run: false latches on two channels appear to have hidden genuine anomalies.
+- A76. [key] A channel already latched on a false fault can still reveal a new, real fault. Open, and now confirmed rather than suspected: checked directly in the ESA-ADB run (not just inferred from counts), 13 of 17 Anomaly events STRICT's level sense missed were already latched on a confirmed false alarm the moment the anomaly began, almost all of it on two channels (channel_43, channel_45). SPEC.md's new "new crossing while already latched" rule (GRACIE section) makes the second crossing visible in the log when this happens; it does not change latching or release, so the masking itself is unchanged, only its visibility.
 
 ## Blueprint and noise
 - A77. [key] The blueprint is correct and complete for this craft. Open: it comes from the builders; a wrong blueprint misleads every agent.

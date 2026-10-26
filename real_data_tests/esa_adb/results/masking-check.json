@@ -1,0 +1,173 @@
+{
+  "channel_62": {
+    "n_anomaly_events": 0,
+    "n_missed": 0,
+    "n_missed_already_latched_false": 0,
+    "missed": [],
+    "elapsed_seconds": 30.866979122161865
+  },
+  "channel_75": {
+    "n_anomaly_events": 1,
+    "n_missed": 0,
+    "n_missed_already_latched_false": 0,
+    "missed": [],
+    "elapsed_seconds": 949.2029857635498
+  },
+  "channel_43": {
+    "n_anomaly_events": 17,
+    "n_missed": 7,
+    "n_missed_already_latched_false": 6,
+    "missed": [
+      {
+        "event_start": "2010-09-07 02:23:09.855000",
+        "event_end": "2010-09-07 02:23:11.943000",
+        "already_latched_fault": true,
+        "latch_began_at": "2010-09-07 00:30:39.855000",
+        "latch_origin_label": null
+      },
+      {
+        "event_start": "2010-10-26 17:25:39.846000",
+        "event_end": "2010-10-26 17:25:44.934000",
+        "already_latched_fault": true,
+        "latch_began_at": "2010-10-26 04:42:09.846000",
+        "latch_origin_label": null
+      },
+      {
+        "event_start": "2011-01-28 22:30:09.831000",
+        "event_end": "2011-01-28 22:34:39.831000",
+        "already_latched_fault": false
+      },
+      {
+        "event_start": "2011-04-19 07:09:39.819000",
+        "event_end": "2011-04-19 07:34:39.819000",
+        "already_latched_fault": true,
+        "latch_began_at": "2011-04-19 04:29:09.819000",
+        "latch_origin_label": null
+      },
+      {
+        "event_start": "2011-12-28 04:02:39.780000",
+        "event_end": "2011-12-28 04:02:47.868000",
+        "already_latched_fault": true,
+        "latch_began_at": "2011-12-28 01:20:09.780000",
+        "latch_origin_label": null
+      },
+      {
+        "event_start": "2012-01-07 03:42:26.865000",
+        "event_end": "2012-01-07 03:42:39.777000",
+        "already_latched_fault": true,
+        "latch_began_at": "2012-01-07 00:26:09.777000",
+        "latch_origin_label": null
+      },
+      {
+        "event_start": "2012-09-19 13:42:51",
+        "event_end": "2012-09-19 13:43:09",
+        "already_latched_fault": true,
+        "latch_began_at": "2012-09-19 00:32:09.738000",
+        "latch_origin_label": null
+      }
+    ],
+    "elapsed_seconds": 1297.6705350875854
+  },
+  "channel_39": {
+    "n_anomaly_events": 2,
+    "n_missed": 2,
+    "n_missed_already_latched_false": 0,
+    "missed": [
+      {
+        "event_start": "2010-04-28 07:49:30.156000",
+        "event_end": "2010-04-29 10:13:30.156000",
+        "already_latched_fault": false
+      },
+      {
+        "event_start": "2010-05-19 23:58:30.153000",
+        "event_end": "2010-05-24 12:43:30.153000",
+        "already_latched_fault": false
+      }
+    ],
+    "elapsed_seconds": 317.5153510570526
+  },
+  "channel_63": {
+    "n_anomaly_events": 0,
+    "n_missed": 0,
+    "n_missed_already_latched_false": 0,
+    "missed": [],
+    "elapsed_seconds": 29.093989372253418
+  },
+  "channel_70": {
+    "n_anomaly_events": 1,
+    "n_missed": 0,
+    "n_missed_already_latched_false": 0,
+    "missed": [],
+    "elapsed_seconds": 888.7492365837097
+  },
+  "channel_45": {
+    "n_anomaly_events": 17,
+    "n_missed": 6,
+    "n_missed_already_latched_false": 6,
+    "missed": [
+      {
+        "event_start": "2010-10-26 17:25:39.846000",
+        "event_end": "2010-10-26 17:25:44.934000",
+        "already_latched_fault": true,
+        "latch_began_at": "2010-10-26 00:03:39.846000",
+        "latch_origin_label": null
+      },
+      {
+        "event_start": "2011-01-28 22:30:09.831000",
+        "event_end": "2011-01-28 22:35:09.831000",
+        "already_latched_fault": true,
+        "latch_began_at": "2011-01-28 00:22:09.831000",
+        "latch_origin_label": null
+      },
+      {
+        "event_start": "2011-04-19 07:10:09.819000",
+        "event_end": "2011-04-19 07:34:09.819000",
+        "already_latched_fault": true,
+        "latch_began_at": "2011-04-19 00:41:39.819000",
+        "latch_origin_label": null
+      },
+      {
+        "event_start": "2011-12-28 04:02:39.780000",
+        "event_end": "2011-12-28 04:02:47.868000",
+        "already_latched_fault": true,
+        "latch_began_at": "2011-12-28 00:44:09.780000",
+        "latch_origin_label": null
+      },
+      {
+        "event_start": "2012-01-07 03:42:26.865000",
+        "event_end": "2012-01-07 03:42:39.777000",
+        "already_latched_fault": true,
+        "latch_began_at": "2012-01-07 00:42:09.777000",
+        "latch_origin_label": null
+      },
+      {
+        "event_start": "2012-09-19 13:42:51",
+        "event_end": "2012-09-19 13:43:09",
+        "already_latched_fault": true,
+        "latch_began_at": "2012-09-19 00:03:39.738000",
+        "latch_origin_label": null
+      }
+    ],
+    "elapsed_seconds": 1304.8588893413544
+  },
+  "channel_36": {
+    "n_anomaly_events": 2,
+    "n_missed": 2,
+    "n_missed_already_latched_false": 1,
+    "missed": [
+      {
+        "event_start": "2010-05-19 00:45:00.153000",
+        "event_end": "2010-05-21 07:39:00.153000",
+        "already_latched_fault": true,
+        "latch_began_at": "2010-05-18 11:48:00.153000",
+        "latch_origin_label": null
+      },
+      {
+        "event_start": "2012-04-20 23:00:00.042000",
+        "event_end": "2012-04-21 09:09:00.042000",
+        "already_latched_fault": false
+      }
+    ],
+    "elapsed_seconds": 2745.060234069824
+  }
+}

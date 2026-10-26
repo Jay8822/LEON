@@ -82,6 +82,49 @@ DRIFT.md may have given on its own.
 
 ## 2b — Is the masking hypothesis (ASSUMPTIONS.md A76) real?
 
-*(In progress — replaying the real GracieAgent against Mission1,
-STRICT, is a near-full rerun of that setting and takes time. Findings
-will be added here once it finishes; see `check_masking.py`.)*
+**Yes, for most of it.** Of the 17 Mission1 Anomaly events STRICT's
+level sense missed (40 total, 23 caught — matching RESULTS.md's
+figure exactly, confirming this check lines up with the real scoring),
+**13 (76%) were already latched FAULT on a confirmed FALSE alarm**
+— not a different real labelled event — the moment the anomaly's own
+window opened. Checked directly, not inferred: for every one of those
+13, `latch_origin_label` is `None`, meaning the crossing that caused
+the pre-existing latch itself fell outside every labelled window.
+
+A bug was caught and fixed before trusting this number — see the
+commit history and `check_masking.py`'s module docstring. The first
+version of this check compared whether a FAULT latch merely
+*overlapped* an anomaly's grace window, not whether the *transition*
+into FAULT landed inside it (the real scoring's own definition). That
+looser check silently hid the exact effect being measured here. Fixed,
+re-run from scratch; the number above is from the corrected run.
+
+| Channel | Anomaly events | Missed | Missed, already latched on a false alarm |
+|---|---|---|---|
+| channel_43 | 17 | 7 | 6 |
+| channel_45 | 17 | 6 | 6 |
+| channel_39 | 2 | 2 | 0 |
+| channel_36 | 2 | 2 | 1 |
+| channel_62/63/70/75 | 2 (combined) | 0 | — |
+| **Total** | **40** | **17** | **13** |
+
+**The masking is concentrated almost entirely in channel_43 and
+channel_45** — 12 of their combined 13 misses are explained by a
+pre-existing false latch; only 1 of their misses is a clean miss with
+no latch involved. channel_39's and channel_36's misses are the
+opposite pattern — only 1 of their combined 4 misses involves a false
+latch; the other 3 were simply never caught at all, latch or no latch.
+
+Looking at WHEN each false latch began (not just that one existed):
+for nearly every one of channel_43/45's masked events, the false
+latch began in the first few hours of THAT SAME CALENDAR DAY — e.g.
+channel_43's 2012-09-19 anomaly at 13:42 sat behind a false latch that
+began at 00:32 that same day. This fits the picture from RESULTS.md
+and `CHECKS.md` 2a above: these two channels drifted enough, relative
+to their own tightly-derived STRICT thresholds, that they re-fault
+almost every single day shortly after the daily clear — so by the
+time a real anomaly happens later that day, the channel is routinely
+already (falsely) latched, and the transition-based scorer has
+nothing new to catch. The masking hypothesis isn't just plausible
+here; it's the dominant explanation for why these two channels'
+Anomaly catch rate is as low as it is.
