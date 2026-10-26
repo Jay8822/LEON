@@ -10,20 +10,47 @@
         "n_training_days": 3548
       },
       "scorecard": {
-        "Anomaly": {
-          "total": 0,
-          "caught_warning": 0,
-          "caught_fault": 0
-        },
         "Rare Event": {
           "total": 1,
-          "caught_warning": 0,
-          "caught_fault": 0
+          "level": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "jump": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 2,
-      "n_transitions": 4
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 2
+        },
+        "jump": {
+          "false_logged": 73,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 73,
+          "false_flagged": 2
+        }
+      },
+      "n_level_events": 2,
+      "n_jump_events": 74,
+      "n_leash_events": 0
     },
     "LOOSE": {
       "rule": {
@@ -34,22 +61,49 @@
         "n_training_days": 3548
       },
       "scorecard": {
-        "Anomaly": {
-          "total": 0,
-          "caught_warning": 0,
-          "caught_fault": 0
-        },
         "Rare Event": {
           "total": 1,
-          "caught_warning": 0,
-          "caught_fault": 0
+          "level": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "jump": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 0,
-      "n_transitions": 0
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "jump": {
+          "false_logged": 14,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 14,
+          "false_flagged": 0
+        }
+      },
+      "n_level_events": 0,
+      "n_jump_events": 15,
+      "n_leash_events": 0
     },
-    "elapsed_seconds": 53.423789978027344
+    "elapsed_seconds": 68.5908842086792
   },
   "channel_75": {
     "n_samples": 14667583,
@@ -64,18 +118,45 @@
       "scorecard": {
         "Anomaly": {
           "total": 1,
-          "caught_warning": 1,
-          "caught_fault": 1
-        },
-        "Rare Event": {
-          "total": 0,
-          "caught_warning": 0,
-          "caught_fault": 0
+          "level": {
+            "caught_logged": 1,
+            "caught_flagged": 1
+          },
+          "jump": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 1,
+            "caught_flagged": 1
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 108,
-      "n_transitions": 222
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 108
+        },
+        "jump": {
+          "false_logged": 46,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 43,
+          "false_flagged": 108
+        }
+      },
+      "n_level_events": 111,
+      "n_jump_events": 46,
+      "n_leash_events": 0
     },
     "LOOSE": {
       "rule": {
@@ -88,20 +169,47 @@
       "scorecard": {
         "Anomaly": {
           "total": 1,
-          "caught_warning": 1,
-          "caught_fault": 1
-        },
-        "Rare Event": {
-          "total": 0,
-          "caught_warning": 0,
-          "caught_fault": 0
+          "level": {
+            "caught_logged": 1,
+            "caught_flagged": 1
+          },
+          "jump": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 1,
+            "caught_flagged": 1
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 16,
-      "n_transitions": 38
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 16
+        },
+        "jump": {
+          "false_logged": 25,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 24,
+          "false_flagged": 16
+        }
+      },
+      "n_level_events": 19,
+      "n_jump_events": 25,
+      "n_leash_events": 0
     },
-    "elapsed_seconds": 1487.9590883255005
+    "elapsed_seconds": 1895.9832253456116
   },
   "channel_43": {
     "n_samples": 15381169,
@@ -114,20 +222,66 @@
         "n_training_days": 3548
       },
       "scorecard": {
-        "Anomaly": {
-          "total": 17,
-          "caught_warning": 10,
-          "caught_fault": 10
-        },
         "Rare Event": {
           "total": 46,
-          "caught_warning": 12,
-          "caught_fault": 12
+          "level": {
+            "caught_logged": 12,
+            "caught_flagged": 12
+          },
+          "jump": {
+            "caught_logged": 5,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 12,
+            "caught_flagged": 12
+          }
+        },
+        "Anomaly": {
+          "total": 17,
+          "level": {
+            "caught_logged": 10,
+            "caught_flagged": 10
+          },
+          "jump": {
+            "caught_logged": 15,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 10,
+            "caught_flagged": 10
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 930,
-      "n_transitions": 1896
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 930
+        },
+        "jump": {
+          "false_logged": 45,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 22,
+          "false_flagged": 930
+        }
+      },
+      "n_level_events": 948,
+      "n_jump_events": 2609,
+      "n_leash_events": 0
     },
     "LOOSE": {
       "rule": {
@@ -138,22 +292,68 @@
         "n_training_days": 3548
       },
       "scorecard": {
-        "Anomaly": {
-          "total": 17,
-          "caught_warning": 15,
-          "caught_fault": 15
-        },
         "Rare Event": {
           "total": 46,
-          "caught_warning": 8,
-          "caught_fault": 8
+          "level": {
+            "caught_logged": 8,
+            "caught_flagged": 8
+          },
+          "jump": {
+            "caught_logged": 3,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 9,
+            "caught_flagged": 8
+          }
+        },
+        "Anomaly": {
+          "total": 17,
+          "level": {
+            "caught_logged": 15,
+            "caught_flagged": 15
+          },
+          "jump": {
+            "caught_logged": 15,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 15,
+            "caught_flagged": 15
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 10,
-      "n_transitions": 66
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 10
+        },
+        "jump": {
+          "false_logged": 20,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 4,
+          "false_flagged": 10
+        }
+      },
+      "n_level_events": 33,
+      "n_jump_events": 2316,
+      "n_leash_events": 0
     },
-    "elapsed_seconds": 1728.7669241428375
+    "elapsed_seconds": 2385.9069118499756
   },
   "channel_39": {
     "n_samples": 5272893,
@@ -166,20 +366,66 @@
         "n_training_days": 3359
       },
       "scorecard": {
-        "Anomaly": {
-          "total": 2,
-          "caught_warning": 0,
-          "caught_fault": 0
-        },
         "Rare Event": {
           "total": 11,
-          "caught_warning": 2,
-          "caught_fault": 2
+          "level": {
+            "caught_logged": 2,
+            "caught_flagged": 2
+          },
+          "jump": {
+            "caught_logged": 6,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 6,
+            "caught_flagged": 2
+          }
+        },
+        "Anomaly": {
+          "total": 2,
+          "level": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "jump": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 51,
-      "n_transitions": 105
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 51
+        },
+        "jump": {
+          "false_logged": 123,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 38,
+          "false_flagged": 51
+        }
+      },
+      "n_level_events": 53,
+      "n_jump_events": 214,
+      "n_leash_events": 0
     },
     "LOOSE": {
       "rule": {
@@ -190,22 +436,68 @@
         "n_training_days": 3359
       },
       "scorecard": {
-        "Anomaly": {
-          "total": 2,
-          "caught_warning": 0,
-          "caught_fault": 0
-        },
         "Rare Event": {
           "total": 11,
-          "caught_warning": 1,
-          "caught_fault": 1
+          "level": {
+            "caught_logged": 1,
+            "caught_flagged": 1
+          },
+          "jump": {
+            "caught_logged": 2,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 2,
+            "caught_flagged": 1
+          }
+        },
+        "Anomaly": {
+          "total": 2,
+          "level": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "jump": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 0,
-      "n_transitions": 1
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "jump": {
+          "false_logged": 11,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 1,
+          "false_flagged": 0
+        }
+      },
+      "n_level_events": 1,
+      "n_jump_events": 25,
+      "n_leash_events": 0
     },
-    "elapsed_seconds": 500.9302453994751
+    "elapsed_seconds": 641.9258236885071
   },
   "channel_63": {
     "n_samples": 487448,
@@ -218,20 +510,47 @@
         "n_training_days": 3548
       },
       "scorecard": {
-        "Anomaly": {
-          "total": 0,
-          "caught_warning": 0,
-          "caught_fault": 0
-        },
         "Rare Event": {
           "total": 1,
-          "caught_warning": 0,
-          "caught_fault": 0
+          "level": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "jump": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 2,
-      "n_transitions": 4
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 2
+        },
+        "jump": {
+          "false_logged": 76,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 76,
+          "false_flagged": 2
+        }
+      },
+      "n_level_events": 2,
+      "n_jump_events": 77,
+      "n_leash_events": 0
     },
     "LOOSE": {
       "rule": {
@@ -242,22 +561,49 @@
         "n_training_days": 3548
       },
       "scorecard": {
-        "Anomaly": {
-          "total": 0,
-          "caught_warning": 0,
-          "caught_fault": 0
-        },
         "Rare Event": {
           "total": 1,
-          "caught_warning": 0,
-          "caught_fault": 0
+          "level": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "jump": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 0,
-      "n_transitions": 0
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "jump": {
+          "false_logged": 15,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 15,
+          "false_flagged": 0
+        }
+      },
+      "n_level_events": 0,
+      "n_jump_events": 16,
+      "n_leash_events": 0
     },
-    "elapsed_seconds": 49.17630338668823
+    "elapsed_seconds": 61.105547189712524
   },
   "channel_70": {
     "n_samples": 14670328,
@@ -272,18 +618,45 @@
       "scorecard": {
         "Anomaly": {
           "total": 1,
-          "caught_warning": 1,
-          "caught_fault": 1
-        },
-        "Rare Event": {
-          "total": 0,
-          "caught_warning": 0,
-          "caught_fault": 0
+          "level": {
+            "caught_logged": 1,
+            "caught_flagged": 1
+          },
+          "jump": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 1,
+            "caught_flagged": 1
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 51,
-      "n_transitions": 106
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 51
+        },
+        "jump": {
+          "false_logged": 11,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 11,
+          "false_flagged": 51
+        }
+      },
+      "n_level_events": 53,
+      "n_jump_events": 11,
+      "n_leash_events": 0
     },
     "LOOSE": {
       "rule": {
@@ -296,20 +669,47 @@
       "scorecard": {
         "Anomaly": {
           "total": 1,
-          "caught_warning": 1,
-          "caught_fault": 1
-        },
-        "Rare Event": {
-          "total": 0,
-          "caught_warning": 0,
-          "caught_fault": 0
+          "level": {
+            "caught_logged": 1,
+            "caught_flagged": 1
+          },
+          "jump": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 1,
+            "caught_flagged": 1
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 7,
-      "n_transitions": 18
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 7
+        },
+        "jump": {
+          "false_logged": 2,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 2,
+          "false_flagged": 7
+        }
+      },
+      "n_level_events": 9,
+      "n_jump_events": 2,
+      "n_leash_events": 0
     },
-    "elapsed_seconds": 1529.6005144119263
+    "elapsed_seconds": 1843.90065574646
   },
   "channel_45": {
     "n_samples": 15381169,
@@ -322,20 +722,66 @@
         "n_training_days": 3548
       },
       "scorecard": {
-        "Anomaly": {
-          "total": 17,
-          "caught_warning": 11,
-          "caught_fault": 11
-        },
         "Rare Event": {
           "total": 45,
-          "caught_warning": 13,
-          "caught_fault": 13
+          "level": {
+            "caught_logged": 13,
+            "caught_flagged": 13
+          },
+          "jump": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 13,
+            "caught_flagged": 13
+          }
+        },
+        "Anomaly": {
+          "total": 17,
+          "level": {
+            "caught_logged": 11,
+            "caught_flagged": 11
+          },
+          "jump": {
+            "caught_logged": 15,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 11,
+            "caught_flagged": 11
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 967,
-      "n_transitions": 2010
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 967
+        },
+        "jump": {
+          "false_logged": 40,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 12,
+          "false_flagged": 967
+        }
+      },
+      "n_level_events": 1005,
+      "n_jump_events": 2450,
+      "n_leash_events": 0
     },
     "LOOSE": {
       "rule": {
@@ -346,22 +792,68 @@
         "n_training_days": 3548
       },
       "scorecard": {
-        "Anomaly": {
-          "total": 17,
-          "caught_warning": 15,
-          "caught_fault": 15
-        },
         "Rare Event": {
           "total": 45,
-          "caught_warning": 7,
-          "caught_fault": 7
+          "level": {
+            "caught_logged": 7,
+            "caught_flagged": 7
+          },
+          "jump": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 8,
+            "caught_flagged": 7
+          }
+        },
+        "Anomaly": {
+          "total": 17,
+          "level": {
+            "caught_logged": 15,
+            "caught_flagged": 15
+          },
+          "jump": {
+            "caught_logged": 15,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 15,
+            "caught_flagged": 15
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 13,
-      "n_transitions": 88
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 13
+        },
+        "jump": {
+          "false_logged": 22,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 5,
+          "false_flagged": 13
+        }
+      },
+      "n_level_events": 44,
+      "n_jump_events": 2432,
+      "n_leash_events": 0
     },
-    "elapsed_seconds": 1728.8288781642914
+    "elapsed_seconds": 2378.541579723358
   },
   "channel_36": {
     "n_samples": 14258506,
@@ -376,18 +868,64 @@
       "scorecard": {
         "Anomaly": {
           "total": 2,
-          "caught_warning": 0,
-          "caught_fault": 0
+          "level": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "jump": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          }
         },
         "Rare Event": {
           "total": 2,
-          "caught_warning": 1,
-          "caught_fault": 1
+          "level": {
+            "caught_logged": 1,
+            "caught_flagged": 1
+          },
+          "jump": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 1,
+            "caught_flagged": 1
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 181,
-      "n_transitions": 364
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 181
+        },
+        "jump": {
+          "false_logged": 3097698,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 1222543,
+          "false_flagged": 181
+        }
+      },
+      "n_level_events": 182,
+      "n_jump_events": 3131646,
+      "n_leash_events": 0
     },
     "LOOSE": {
       "rule": {
@@ -400,19 +938,65 @@
       "scorecard": {
         "Anomaly": {
           "total": 2,
-          "caught_warning": 0,
-          "caught_fault": 0
+          "level": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "jump": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 1,
+            "caught_flagged": 0
+          }
         },
         "Rare Event": {
           "total": 2,
-          "caught_warning": 1,
-          "caught_fault": 1
+          "level": {
+            "caught_logged": 1,
+            "caught_flagged": 1
+          },
+          "jump": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "leash": {
+            "caught_logged": 0,
+            "caught_flagged": 0
+          },
+          "any": {
+            "caught_logged": 1,
+            "caught_flagged": 1
+          }
         }
       },
-      "false_warning": 0,
-      "false_fault": 181,
-      "n_transitions": 364
+      "false_counts": {
+        "level": {
+          "false_logged": 0,
+          "false_flagged": 181
+        },
+        "jump": {
+          "false_logged": 3097676,
+          "false_flagged": 0
+        },
+        "leash": {
+          "false_logged": 0,
+          "false_flagged": 0
+        },
+        "any": {
+          "false_logged": 1222525,
+          "false_flagged": 181
+        }
+      },
+      "n_level_events": 182,
+      "n_jump_events": 3131624,
+      "n_leash_events": 0
     },
-    "elapsed_seconds": 4771.3451817035675
+    "elapsed_seconds": 6001.765609264374
   }
 }

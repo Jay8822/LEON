@@ -26,8 +26,6 @@ of what actually happened when it ran.
 
 ## Run
 
-## Run
-
 All 16 channels (8 per mission), both settings (STRICT, LOOSE), zero
 failures, zero skipped channels. Total runtime ~5.07 hours (Mission1
 11,850s, Mission2 6,394s) — one channel at a time, checkpointed after
@@ -132,19 +130,112 @@ behaviour change, out of scope — so this stands as a known limit of
 this run's method, not something quietly worked around. See Job 4,
 Plan B for what a smaller, targeted fix might look like.
 
-## What wasn't done
+## What wasn't done (first run)
 
 - No breakdown of which sense (level, jump, leash) produced each catch
-  or each false alarm — unlike OPSSAT-AD's test, which did split this
-  out. Without it, the "LOOSE beats STRICT" finding above stays a
-  working hypothesis, not a confirmed explanation.
+  or each false alarm — see the follow-up run below, which added
+  this.
 - Jump's cross-check and leash's context-gating — still not built in
   `agents/gracie.py`, so not tested here regardless of what this
   dataset offers.
-- No long-term drift/ageing measurement — SPEC.md's new "Ageing"
-  section (added alongside this write-up) describes what GRACIE
-  *should* eventually do about exactly the drift this run's
-  false-alarm volume points at; this run doesn't measure that drift
-  directly. See Job 4, Plan A.
+- No long-term drift/ageing measurement — see `DRIFT.md`, added
+  alongside the follow-up run below.
 - Results are the raw JSON in `results/` (committed alongside this
   file) plus this write-up — no further analysis beyond what's above.
+
+---
+
+## Follow-up run (per-sense breakdown, daily-clear fix, Communication
+## Gap fix)
+
+Same 16 channels, same cut-off dates, same settings. Re-run after
+fixing both known gaps above and the daily `clear_fault()` stopwatch
+issue (now `reset_leash_timer=False` — the latch clears every day,
+the leash's pull-duration clock does not). Zero failures. Results in
+`results/ESA-Mission{1,2}.json` (overwritten; the numbers above are
+the first run's, kept in git history for reference).
+
+### What each sense actually did (totals across all 8 channels per mission)
+
+Mission1, STRICT — raw event counts: level=2,356, jump=3,137,127,
+**leash=0**. LOOSE — level=288, jump=3,136,455, **leash=0**.
+Mission2, STRICT — level=233, jump=16,506, **leash=0**. LOOSE —
+level=134, jump=10,497, **leash=0**.
+
+**Leash never fired once, in either mission, either setting, across
+all 16 channels.** Confirmed, not just suspected as in the first run
+(where `false_warning=0` was a hint but leash's contribution wasn't
+actually isolated). The daily-clear fix changes nothing here because
+there was never a pull for it to protect in the first place — same
+story as OPSSAT-AD's leash result. The 1-hour window / 6-hour soft /
+24-hour hard settings (test-fixture choices, not derived from this
+data) simply don't match whatever real sustained drift exists in
+these 16 channels, if any.
+
+**Jump fired an enormous number of times — millions of individual
+samples — which looked alarming until checked closely.** For
+`channel_75` (one of the heaviest contributors), I compared the
+per-day peak jump-rate distribution between training and test
+directly: training and test medians/95th/99th percentiles are nearly
+identical, and only 2.9% of test days exceed the training 95th
+percentile — close to the ~5% you'd expect if nothing had changed.
+**This is not a train/test mismatch.** What's actually happening: on
+the small fraction of days that do exceed the threshold, the elevated
+rate looks sustained through much of that day rather than a single
+spike — so one "bad day" contributes hundreds or thousands of
+individual sample-level jump events, not one. Scoring at the sample
+level (every reading checked against the limit) makes a handful of
+genuinely unusual days look like a constant storm. A per-day or
+per-episode count, the way OPSSAT-AD's test was built, would likely
+tell a much calmer story. Not fixed in this pass — flagging it as a
+real scoring-granularity question for next time, the same way the
+jump-field gap and the Communication Gap gap were flagged rather than
+quietly patched.
+
+### Catch rates by sense (Mission1, STRICT; Anomaly category, 40 events)
+
+| Sense | Caught (logged or flagged) | Caught (flagged) |
+|---|---|---|
+| level | 23/40 | 23/40 |
+| jump  | 32/40 | 0/40 |
+| leash | 0/40  | 0/40 |
+| any   | 25/40 | 23/40 |
+
+Level is the only sense that ever reaches "flagged" here — matches
+design (level→FAULT directly, jump→WARNING only, leash never fired).
+Jump logged more Anomaly events (32/40) than it flagged anything, by
+definition — it's a much busier, much lower-severity signal than
+level. Full per-cause tables for both missions and settings are in
+`results/ESA-Mission{1,2}.json`.
+
+### The "LOOSE beats STRICT" finding stands, unchanged
+
+Level's own numbers didn't change between runs (level's logic and
+derivation weren't touched) — STRICT still catches fewer Mission1
+Anomalies by level (23/40) than LOOSE (32/40), and STRICT's level
+false-flag count is still concentrated in `channel_43`/`channel_45`.
+The masking hypothesis from the first run (a channel already falsely
+latched FAULT hides a later genuine anomaly from this transition-based
+scorer) is unchanged by this round's fixes and still unconfirmed —
+see `ASSUMPTIONS.md` A76.
+
+### The long-term-drift explanation for the false-fault volume is weaker than first thought
+
+`DRIFT.md` (Plan A, built alongside this) measured real year-to-year
+drift for every monitored channel in both missions. **It doesn't
+strongly support the original hypothesis.** `channel_43`'s test
+period sits only 0.55 training-IQRs from its training median — modest
+— and `channel_45` doesn't appear near the top of either drift
+ranking at all. Reporting this plainly rather than forcing the
+earlier story to fit: median-level long-term drift, as actually
+measured, isn't the main explanation for those two channels' false
+alarms. See `DRIFT.md` for the full measurement.
+
+## What wasn't done (follow-up run)
+
+- Jump and leash's event counts weren't re-expressed per-day or
+  per-episode, which the "enormous jump count" finding above suggests
+  would be far more informative than the raw per-sample count used
+  here.
+- Jump's cross-check and leash's context-gating — still not built.
+- Still a first test, not a validation.
