@@ -18,6 +18,13 @@ venv/
 .venv/
 .vscode/
 
+# Detached long-running job logs/exit-codes (see Ccode update.txt's
+# "detached background jobs" instructions) — local machine state, not
+# project content. The wrapper script itself (run_detached.bat) is
+# kept — negation must come last, same reasoning as logs/* above.
+bg_jobs/*
+!bg_jobs/run_detached.bat
+
 # Editor/tooling config, not LEON itself.
 .claude/
 .mcp.json
