@@ -55,8 +55,15 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - Logged-for-investigation items are announced on the bus, with the current readings, for CHESTER to watch over — every jump, and every time a channel enters or leaves a logged/flagged state, once per transition, never repeated for a condition that's still ongoing — see "Leash — drift sense (stack-wide)" and CHESTER.
 - A rise is judged against context from other agents on the bus, not in isolation. Expected causes (engine burn from ETHAN, radiation cloud, manoeuvre) are logged. No explanation on the bus means flagged as an early warning.
 - Crossing a safe parameter by more than a set margin is flagged regardless of context.
+- New crossing while already latched: if a channel is already latched
+  (FAULT, or a hard leash) and a new, separate crossing or event
+  happens on it, that is logged as a fresh event in its own right,
+  never silently swallowed by the existing latch. CHESTER keeps watch
+  on any latch left on for a long time, so a persistent latch doesn't
+  quietly absorb everything that happens underneath it. See
+  `ASSUMPTIONS.md` A76.
 - Deep health sweep: a stream of small faults is itself abnormal. GRACIE then runs a full health test down to every part she manages, so, for example, a blown fuse is found. Ship-wide — every agent runs its own sweep under the same trigger (see Cross-referencing principle).
-- Status: **built** — any-sensor, rule-book-driven, independent per-channel level/jump/leash (`agents/gracie.py`, `agents/gracie_rulebook.py`). Proven to give the same answers as the batch scripts it was rewritten from (`agents/gracie_equivalence_test.py`, against both real OPSSAT-AD data and the simulated leash test). Wired into the real `main.py` demo; confirmed still compatible with ghost mode. **Not built**: context-aware flagging (judging a rise against what other agents report — the bullet above), jump's cross-check, leash's context-gating (all three need other agents' signals GRACIE doesn't have yet), the deep health sweep, and ageing. CHESTER (built, `agents/chester.py`) already watches and light-flags what GRACIE announces today.
+- Status: **built** — any-sensor, rule-book-driven, independent per-channel level/jump/leash (`agents/gracie.py`, `agents/gracie_rulebook.py`). Proven to give the same answers as the batch scripts it was rewritten from (`agents/gracie_equivalence_test.py`, against both real OPSSAT-AD data and the simulated leash test). Wired into the real `main.py` demo; confirmed still compatible with ghost mode. Also built, 26 October 2026: logging a fresh event on a new crossing while already latched, and an `expected_causes` input that logs a level crossing instead of flagging it (both `agents/gracie.py` module docstring, point 12) — GRACIE still has no idea what counts as an expected cause or where one comes from; deciding that stays entirely outside her, in real_data_tests/ for now. **Not built**: context-aware flagging for anything beyond an already-decided expected cause (judging a rise against what other agents report more generally), jump's cross-check, leash's context-gating (all three need other agents' signals GRACIE doesn't have yet), and the deep health sweep. Ageing is covered separately — see Ageing. CHESTER (built, `agents/chester.py`) already watches and light-flags what GRACIE announces today.
 
 ---
 
@@ -140,6 +147,9 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - He logs as he goes: every reading he reads and every timer he sets, for traceability.
 - Its job is the slow, long-memory work, to take strain off the other agents:
   - Leash timers — how long a pull has been going, and when it reaches the hard duration.
+  - Long-held latches — flags a latch (FAULT or hard leash) that's
+    stayed on an unusually long time, so a persistent fault doesn't
+    quietly swallow whatever happens next underneath it.
   - Items logged for investigation, so they aren't forgotten.
   - Repeating coincidences between unrelated jumps ("spike on X, jump on Y, again").
   - Light-flag reminders on every timed self-check cycle.
@@ -381,15 +391,46 @@ Status: **not built**.
 - Loosening one agent's leash never hides another agent's problem: when GRACIE's temperature leash loosens because ETHAN is burning, ETHAN's own engine leash stays tight, so a real engine overheat is still caught by ETHAN (consistent with ETHAN's inverse rule: a confirmed engine-caused rise is raised).
 - Each agent owns the leashes for its own sensors.
 - One slope limit per channel, a soft duration and a longer hard duration, and the slack, all come from each channel's rule book. No default values.
-- Ageing is a separate, much slower process: the leash catches a pull happening now; ageing is the rule book's own limits shifting gradually over the mission. See Ageing.
+- Ageing line: each sensor's expected ageing rate comes from the
+  average lifespan of similar parts on similar missions, set per
+  craft in the blueprint (see Blueprint). Long-term drift is judged
+  against that expected ageing — within the expected rate is ageing,
+  faster or accelerating is flagged (see Ageing). The leash itself
+  stays for drift over minutes to hours; ageing is the slower,
+  separate process covering years.
 - Status: GRACIE — built, on her own channels (`agents/gracie.py`): soft and hard by duration; hard latches until cleared through the sign-off rules, soft clears itself and returns to NOMINAL if the pull settles back, announced for CHESTER either way, and CHESTER (built) does watch it. Context-gating is **not built** — it needs an expected-cause signal from another agent GRACIE doesn't have yet. Everyone else — **not built**.
+
+---
+
+## Blueprint (stack-wide)
+
+- Each craft's rule book grows into a full blueprint: for every
+  sensor, what it measures, its units, its calibration, its normal
+  noise, known interference from other sensors or systems (for
+  example, "when the battery switches, these sensors jitter"), sensors
+  that legitimately read zero in some conditions (for example, light
+  sensors in Earth's shadow), and its expected ageing (see Ageing).
+  The blueprint comes from the people who built the craft.
+- An agent with no blueprint is a driver in an unfamiliar van with no
+  manual: it can still watch for readings outside a safe range, but it
+  has no way to tell expected noise, known interference, or an
+  expected zero, from something genuinely wrong.
+- Noise filter, driven by the blueprint: filters only what the
+  blueprint explains as natural noise or known interference between
+  sensors or systems. Logs everything it filters — nothing is
+  silently dropped. Raw readings are always kept, unfiltered,
+  alongside the filtered view. A filter must never hide a real fault:
+  anything the blueprint doesn't explain passes through untouched.
+- Status: not built.
 
 ---
 
 ## Ageing
 
 - Components age, so "normal" shifts over a long mission (e.g. solar output falls, battery voltage shifts, coatings change the craft's thermal behaviour; identical parts can age at different rates depending on where they're mounted).
-- Each sensor's rule book holds an expected ageing rate, from published figures for that kind of part, set per craft and mission. No default values.
+- Each sensor's expected ageing rate comes from the average lifespan
+  of similar parts on similar missions, set per craft in the blueprint
+  (see Blueprint). No default values.
 - Long-term drift is compared against that expected ageing:
   - within the expected rate: logged as ageing (CHESTER tracks it).
   - faster than expected: flagged.
@@ -437,9 +478,16 @@ Never judge in isolation. Each agent checks its own domain against the wider pic
 
 ## Real-data testing
 
+We can't make the data do what we want; we need to do what the data wants.
+
 - Three public, labelled datasets, in order: ESA OPS-SAT (OPSSAT-AD), NASA SMAP/MSL, then ESA-ADB.
-- Honest limit: public data is anonymised and scaled, so the test is of GRACIE's detection logic, not of true temperature or radiation monitoring.
+- Honest limit: public data is anonymised and scaled, so the test is of GRACIE's detection logic, not of true temperature or radiation monitoring. These datasets are anonymised, so no real blueprint exists for them (see Blueprint) — results on them are GRACIE's floor, not her real ability, and every write-up says so.
 - Pass means an honest scorecard (faults caught, faults missed, false alarms), not a target score. Written up as "first tests against real spacecraft data", not "validated".
+- Counting rule: every counting and scoring choice (per-sample vs.
+  per-day vs. per-episode, which window counts as a catch, and so on)
+  is fixed before looking at results. Where there's more than one
+  fair way to count, the write-up reports all of them, never only the
+  nicer one.
 - Expected result: sudden spikes caught, slow drift missed. That finding justifies the drift-detection work.
 - ESA-ADB is large. The laptop has 6 GB of memory, so read it in chunks, start with one mission and a handful of channels, and expect slow runs.
 - Do not commit raw data to the repo. Use a download script, and cite every dataset properly.

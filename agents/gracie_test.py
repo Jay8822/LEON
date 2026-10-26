@@ -339,6 +339,56 @@ def test_report_carries_actual_readings():
     print("  ok: every report carries real per-channel readings, including diagnostics-triggered ones")
 
 
+def test_new_crossing_while_latched_logs_but_does_not_change_anything():
+    gracie, _, chester = make_gracie()
+    # Small steps (well under jump_limit=5.0/s) so jump noise doesn't
+    # confound what's being tested here.
+    gracie.process_readings({"temp_c": 56}, timestamp=0)  # first crossing -> FAULT
+    assert gracie._last_readings["temp_c"]["severity"] == "FAULT"
+    assert gracie._states["temp_c"].level_crossing_active is True
+
+    gracie.process_readings({"temp_c": 52}, timestamp=1)  # back in bounds (delta=4)
+    assert gracie._last_readings["temp_c"]["severity"] == "FAULT", "still latched -- only clear_fault undoes it"
+    assert gracie._states["temp_c"].level_crossing_active is False
+
+    # A second, separate crossing while still latched FAULT from the
+    # first -- severity is unaffected (already FAULT, stays FAULT), but
+    # the edge-detector proves this is treated as a fresh crossing, not
+    # silently folded into the first (module docstring, point 12).
+    gracie.process_readings({"temp_c": 56}, timestamp=2)  # delta=4
+    assert gracie._last_readings["temp_c"]["severity"] == "FAULT"
+    assert gracie._states["temp_c"].level_crossing_active is True
+
+    # Nothing about this should have produced any WARNING-transition
+    # chester/watch noise -- level FAULT entry/re-entry isn't itself
+    # chester-announced (only WARNING transitions are).
+    assert chester == [], chester
+    print("  ok: a new crossing while already latched FAULT logs a fresh event, latch stays unchanged")
+
+
+def test_expected_cause_logs_not_flags_but_never_downgrades_fault():
+    gracie, _, _ = make_gracie()
+    # Expected cause present: a crossing is logged (WARNING), not flagged.
+    gracie.process_readings({"temp_c": 56}, timestamp=0, expected_causes={"temp_c"})
+    assert gracie._last_readings["temp_c"]["severity"] == "WARNING"
+    assert gracie.health_state == "WARNING"
+
+    gracie.clear_fault("temp_c")
+    assert gracie._last_readings["temp_c"]["severity"] == "NOMINAL"
+
+    # No expected cause this time -- the same crossing actually flags it.
+    gracie.process_readings({"temp_c": 56}, timestamp=1)
+    assert gracie._last_readings["temp_c"]["severity"] == "FAULT"
+
+    # An expected cause on a LATER cycle must never downgrade an
+    # existing FAULT latch -- same one-way-ratchet rule as everywhere
+    # else in this file.
+    gracie.process_readings({"temp_c": 56}, timestamp=2, expected_causes={"temp_c"})
+    assert gracie._last_readings["temp_c"]["severity"] == "FAULT", \
+        "expected cause must never downgrade an existing FAULT latch"
+    print("  ok: expected cause logs instead of flagging, but never downgrades an existing FAULT latch")
+
+
 def test_unrecognized_channel_is_ignored_not_guessed_at():
     gracie, _, _ = make_gracie()
     gracie.process_readings({"temp_c": 30, "mystery_channel": 999}, timestamp=0)
@@ -361,6 +411,8 @@ def main():
         test_jump_announces_on_chester_watch,
         test_clear_fault_announces_warning_left,
         test_report_carries_actual_readings,
+        test_new_crossing_while_latched_logs_but_does_not_change_anything,
+        test_expected_cause_logs_not_flags_but_never_downgrades_fault,
         test_unrecognized_channel_is_ignored_not_guessed_at,
     ]
     for test in tests:

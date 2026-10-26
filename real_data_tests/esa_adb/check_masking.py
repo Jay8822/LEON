@@ -115,8 +115,16 @@ def check_channel(channel, rule_values, timestamps, values, labels, cutoff):
         fault_windows.append((latch_began_at, timestamps[-1] if timestamps else None))
 
     def caught(start, end):
+        # Matches run_esa_adb_test.py's score_test_period() exactly: a
+        # catch is the TRANSITION MOMENT into FAULT landing inside the
+        # grace window, not the latch merely still being held FAULT
+        # from an earlier, unrelated crossing. An interval-overlap
+        # check would misclassify an already-latched channel's old
+        # fault as "catching" the new anomaly underneath it -- exactly
+        # the masking question this script exists to answer, so it
+        # must not be blurred here.
         lo, hi = start.timestamp() - GRACE_SECONDS, end.timestamp() + GRACE_SECONDS
-        return any(fs.timestamp() <= hi and fe.timestamp() >= lo for fs, fe in fault_windows if fe is not None)
+        return any(lo <= fs.timestamp() <= hi for fs, _fe in fault_windows)
 
     missed = []
     for idx, (start, end) in enumerate(test_events):

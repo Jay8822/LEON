@@ -91,6 +91,32 @@ Interpretive calls made, agreed with Jay before building (see
     folder's RESULTS.md) -- the daily clear_fault() there was
     silently preventing any drift from ever reaching hard duration if
     it needed to straddle a day boundary to get there.
+12. Added 2026-10-26 (ESA-ADB context-checking round) -- two small,
+    additive changes to LEVEL only, each justified directly against a
+    SPEC.md line, built as minimally as possible per Jay's "keep the
+    agents lean" rule (real_data_tests/esa_adb/'s own timing-
+    correlation and command/event linking stays entirely in
+    real_data_tests/, never here):
+    - New crossing while already latched (SPEC.md GRACIE section): a
+      level crossing that starts again after dropping back below
+      threshold, while the channel is STILL latched FAULT from an
+      earlier crossing, now gets its own fresh log line. The latch
+      itself is untouched -- same FAULT severity as before, nothing
+      reset, nothing released. Pure traceability for ASSUMPTIONS.md
+      A76 (a false latch silently absorbing a real one); doesn't
+      change any verdict.
+    - Expected-cause input (SPEC.md GRACIE section: "Expected causes
+      ... are logged. No explanation ... flagged as an early
+      warning."): process_readings() takes an optional
+      `expected_causes` set of channel names. A level crossing on a
+      named channel is LOGGED (WARNING, same vocabulary as jump/soft
+      leash) instead of FLAGGED (FAULT) -- except it never downgrades
+      an existing FAULT latch, preserving the one-way-ratchet rule
+      used everywhere else in this file. GRACIE has no idea what an
+      "expected cause" actually is or where it comes from -- that's
+      deliberately out of scope here; real_data_tests/esa_adb/ decides
+      which channels have one, from training-only command/event
+      timing correlation, and simply passes the set in.
 
 No invented numbers: every ChannelRule field is required, no
 defaults (see agents/gracie_rulebook.py). Real callers and tests alike
@@ -131,6 +157,11 @@ class _ChannelState:
     # have no latching concept at all) in gracie_equivalence_test.py.
     soft_active: bool = False
     hard_active: bool = False
+    # Edge-detector for LEVEL specifically -- lets a new, separate
+    # crossing (value dips back in bounds, then crosses again) be
+    # logged in its own right even while latched_severity is still
+    # FAULT from an earlier crossing (module docstring, point 12).
+    level_crossing_active: bool = False
 
 
 class GracieAgent:
@@ -189,15 +220,44 @@ class GracieAgent:
         self.report_health(timestamp)
 
     # --- the three senses, per channel --------------------------------
-    def _process_level(self, channel: str, state: _ChannelState, value: float):
+    def _process_level(self, channel: str, state: _ChannelState, value: float,
+                        expected: bool = False):
+        """`expected` -- SPEC.md GRACIE section: "Expected causes ...
+        are logged. No explanation ... flagged." GRACIE itself has no
+        idea what counts as an expected cause or where it comes from;
+        the caller decides and passes a plain bool (module docstring,
+        point 12). A crossing while expected is LOGGED (WARNING) and
+        never downgrades an existing FAULT latch -- the one-way-ratchet
+        rule everywhere else in this file."""
         rule = state.rule
-        if value > rule.level_high or value < rule.level_low:
+        crossing = value > rule.level_high or value < rule.level_low
+        if not crossing:
+            state.level_crossing_active = False
+            return
+        is_new_crossing = not state.level_crossing_active
+        if expected:
+            if is_new_crossing:
+                self.logger.info(
+                    f"{channel}: LEVEL crossing with expected cause -- logged, not flagged "
+                    f"(value={value}{rule.units}, high={rule.level_high}, low={rule.level_low})"
+                )
+            if _SEVERITY_RANK[state.latched_severity] < _SEVERITY_RANK["WARNING"]:
+                state.latched_severity = "WARNING"
+            state.level_crossing_active = True
+            return
+        if is_new_crossing:
             if state.latched_severity != "FAULT":
                 self.logger.info(
                     f"{channel}: LEVEL transition -> FAULT "
                     f"(value={value}{rule.units}, high={rule.level_high}, low={rule.level_low})"
                 )
-            state.latched_severity = "FAULT"
+            else:
+                self.logger.info(
+                    f"{channel}: LEVEL crossing while already latched FAULT -- new event "
+                    f"(value={value}{rule.units}, high={rule.level_high}, low={rule.level_low})"
+                )
+        state.latched_severity = "FAULT"
+        state.level_crossing_active = True
 
     def _process_jump(self, state: _ChannelState, timestamp: float, value: float) -> bool:
         """True if the rate since the last sample exceeds the jump
@@ -292,11 +352,18 @@ class GracieAgent:
         return None
 
     # --- main entry point ----------------------------------------------
-    def process_readings(self, readings: Dict[str, float], timestamp: float):
+    def process_readings(self, readings: Dict[str, float], timestamp: float,
+                          expected_causes: Optional[set] = None):
         """readings: {channel_name: value}. Channels not in the rule
         book are logged and ignored -- no guessing at a channel GRACIE
-        has no rule for."""
+        has no rule for.
+
+        expected_causes: optional set of channel names that have a
+        context-provided expected cause THIS cycle (module docstring,
+        point 12). Omitted or empty preserves the original behaviour
+        exactly for every existing caller."""
         cycle_jump_channels = set()
+        expected_causes = expected_causes or ()
 
         for channel, value in readings.items():
             state = self._states.get(channel)
@@ -308,7 +375,7 @@ class GracieAgent:
             rule = state.rule
             prior_severity = state.latched_severity
 
-            self._process_level(channel, state, value)
+            self._process_level(channel, state, value, expected=channel in expected_causes)
             jump_event = self._process_jump(state, timestamp, value)
             slope = self._update_window_and_get_slope(state, timestamp, value)
             leash_event = self._process_leash(channel, state, timestamp, slope)

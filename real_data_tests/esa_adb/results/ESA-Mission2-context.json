@@ -1,0 +1,2665 @@
+{
+  "channel_22": {
+    "STRICT": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_54": {
+              "linked": true,
+              "trigger_rate": 0.9649122807017544,
+              "random_rate": 0.07,
+              "n_cooccurrences": 110
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.07,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.21652421652421652,
+              "random_rate": 0.07,
+              "n_cooccurrences": 152
+            }
+          },
+          "events": {}
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_54": {
+              "linked": true,
+              "trigger_rate": 0.9649122807017544,
+              "random_rate": 0.07,
+              "n_cooccurrences": 110
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.07,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.21794871794871795,
+              "random_rate": 0.07,
+              "n_cooccurrences": 153
+            }
+          },
+          "events": {}
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_54": {
+              "linked": true,
+              "trigger_rate": 0.9649122807017544,
+              "random_rate": 0.07,
+              "n_cooccurrences": 110
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.07,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.22507122507122507,
+              "random_rate": 0.07,
+              "n_cooccurrences": 158
+            }
+          },
+          "events": {}
+        }
+      },
+      "n_training_crossings": 399183
+    },
+    "LOOSE": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_1": {
+              "linked": true,
+              "trigger_rate": 0.04072398190045249,
+              "random_rate": 0.006,
+              "n_cooccurrences": 18
+            },
+            "telecommand_39": {
+              "linked": true,
+              "trigger_rate": 0.0625,
+              "random_rate": 0.006,
+              "n_cooccurrences": 10
+            },
+            "telecommand_54": {
+              "linked": true,
+              "trigger_rate": 0.2807017543859649,
+              "random_rate": 0.006,
+              "n_cooccurrences": 32
+            },
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.018574601251766607,
+              "random_rate": 0.006,
+              "n_cooccurrences": 184
+            },
+            "telecommand_56": {
+              "linked": true,
+              "trigger_rate": 0.019880715705765408,
+              "random_rate": 0.006,
+              "n_cooccurrences": 20
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.13762019230769232,
+              "random_rate": 0.006,
+              "n_cooccurrences": 229
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.13262910798122066,
+              "random_rate": 0.006,
+              "n_cooccurrences": 226
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.13947990543735225,
+              "random_rate": 0.006,
+              "n_cooccurrences": 236
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.1377245508982036,
+              "random_rate": 0.006,
+              "n_cooccurrences": 92
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.14517819706498952,
+              "random_rate": 0.006,
+              "n_cooccurrences": 277
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.006,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.21652421652421652,
+              "random_rate": 0.006,
+              "n_cooccurrences": 152
+            }
+          },
+          "events": {}
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_1": {
+              "linked": true,
+              "trigger_rate": 0.04072398190045249,
+              "random_rate": 0.006,
+              "n_cooccurrences": 18
+            },
+            "telecommand_39": {
+              "linked": true,
+              "trigger_rate": 0.0625,
+              "random_rate": 0.006,
+              "n_cooccurrences": 10
+            },
+            "telecommand_54": {
+              "linked": true,
+              "trigger_rate": 0.2807017543859649,
+              "random_rate": 0.006,
+              "n_cooccurrences": 32
+            },
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.018574601251766607,
+              "random_rate": 0.006,
+              "n_cooccurrences": 184
+            },
+            "telecommand_56": {
+              "linked": true,
+              "trigger_rate": 0.019880715705765408,
+              "random_rate": 0.006,
+              "n_cooccurrences": 20
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.13942307692307693,
+              "random_rate": 0.006,
+              "n_cooccurrences": 232
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.13438967136150234,
+              "random_rate": 0.006,
+              "n_cooccurrences": 229
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.1400709219858156,
+              "random_rate": 0.006,
+              "n_cooccurrences": 237
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.1407185628742515,
+              "random_rate": 0.006,
+              "n_cooccurrences": 94
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.14675052410901468,
+              "random_rate": 0.006,
+              "n_cooccurrences": 280
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.006,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.21794871794871795,
+              "random_rate": 0.006,
+              "n_cooccurrences": 153
+            }
+          },
+          "events": {}
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_1": {
+              "linked": true,
+              "trigger_rate": 0.049773755656108594,
+              "random_rate": 0.006,
+              "n_cooccurrences": 22
+            },
+            "telecommand_39": {
+              "linked": true,
+              "trigger_rate": 0.0625,
+              "random_rate": 0.006,
+              "n_cooccurrences": 10
+            },
+            "telecommand_54": {
+              "linked": true,
+              "trigger_rate": 0.2807017543859649,
+              "random_rate": 0.006,
+              "n_cooccurrences": 32
+            },
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.018978396931152837,
+              "random_rate": 0.006,
+              "n_cooccurrences": 188
+            },
+            "telecommand_56": {
+              "linked": true,
+              "trigger_rate": 0.019880715705765408,
+              "random_rate": 0.006,
+              "n_cooccurrences": 20
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.14182692307692307,
+              "random_rate": 0.006,
+              "n_cooccurrences": 236
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.13791079812206572,
+              "random_rate": 0.006,
+              "n_cooccurrences": 235
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.14361702127659576,
+              "random_rate": 0.006,
+              "n_cooccurrences": 243
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.14221556886227546,
+              "random_rate": 0.006,
+              "n_cooccurrences": 95
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.14937106918238993,
+              "random_rate": 0.006,
+              "n_cooccurrences": 285
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.006,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.22507122507122507,
+              "random_rate": 0.006,
+              "n_cooccurrences": 158
+            }
+          },
+          "events": {}
+        }
+      },
+      "n_training_crossings": 59517
+    },
+    "elapsed_seconds": 1081.9749801158905
+  },
+  "channel_96": {
+    "STRICT": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.5085470085470085,
+              "random_rate": 0.099,
+              "n_cooccurrences": 357
+            }
+          },
+          "events": {}
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.5085470085470085,
+              "random_rate": 0.099,
+              "n_cooccurrences": 357
+            }
+          },
+          "events": {}
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.50997150997151,
+              "random_rate": 0.099,
+              "n_cooccurrences": 358
+            }
+          },
+          "events": {}
+        }
+      },
+      "n_training_crossings": 469324
+    },
+    "LOOSE": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.2091346153846154,
+              "random_rate": 0.026,
+              "n_cooccurrences": 348
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.2106807511737089,
+              "random_rate": 0.026,
+              "n_cooccurrences": 359
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.24881796690307328,
+              "random_rate": 0.026,
+              "n_cooccurrences": 421
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.20958083832335328,
+              "random_rate": 0.026,
+              "n_cooccurrences": 140
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.23060796645702306,
+              "random_rate": 0.026,
+              "n_cooccurrences": 440
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.42165242165242167,
+              "random_rate": 0.026,
+              "n_cooccurrences": 296
+            }
+          },
+          "events": {}
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.2091346153846154,
+              "random_rate": 0.026,
+              "n_cooccurrences": 348
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.2106807511737089,
+              "random_rate": 0.026,
+              "n_cooccurrences": 359
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.24881796690307328,
+              "random_rate": 0.026,
+              "n_cooccurrences": 421
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.20958083832335328,
+              "random_rate": 0.026,
+              "n_cooccurrences": 140
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.23060796645702306,
+              "random_rate": 0.026,
+              "n_cooccurrences": 440
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.42165242165242167,
+              "random_rate": 0.026,
+              "n_cooccurrences": 296
+            }
+          },
+          "events": {}
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.20973557692307693,
+              "random_rate": 0.026,
+              "n_cooccurrences": 349
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.2112676056338028,
+              "random_rate": 0.026,
+              "n_cooccurrences": 360
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.24940898345153664,
+              "random_rate": 0.026,
+              "n_cooccurrences": 422
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.20958083832335328,
+              "random_rate": 0.026,
+              "n_cooccurrences": 140
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.23113207547169812,
+              "random_rate": 0.026,
+              "n_cooccurrences": 441
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.4230769230769231,
+              "random_rate": 0.026,
+              "n_cooccurrences": 297
+            }
+          },
+          "events": {}
+        }
+      },
+      "n_training_crossings": 87546
+    },
+    "elapsed_seconds": 82.69008874893188
+  },
+  "channel_78": {
+    "STRICT": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.004441752473248536,
+              "random_rate": 0.001,
+              "n_cooccurrences": 44
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.024639423076923076,
+              "random_rate": 0.001,
+              "n_cooccurrences": 41
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.01995305164319249,
+              "random_rate": 0.001,
+              "n_cooccurrences": 34
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.018912529550827423,
+              "random_rate": 0.001,
+              "n_cooccurrences": 32
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.017964071856287425,
+              "random_rate": 0.001,
+              "n_cooccurrences": 12
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.022536687631027254,
+              "random_rate": 0.001,
+              "n_cooccurrences": 43
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.03561253561253561,
+              "random_rate": 0.001,
+              "n_cooccurrences": 25
+            }
+          },
+          "events": {}
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.008782556026650516,
+              "random_rate": 0.002,
+              "n_cooccurrences": 87
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.04447115384615385,
+              "random_rate": 0.002,
+              "n_cooccurrences": 74
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.03990610328638498,
+              "random_rate": 0.002,
+              "n_cooccurrences": 68
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.037825059101654845,
+              "random_rate": 0.002,
+              "n_cooccurrences": 64
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.04491017964071856,
+              "random_rate": 0.002,
+              "n_cooccurrences": 30
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.041928721174004195,
+              "random_rate": 0.002,
+              "n_cooccurrences": 80
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.0584045584045584,
+              "random_rate": 0.002,
+              "n_cooccurrences": 41
+            }
+          },
+          "events": {}
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_42": {
+              "linked": true,
+              "trigger_rate": 0.10416666666666667,
+              "random_rate": 0.005,
+              "n_cooccurrences": 10
+            },
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.023823945083787604,
+              "random_rate": 0.005,
+              "n_cooccurrences": 236
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.10216346153846154,
+              "random_rate": 0.005,
+              "n_cooccurrences": 170
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.09213615023474178,
+              "random_rate": 0.005,
+              "n_cooccurrences": 157
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.08806146572104019,
+              "random_rate": 0.005,
+              "n_cooccurrences": 149
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.09131736526946108,
+              "random_rate": 0.005,
+              "n_cooccurrences": 61
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.10062893081761007,
+              "random_rate": 0.005,
+              "n_cooccurrences": 192
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.13247863247863248,
+              "random_rate": 0.005,
+              "n_cooccurrences": 93
+            },
+            "telecommand_122": {
+              "linked": true,
+              "trigger_rate": 0.03428571428571429,
+              "random_rate": 0.005,
+              "n_cooccurrences": 12
+            }
+          },
+          "events": {}
+        }
+      },
+      "n_training_crossings": 9445
+    },
+    "LOOSE": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_45": {
+              "linked": true,
+              "trigger_rate": 0.00043145850232124673,
+              "random_rate": 0.0,
+              "n_cooccurrences": 25
+            },
+            "telecommand_48": {
+              "linked": true,
+              "trigger_rate": 0.00029851736375999206,
+              "random_rate": 0.0,
+              "n_cooccurrences": 18
+            },
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.001110438118312134,
+              "random_rate": 0.0,
+              "n_cooccurrences": 11
+            },
+            "telecommand_63": {
+              "linked": true,
+              "trigger_rate": 0.000613685179502915,
+              "random_rate": 0.0,
+              "n_cooccurrences": 16
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.006813417190775681,
+              "random_rate": 0.0,
+              "n_cooccurrences": 13
+            },
+            "telecommand_67": {
+              "linked": true,
+              "trigger_rate": 0.0005202140309155767,
+              "random_rate": 0.0,
+              "n_cooccurrences": 14
+            },
+            "telecommand_89": {
+              "linked": true,
+              "trigger_rate": 0.0003739424440254904,
+              "random_rate": 0.0,
+              "n_cooccurrences": 24
+            },
+            "telecommand_102": {
+              "linked": true,
+              "trigger_rate": 0.0003388873199661113,
+              "random_rate": 0.0,
+              "n_cooccurrences": 12
+            },
+            "telecommand_103": {
+              "linked": true,
+              "trigger_rate": 0.0002816504717645402,
+              "random_rate": 0.0,
+              "n_cooccurrences": 10
+            },
+            "telecommand_104": {
+              "linked": true,
+              "trigger_rate": 0.00044076163610719325,
+              "random_rate": 0.0,
+              "n_cooccurrences": 15
+            },
+            "telecommand_105": {
+              "linked": true,
+              "trigger_rate": 0.0003979439562261648,
+              "random_rate": 0.0,
+              "n_cooccurrences": 24
+            },
+            "telecommand_107": {
+              "linked": true,
+              "trigger_rate": 0.00033025099075297226,
+              "random_rate": 0.0,
+              "n_cooccurrences": 17
+            },
+            "telecommand_108": {
+              "linked": true,
+              "trigger_rate": 0.00038713245460411097,
+              "random_rate": 0.0,
+              "n_cooccurrences": 21
+            },
+            "telecommand_109": {
+              "linked": true,
+              "trigger_rate": 0.0003647904278991719,
+              "random_rate": 0.0,
+              "n_cooccurrences": 20
+            },
+            "telecommand_110": {
+              "linked": true,
+              "trigger_rate": 0.00028962421258417204,
+              "random_rate": 0.0,
+              "n_cooccurrences": 12
+            },
+            "telecommand_111": {
+              "linked": true,
+              "trigger_rate": 0.00035891042351429974,
+              "random_rate": 0.0,
+              "n_cooccurrences": 19
+            },
+            "telecommand_112": {
+              "linked": true,
+              "trigger_rate": 0.00038611792495684566,
+              "random_rate": 0.0,
+              "n_cooccurrences": 17
+            },
+            "telecommand_117": {
+              "linked": true,
+              "trigger_rate": 0.00033818058843422386,
+              "random_rate": 0.0,
+              "n_cooccurrences": 21
+            },
+            "telecommand_118": {
+              "linked": true,
+              "trigger_rate": 0.0003247004252029378,
+              "random_rate": 0.0,
+              "n_cooccurrences": 21
+            }
+          },
+          "events": {}
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_45": {
+              "linked": true,
+              "trigger_rate": 0.0007248502838996945,
+              "random_rate": 0.0,
+              "n_cooccurrences": 42
+            },
+            "telecommand_46": {
+              "linked": true,
+              "trigger_rate": 0.0008887901344295079,
+              "random_rate": 0.0,
+              "n_cooccurrences": 16
+            },
+            "telecommand_48": {
+              "linked": true,
+              "trigger_rate": 0.0006965405154399814,
+              "random_rate": 0.0,
+              "n_cooccurrences": 42
+            },
+            "telecommand_50": {
+              "linked": true,
+              "trigger_rate": 0.0006237914041544507,
+              "random_rate": 0.0,
+              "n_cooccurrences": 10
+            },
+            "telecommand_51": {
+              "linked": true,
+              "trigger_rate": 0.0004564606741573034,
+              "random_rate": 0.0,
+              "n_cooccurrences": 13
+            },
+            "telecommand_52": {
+              "linked": true,
+              "trigger_rate": 0.0007946318205897933,
+              "random_rate": 0.0,
+              "n_cooccurrences": 18
+            },
+            "telecommand_53": {
+              "linked": true,
+              "trigger_rate": 0.001037209905354596,
+              "random_rate": 0.0,
+              "n_cooccurrences": 16
+            },
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.002220876236624268,
+              "random_rate": 0.0,
+              "n_cooccurrences": 22
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.0078125,
+              "random_rate": 0.0,
+              "n_cooccurrences": 13
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.008215962441314555,
+              "random_rate": 0.0,
+              "n_cooccurrences": 14
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.0076832151300236405,
+              "random_rate": 0.0,
+              "n_cooccurrences": 13
+            },
+            "telecommand_63": {
+              "linked": true,
+              "trigger_rate": 0.001035593740411169,
+              "random_rate": 0.0,
+              "n_cooccurrences": 27
+            },
+            "telecommand_64": {
+              "linked": true,
+              "trigger_rate": 0.0004630487127245786,
+              "random_rate": 0.0,
+              "n_cooccurrences": 10
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.0110062893081761,
+              "random_rate": 0.0,
+              "n_cooccurrences": 21
+            },
+            "telecommand_67": {
+              "linked": true,
+              "trigger_rate": 0.0008546373365041617,
+              "random_rate": 0.0,
+              "n_cooccurrences": 23
+            },
+            "telecommand_84": {
+              "linked": true,
+              "trigger_rate": 0.001108998732572877,
+              "random_rate": 0.0,
+              "n_cooccurrences": 14
+            },
+            "telecommand_87": {
+              "linked": true,
+              "trigger_rate": 0.0006026214031035002,
+              "random_rate": 0.0,
+              "n_cooccurrences": 12
+            },
+            "telecommand_89": {
+              "linked": true,
+              "trigger_rate": 0.0006388183418768794,
+              "random_rate": 0.0,
+              "n_cooccurrences": 41
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.014245014245014245,
+              "random_rate": 0.0,
+              "n_cooccurrences": 10
+            },
+            "telecommand_92": {
+              "linked": true,
+              "trigger_rate": 0.0006763972944108223,
+              "random_rate": 0.0,
+              "n_cooccurrences": 19
+            },
+            "telecommand_94": {
+              "linked": true,
+              "trigger_rate": 0.0006278120749189076,
+              "random_rate": 0.0,
+              "n_cooccurrences": 12
+            },
+            "telecommand_101": {
+              "linked": true,
+              "trigger_rate": 0.0005766643172935221,
+              "random_rate": 0.0,
+              "n_cooccurrences": 18
+            },
+            "telecommand_102": {
+              "linked": true,
+              "trigger_rate": 0.0007060152499293985,
+              "random_rate": 0.0,
+              "n_cooccurrences": 25
+            },
+            "telecommand_103": {
+              "linked": true,
+              "trigger_rate": 0.0005914659907055344,
+              "random_rate": 0.0,
+              "n_cooccurrences": 21
+            },
+            "telecommand_104": {
+              "linked": true,
+              "trigger_rate": 0.0007346027268453221,
+              "random_rate": 0.0,
+              "n_cooccurrences": 25
+            },
+            "telecommand_105": {
+              "linked": true,
+              "trigger_rate": 0.000746144917924059,
+              "random_rate": 0.0,
+              "n_cooccurrences": 45
+            },
+            "telecommand_106": {
+              "linked": true,
+              "trigger_rate": 0.0007862459377293217,
+              "random_rate": 0.0,
+              "n_cooccurrences": 15
+            },
+            "telecommand_107": {
+              "linked": true,
+              "trigger_rate": 0.0007382080969772321,
+              "random_rate": 0.0,
+              "n_cooccurrences": 38
+            },
+            "telecommand_108": {
+              "linked": true,
+              "trigger_rate": 0.0007005253940455342,
+              "random_rate": 0.0,
+              "n_cooccurrences": 38
+            },
+            "telecommand_109": {
+              "linked": true,
+              "trigger_rate": 0.0006201437274285923,
+              "random_rate": 0.0,
+              "n_cooccurrences": 34
+            },
+            "telecommand_110": {
+              "linked": true,
+              "trigger_rate": 0.0006757898293630681,
+              "random_rate": 0.0,
+              "n_cooccurrences": 28
+            },
+            "telecommand_111": {
+              "linked": true,
+              "trigger_rate": 0.0006989308247383731,
+              "random_rate": 0.0,
+              "n_cooccurrences": 37
+            },
+            "telecommand_112": {
+              "linked": true,
+              "trigger_rate": 0.0007495230307985827,
+              "random_rate": 0.0,
+              "n_cooccurrences": 33
+            },
+            "telecommand_113": {
+              "linked": true,
+              "trigger_rate": 0.0006142506142506142,
+              "random_rate": 0.0,
+              "n_cooccurrences": 14
+            },
+            "telecommand_115": {
+              "linked": true,
+              "trigger_rate": 0.000432152117545376,
+              "random_rate": 0.0,
+              "n_cooccurrences": 11
+            },
+            "telecommand_117": {
+              "linked": true,
+              "trigger_rate": 0.0006924650144129346,
+              "random_rate": 0.0,
+              "n_cooccurrences": 43
+            },
+            "telecommand_118": {
+              "linked": true,
+              "trigger_rate": 0.000726710475454194,
+              "random_rate": 0.0,
+              "n_cooccurrences": 47
+            },
+            "telecommand_119": {
+              "linked": true,
+              "trigger_rate": 0.0009137251130133693,
+              "random_rate": 0.0,
+              "n_cooccurrences": 19
+            },
+            "telecommand_121": {
+              "linked": true,
+              "trigger_rate": 0.0009485866059571238,
+              "random_rate": 0.0,
+              "n_cooccurrences": 10
+            }
+          },
+          "events": {}
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.005653139511407228,
+              "random_rate": 0.001,
+              "n_cooccurrences": 56
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.022235576923076924,
+              "random_rate": 0.001,
+              "n_cooccurrences": 37
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.022300469483568074,
+              "random_rate": 0.001,
+              "n_cooccurrences": 38
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.02127659574468085,
+              "random_rate": 0.001,
+              "n_cooccurrences": 36
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.020958083832335328,
+              "random_rate": 0.001,
+              "n_cooccurrences": 14
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.025681341719077568,
+              "random_rate": 0.001,
+              "n_cooccurrences": 49
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.03276353276353276,
+              "random_rate": 0.001,
+              "n_cooccurrences": 23
+            }
+          },
+          "events": {}
+        }
+      },
+      "n_training_crossings": 1795
+    },
+    "elapsed_seconds": 118.68506360054016
+  },
+  "channel_91": {
+    "STRICT": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.34314903846153844,
+              "random_rate": 0.056,
+              "n_cooccurrences": 571
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.3444835680751174,
+              "random_rate": 0.056,
+              "n_cooccurrences": 587
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.3640661938534279,
+              "random_rate": 0.056,
+              "n_cooccurrences": 616
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.344311377245509,
+              "random_rate": 0.056,
+              "n_cooccurrences": 230
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.3632075471698113,
+              "random_rate": 0.056,
+              "n_cooccurrences": 693
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.056,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.23931623931623933,
+              "random_rate": 0.056,
+              "n_cooccurrences": 168
+            }
+          },
+          "events": {}
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.3798076923076923,
+              "random_rate": 0.077,
+              "n_cooccurrences": 632
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.3767605633802817,
+              "random_rate": 0.077,
+              "n_cooccurrences": 642
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.39775413711583923,
+              "random_rate": 0.077,
+              "n_cooccurrences": 673
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.38173652694610777,
+              "random_rate": 0.077,
+              "n_cooccurrences": 255
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.39937106918238996,
+              "random_rate": 0.077,
+              "n_cooccurrences": 762
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.077,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.2606837606837607,
+              "random_rate": 0.077,
+              "n_cooccurrences": 183
+            }
+          },
+          "events": {}
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.39903846153846156,
+              "random_rate": 0.091,
+              "n_cooccurrences": 664
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.397887323943662,
+              "random_rate": 0.091,
+              "n_cooccurrences": 678
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.4231678486997636,
+              "random_rate": 0.091,
+              "n_cooccurrences": 716
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.3997005988023952,
+              "random_rate": 0.091,
+              "n_cooccurrences": 267
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.4224318658280922,
+              "random_rate": 0.091,
+              "n_cooccurrences": 806
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.091,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.28917378917378916,
+              "random_rate": 0.091,
+              "n_cooccurrences": 203
+            }
+          },
+          "events": {}
+        }
+      },
+      "n_training_crossings": 264261
+    },
+    "LOOSE": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_56": {
+              "linked": true,
+              "trigger_rate": 0.013916500994035786,
+              "random_rate": 0.004,
+              "n_cooccurrences": 14
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.08954326923076923,
+              "random_rate": 0.004,
+              "n_cooccurrences": 149
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.0897887323943662,
+              "random_rate": 0.004,
+              "n_cooccurrences": 153
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.08451536643026004,
+              "random_rate": 0.004,
+              "n_cooccurrences": 143
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.09131736526946108,
+              "random_rate": 0.004,
+              "n_cooccurrences": 61
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.0959119496855346,
+              "random_rate": 0.004,
+              "n_cooccurrences": 183
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.08831908831908832,
+              "random_rate": 0.004,
+              "n_cooccurrences": 62
+            }
+          },
+          "events": {}
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_56": {
+              "linked": true,
+              "trigger_rate": 0.02186878727634195,
+              "random_rate": 0.007,
+              "n_cooccurrences": 22
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.15625,
+              "random_rate": 0.007,
+              "n_cooccurrences": 260
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.15082159624413147,
+              "random_rate": 0.007,
+              "n_cooccurrences": 257
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.1554373522458629,
+              "random_rate": 0.007,
+              "n_cooccurrences": 263
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.15868263473053892,
+              "random_rate": 0.007,
+              "n_cooccurrences": 106
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.15828092243186584,
+              "random_rate": 0.007,
+              "n_cooccurrences": 302
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.007,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.15384615384615385,
+              "random_rate": 0.007,
+              "n_cooccurrences": 108
+            }
+          },
+          "events": {}
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.1935096153846154,
+              "random_rate": 0.01,
+              "n_cooccurrences": 322
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.19014084507042253,
+              "random_rate": 0.01,
+              "n_cooccurrences": 324
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.19739952718676124,
+              "random_rate": 0.01,
+              "n_cooccurrences": 334
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.19011976047904192,
+              "random_rate": 0.01,
+              "n_cooccurrences": 127
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.20125786163522014,
+              "random_rate": 0.01,
+              "n_cooccurrences": 384
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.01,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.19943019943019943,
+              "random_rate": 0.01,
+              "n_cooccurrences": 140
+            }
+          },
+          "events": {}
+        }
+      },
+      "n_training_crossings": 28717
+    },
+    "elapsed_seconds": 168.59043836593628
+  },
+  "channel_21": {
+    "STRICT": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_39": {
+              "linked": true,
+              "trigger_rate": 0.26875,
+              "random_rate": 0.048,
+              "n_cooccurrences": 43
+            },
+            "telecommand_47": {
+              "linked": true,
+              "trigger_rate": 0.1598639455782313,
+              "random_rate": 0.048,
+              "n_cooccurrences": 47
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.1502403846153846,
+              "random_rate": 0.048,
+              "n_cooccurrences": 250
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.1443661971830986,
+              "random_rate": 0.048,
+              "n_cooccurrences": 246
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.15119760479041916,
+              "random_rate": 0.048,
+              "n_cooccurrences": 101
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.14517819706498952,
+              "random_rate": 0.048,
+              "n_cooccurrences": 277
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.048,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.21652421652421652,
+              "random_rate": 0.048,
+              "n_cooccurrences": 152
+            },
+            "telecommand_122": {
+              "linked": true,
+              "trigger_rate": 0.22285714285714286,
+              "random_rate": 0.048,
+              "n_cooccurrences": 78
+            }
+          },
+          "events": {
+            "event_25": {
+              "linked": true,
+              "trigger_rate": 0.25,
+              "random_rate": 0.048,
+              "n_cooccurrences": 13
+            }
+          }
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_39": {
+              "linked": true,
+              "trigger_rate": 0.26875,
+              "random_rate": 0.05,
+              "n_cooccurrences": 43
+            },
+            "telecommand_47": {
+              "linked": true,
+              "trigger_rate": 0.16666666666666666,
+              "random_rate": 0.05,
+              "n_cooccurrences": 49
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.15264423076923078,
+              "random_rate": 0.05,
+              "n_cooccurrences": 254
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.15419161676646706,
+              "random_rate": 0.05,
+              "n_cooccurrences": 103
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.05,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.21794871794871795,
+              "random_rate": 0.05,
+              "n_cooccurrences": 153
+            },
+            "telecommand_122": {
+              "linked": true,
+              "trigger_rate": 0.2257142857142857,
+              "random_rate": 0.05,
+              "n_cooccurrences": 79
+            }
+          },
+          "events": {
+            "event_25": {
+              "linked": true,
+              "trigger_rate": 0.25,
+              "random_rate": 0.05,
+              "n_cooccurrences": 13
+            }
+          }
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_39": {
+              "linked": true,
+              "trigger_rate": 0.3375,
+              "random_rate": 0.051,
+              "n_cooccurrences": 54
+            },
+            "telecommand_47": {
+              "linked": true,
+              "trigger_rate": 0.18027210884353742,
+              "random_rate": 0.051,
+              "n_cooccurrences": 53
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.15625,
+              "random_rate": 0.051,
+              "n_cooccurrences": 260
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.15718562874251496,
+              "random_rate": 0.051,
+              "n_cooccurrences": 105
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.051,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.22507122507122507,
+              "random_rate": 0.051,
+              "n_cooccurrences": 158
+            },
+            "telecommand_122": {
+              "linked": true,
+              "trigger_rate": 0.22857142857142856,
+              "random_rate": 0.051,
+              "n_cooccurrences": 80
+            }
+          },
+          "events": {
+            "event_25": {
+              "linked": true,
+              "trigger_rate": 0.2692307692307692,
+              "random_rate": 0.051,
+              "n_cooccurrences": 14
+            }
+          }
+        }
+      },
+      "n_training_crossings": 265468
+    },
+    "LOOSE": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_6": {
+              "linked": true,
+              "trigger_rate": 0.01818181818181818,
+              "random_rate": 0.004,
+              "n_cooccurrences": 10
+            },
+            "telecommand_39": {
+              "linked": true,
+              "trigger_rate": 0.075,
+              "random_rate": 0.004,
+              "n_cooccurrences": 12
+            },
+            "telecommand_52": {
+              "linked": true,
+              "trigger_rate": 0.01523044322797104,
+              "random_rate": 0.004,
+              "n_cooccurrences": 345
+            },
+            "telecommand_53": {
+              "linked": true,
+              "trigger_rate": 0.013289251912355762,
+              "random_rate": 0.004,
+              "n_cooccurrences": 205
+            },
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.022511609125782355,
+              "random_rate": 0.004,
+              "n_cooccurrences": 223
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.13822115384615385,
+              "random_rate": 0.004,
+              "n_cooccurrences": 230
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.13262910798122066,
+              "random_rate": 0.004,
+              "n_cooccurrences": 226
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.13947990543735225,
+              "random_rate": 0.004,
+              "n_cooccurrences": 236
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.13922155688622753,
+              "random_rate": 0.004,
+              "n_cooccurrences": 93
+            },
+            "telecommand_63": {
+              "linked": true,
+              "trigger_rate": 0.013884627186253452,
+              "random_rate": 0.004,
+              "n_cooccurrences": 362
+            },
+            "telecommand_64": {
+              "linked": true,
+              "trigger_rate": 0.01389146138173736,
+              "random_rate": 0.004,
+              "n_cooccurrences": 300
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.1441299790356394,
+              "random_rate": 0.004,
+              "n_cooccurrences": 275
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.004,
+              "n_cooccurrences": 10
+            },
+            "telecommand_84": {
+              "linked": true,
+              "trigger_rate": 0.01291191381495564,
+              "random_rate": 0.004,
+              "n_cooccurrences": 163
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.21652421652421652,
+              "random_rate": 0.004,
+              "n_cooccurrences": 152
+            },
+            "telecommand_122": {
+              "linked": true,
+              "trigger_rate": 0.03142857142857143,
+              "random_rate": 0.004,
+              "n_cooccurrences": 11
+            }
+          },
+          "events": {}
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_6": {
+              "linked": true,
+              "trigger_rate": 0.01818181818181818,
+              "random_rate": 0.004,
+              "n_cooccurrences": 10
+            },
+            "telecommand_39": {
+              "linked": true,
+              "trigger_rate": 0.075,
+              "random_rate": 0.004,
+              "n_cooccurrences": 12
+            },
+            "telecommand_52": {
+              "linked": true,
+              "trigger_rate": 0.0157601977750309,
+              "random_rate": 0.004,
+              "n_cooccurrences": 357
+            },
+            "telecommand_53": {
+              "linked": true,
+              "trigger_rate": 0.013807856865033061,
+              "random_rate": 0.004,
+              "n_cooccurrences": 213
+            },
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.02261255804562891,
+              "random_rate": 0.004,
+              "n_cooccurrences": 224
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.14002403846153846,
+              "random_rate": 0.004,
+              "n_cooccurrences": 233
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.13438967136150234,
+              "random_rate": 0.004,
+              "n_cooccurrences": 229
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.1400709219858156,
+              "random_rate": 0.004,
+              "n_cooccurrences": 237
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.1407185628742515,
+              "random_rate": 0.004,
+              "n_cooccurrences": 94
+            },
+            "telecommand_63": {
+              "linked": true,
+              "trigger_rate": 0.014498312365756367,
+              "random_rate": 0.004,
+              "n_cooccurrences": 378
+            },
+            "telecommand_64": {
+              "linked": true,
+              "trigger_rate": 0.01430820522318948,
+              "random_rate": 0.004,
+              "n_cooccurrences": 309
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.14517819706498952,
+              "random_rate": 0.004,
+              "n_cooccurrences": 277
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.004,
+              "n_cooccurrences": 10
+            },
+            "telecommand_84": {
+              "linked": true,
+              "trigger_rate": 0.013466413181242079,
+              "random_rate": 0.004,
+              "n_cooccurrences": 170
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.21794871794871795,
+              "random_rate": 0.004,
+              "n_cooccurrences": 153
+            },
+            "telecommand_100": {
+              "linked": true,
+              "trigger_rate": 0.012376237623762377,
+              "random_rate": 0.004,
+              "n_cooccurrences": 45
+            },
+            "telecommand_122": {
+              "linked": true,
+              "trigger_rate": 0.037142857142857144,
+              "random_rate": 0.004,
+              "n_cooccurrences": 13
+            }
+          },
+          "events": {}
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_1": {
+              "linked": true,
+              "trigger_rate": 0.027149321266968326,
+              "random_rate": 0.004,
+              "n_cooccurrences": 12
+            },
+            "telecommand_6": {
+              "linked": true,
+              "trigger_rate": 0.01818181818181818,
+              "random_rate": 0.004,
+              "n_cooccurrences": 10
+            },
+            "telecommand_39": {
+              "linked": true,
+              "trigger_rate": 0.1,
+              "random_rate": 0.004,
+              "n_cooccurrences": 16
+            },
+            "telecommand_52": {
+              "linked": true,
+              "trigger_rate": 0.01651068338336571,
+              "random_rate": 0.004,
+              "n_cooccurrences": 374
+            },
+            "telecommand_53": {
+              "linked": true,
+              "trigger_rate": 0.014715415532218333,
+              "random_rate": 0.004,
+              "n_cooccurrences": 227
+            },
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.02352109832424793,
+              "random_rate": 0.004,
+              "n_cooccurrences": 233
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.14362980769230768,
+              "random_rate": 0.004,
+              "n_cooccurrences": 239
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.13908450704225353,
+              "random_rate": 0.004,
+              "n_cooccurrences": 237
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.14361702127659576,
+              "random_rate": 0.004,
+              "n_cooccurrences": 243
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.14520958083832336,
+              "random_rate": 0.004,
+              "n_cooccurrences": 97
+            },
+            "telecommand_63": {
+              "linked": true,
+              "trigger_rate": 0.015265418840135011,
+              "random_rate": 0.004,
+              "n_cooccurrences": 398
+            },
+            "telecommand_64": {
+              "linked": true,
+              "trigger_rate": 0.01537321726245601,
+              "random_rate": 0.004,
+              "n_cooccurrences": 332
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.14832285115303984,
+              "random_rate": 0.004,
+              "n_cooccurrences": 283
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.004,
+              "n_cooccurrences": 10
+            },
+            "telecommand_84": {
+              "linked": true,
+              "trigger_rate": 0.01417934093789607,
+              "random_rate": 0.004,
+              "n_cooccurrences": 179
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.22507122507122507,
+              "random_rate": 0.004,
+              "n_cooccurrences": 158
+            },
+            "telecommand_93": {
+              "linked": true,
+              "trigger_rate": 0.023706896551724137,
+              "random_rate": 0.004,
+              "n_cooccurrences": 11
+            },
+            "telecommand_100": {
+              "linked": true,
+              "trigger_rate": 0.012651265126512651,
+              "random_rate": 0.004,
+              "n_cooccurrences": 46
+            },
+            "telecommand_104": {
+              "linked": true,
+              "trigger_rate": 0.012165021156558533,
+              "random_rate": 0.004,
+              "n_cooccurrences": 414
+            },
+            "telecommand_107": {
+              "linked": true,
+              "trigger_rate": 0.01208330095578522,
+              "random_rate": 0.004,
+              "n_cooccurrences": 622
+            },
+            "telecommand_122": {
+              "linked": true,
+              "trigger_rate": 0.045714285714285714,
+              "random_rate": 0.004,
+              "n_cooccurrences": 16
+            }
+          },
+          "events": {}
+        }
+      },
+      "n_training_crossings": 53926
+    },
+    "elapsed_seconds": 1059.9672005176544
+  },
+  "channel_98": {
+    "STRICT": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.3646723646723647,
+              "random_rate": 0.086,
+              "n_cooccurrences": 256
+            },
+            "telecommand_122": {
+              "linked": true,
+              "trigger_rate": 0.4114285714285714,
+              "random_rate": 0.086,
+              "n_cooccurrences": 144
+            }
+          },
+          "events": {}
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.3660968660968661,
+              "random_rate": 0.086,
+              "n_cooccurrences": 257
+            },
+            "telecommand_122": {
+              "linked": true,
+              "trigger_rate": 0.4114285714285714,
+              "random_rate": 0.086,
+              "n_cooccurrences": 144
+            }
+          },
+          "events": {}
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.36752136752136755,
+              "random_rate": 0.087,
+              "n_cooccurrences": 258
+            },
+            "telecommand_122": {
+              "linked": true,
+              "trigger_rate": 0.4142857142857143,
+              "random_rate": 0.087,
+              "n_cooccurrences": 145
+            }
+          },
+          "events": {}
+        }
+      },
+      "n_training_crossings": 461252
+    },
+    "LOOSE": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.031323877068557916,
+              "random_rate": 0.01,
+              "n_cooccurrences": 53
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.05128205128205128,
+              "random_rate": 0.01,
+              "n_cooccurrences": 36
+            },
+            "telecommand_122": {
+              "linked": true,
+              "trigger_rate": 0.054285714285714284,
+              "random_rate": 0.01,
+              "n_cooccurrences": 19
+            }
+          },
+          "events": {}
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.031914893617021274,
+              "random_rate": 0.01,
+              "n_cooccurrences": 54
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.05270655270655271,
+              "random_rate": 0.01,
+              "n_cooccurrences": 37
+            },
+            "telecommand_122": {
+              "linked": true,
+              "trigger_rate": 0.054285714285714284,
+              "random_rate": 0.01,
+              "n_cooccurrences": 19
+            }
+          },
+          "events": {}
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.03250591016548463,
+              "random_rate": 0.01,
+              "n_cooccurrences": 55
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.05413105413105413,
+              "random_rate": 0.01,
+              "n_cooccurrences": 38
+            },
+            "telecommand_122": {
+              "linked": true,
+              "trigger_rate": 0.05714285714285714,
+              "random_rate": 0.01,
+              "n_cooccurrences": 20
+            }
+          },
+          "events": {}
+        }
+      },
+      "n_training_crossings": 49338
+    },
+    "elapsed_seconds": 82.95113778114319
+  },
+  "channel_76": {
+    "STRICT": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.008883504946497072,
+              "random_rate": 0.002,
+              "n_cooccurrences": 88
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.028245192307692308,
+              "random_rate": 0.002,
+              "n_cooccurrences": 47
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.025821596244131457,
+              "random_rate": 0.002,
+              "n_cooccurrences": 44
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.024822695035460994,
+              "random_rate": 0.002,
+              "n_cooccurrences": 42
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.019461077844311378,
+              "random_rate": 0.002,
+              "n_cooccurrences": 13
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.031446540880503145,
+              "random_rate": 0.002,
+              "n_cooccurrences": 60
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.03133903133903134,
+              "random_rate": 0.002,
+              "n_cooccurrences": 22
+            }
+          },
+          "events": {}
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_1": {
+              "linked": true,
+              "trigger_rate": 0.02262443438914027,
+              "random_rate": 0.005,
+              "n_cooccurrences": 10
+            },
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.016858469614375125,
+              "random_rate": 0.005,
+              "n_cooccurrences": 167
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.051682692307692304,
+              "random_rate": 0.005,
+              "n_cooccurrences": 86
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.04753521126760563,
+              "random_rate": 0.005,
+              "n_cooccurrences": 81
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.0508274231678487,
+              "random_rate": 0.005,
+              "n_cooccurrences": 86
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.04790419161676647,
+              "random_rate": 0.005,
+              "n_cooccurrences": 32
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.05450733752620545,
+              "random_rate": 0.005,
+              "n_cooccurrences": 104
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.05982905982905983,
+              "random_rate": 0.005,
+              "n_cooccurrences": 42
+            }
+          },
+          "events": {}
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.12860576923076922,
+              "random_rate": 0.015,
+              "n_cooccurrences": 214
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.12147887323943662,
+              "random_rate": 0.015,
+              "n_cooccurrences": 207
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.12647754137115838,
+              "random_rate": 0.015,
+              "n_cooccurrences": 214
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.12275449101796407,
+              "random_rate": 0.015,
+              "n_cooccurrences": 82
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.13626834381551362,
+              "random_rate": 0.015,
+              "n_cooccurrences": 260
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.16096866096866097,
+              "random_rate": 0.015,
+              "n_cooccurrences": 113
+            }
+          },
+          "events": {}
+        }
+      },
+      "n_training_crossings": 11362
+    },
+    "LOOSE": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_45": {
+              "linked": true,
+              "trigger_rate": 0.0003451668018569974,
+              "random_rate": 0.0,
+              "n_cooccurrences": 20
+            },
+            "telecommand_48": {
+              "linked": true,
+              "trigger_rate": 0.0002819330657733258,
+              "random_rate": 0.0,
+              "n_cooccurrences": 17
+            },
+            "telecommand_51": {
+              "linked": true,
+              "trigger_rate": 0.00035112359550561797,
+              "random_rate": 0.0,
+              "n_cooccurrences": 10
+            },
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.0015142337976983646,
+              "random_rate": 0.0,
+              "n_cooccurrences": 15
+            },
+            "telecommand_63": {
+              "linked": true,
+              "trigger_rate": 0.0004986192083461184,
+              "random_rate": 0.0,
+              "n_cooccurrences": 13
+            },
+            "telecommand_67": {
+              "linked": true,
+              "trigger_rate": 0.0003715814506539834,
+              "random_rate": 0.0,
+              "n_cooccurrences": 10
+            },
+            "telecommand_89": {
+              "linked": true,
+              "trigger_rate": 0.00034278057369003286,
+              "random_rate": 0.0,
+              "n_cooccurrences": 22
+            },
+            "telecommand_92": {
+              "linked": true,
+              "trigger_rate": 0.0003915984336062656,
+              "random_rate": 0.0,
+              "n_cooccurrences": 11
+            },
+            "telecommand_102": {
+              "linked": true,
+              "trigger_rate": 0.0003388873199661113,
+              "random_rate": 0.0,
+              "n_cooccurrences": 12
+            },
+            "telecommand_103": {
+              "linked": true,
+              "trigger_rate": 0.0004224757076468103,
+              "random_rate": 0.0,
+              "n_cooccurrences": 15
+            },
+            "telecommand_104": {
+              "linked": true,
+              "trigger_rate": 0.0003232251998119417,
+              "random_rate": 0.0,
+              "n_cooccurrences": 11
+            },
+            "telecommand_105": {
+              "linked": true,
+              "trigger_rate": 0.0003150389653457138,
+              "random_rate": 0.0,
+              "n_cooccurrences": 19
+            },
+            "telecommand_107": {
+              "linked": true,
+              "trigger_rate": 0.00031082446188515037,
+              "random_rate": 0.0,
+              "n_cooccurrences": 16
+            },
+            "telecommand_108": {
+              "linked": true,
+              "trigger_rate": 0.000368697575813439,
+              "random_rate": 0.0,
+              "n_cooccurrences": 20
+            },
+            "telecommand_109": {
+              "linked": true,
+              "trigger_rate": 0.0003465509065042133,
+              "random_rate": 0.0,
+              "n_cooccurrences": 19
+            },
+            "telecommand_110": {
+              "linked": true,
+              "trigger_rate": 0.00033789491468153406,
+              "random_rate": 0.0,
+              "n_cooccurrences": 14
+            },
+            "telecommand_111": {
+              "linked": true,
+              "trigger_rate": 0.000434470512675205,
+              "random_rate": 0.0,
+              "n_cooccurrences": 23
+            },
+            "telecommand_112": {
+              "linked": true,
+              "trigger_rate": 0.0003634051058417371,
+              "random_rate": 0.0,
+              "n_cooccurrences": 16
+            },
+            "telecommand_117": {
+              "linked": true,
+              "trigger_rate": 0.0003059729133452502,
+              "random_rate": 0.0,
+              "n_cooccurrences": 19
+            },
+            "telecommand_118": {
+              "linked": true,
+              "trigger_rate": 0.00030923850019327404,
+              "random_rate": 0.0,
+              "n_cooccurrences": 20
+            }
+          },
+          "events": {}
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.0030284675953967293,
+              "random_rate": 0.001,
+              "n_cooccurrences": 30
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.006610576923076923,
+              "random_rate": 0.001,
+              "n_cooccurrences": 11
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.005868544600938967,
+              "random_rate": 0.001,
+              "n_cooccurrences": 10
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.007337526205450734,
+              "random_rate": 0.001,
+              "n_cooccurrences": 14
+            }
+          },
+          "events": {}
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_55": {
+              "linked": true,
+              "trigger_rate": 0.007974964667878054,
+              "random_rate": 0.001,
+              "n_cooccurrences": 79
+            },
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.019230769230769232,
+              "random_rate": 0.001,
+              "n_cooccurrences": 32
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.017018779342723004,
+              "random_rate": 0.001,
+              "n_cooccurrences": 29
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.014184397163120567,
+              "random_rate": 0.001,
+              "n_cooccurrences": 24
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.016467065868263474,
+              "random_rate": 0.001,
+              "n_cooccurrences": 11
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.022536687631027254,
+              "random_rate": 0.001,
+              "n_cooccurrences": 43
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.017094017094017096,
+              "random_rate": 0.001,
+              "n_cooccurrences": 12
+            }
+          },
+          "events": {}
+        }
+      },
+      "n_training_crossings": 1625
+    },
+    "elapsed_seconds": 145.42573952674866
+  },
+  "channel_88": {
+    "STRICT": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.35336538461538464,
+              "random_rate": 0.049,
+              "n_cooccurrences": 588
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.35093896713615025,
+              "random_rate": 0.049,
+              "n_cooccurrences": 598
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.3747044917257683,
+              "random_rate": 0.049,
+              "n_cooccurrences": 634
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.3532934131736527,
+              "random_rate": 0.049,
+              "n_cooccurrences": 236
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.3757861635220126,
+              "random_rate": 0.049,
+              "n_cooccurrences": 717
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.049,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.24643874643874644,
+              "random_rate": 0.049,
+              "n_cooccurrences": 173
+            }
+          },
+          "events": {}
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.3864182692307692,
+              "random_rate": 0.073,
+              "n_cooccurrences": 643
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.38321596244131456,
+              "random_rate": 0.073,
+              "n_cooccurrences": 653
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.40484633569739953,
+              "random_rate": 0.073,
+              "n_cooccurrences": 685
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.38772455089820357,
+              "random_rate": 0.073,
+              "n_cooccurrences": 259
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.4088050314465409,
+              "random_rate": 0.073,
+              "n_cooccurrences": 780
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.073,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.27350427350427353,
+              "random_rate": 0.073,
+              "n_cooccurrences": 192
+            }
+          },
+          "events": {}
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.4032451923076923,
+              "random_rate": 0.087,
+              "n_cooccurrences": 671
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.40082159624413144,
+              "random_rate": 0.087,
+              "n_cooccurrences": 683
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.42494089834515364,
+              "random_rate": 0.087,
+              "n_cooccurrences": 719
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.4026946107784431,
+              "random_rate": 0.087,
+              "n_cooccurrences": 269
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.42557651991614254,
+              "random_rate": 0.087,
+              "n_cooccurrences": 812
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.087,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.2962962962962963,
+              "random_rate": 0.087,
+              "n_cooccurrences": 208
+            }
+          },
+          "events": {}
+        }
+      },
+      "n_training_crossings": 259855
+    },
+    "LOOSE": {
+      "linked": {
+        "1min": {
+          "telecommands": {
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.15625,
+              "random_rate": 0.012,
+              "n_cooccurrences": 260
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.1602112676056338,
+              "random_rate": 0.012,
+              "n_cooccurrences": 273
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.15721040189125296,
+              "random_rate": 0.012,
+              "n_cooccurrences": 266
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.15568862275449102,
+              "random_rate": 0.012,
+              "n_cooccurrences": 104
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.16561844863731656,
+              "random_rate": 0.012,
+              "n_cooccurrences": 316
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.012,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.16381766381766383,
+              "random_rate": 0.012,
+              "n_cooccurrences": 115
+            }
+          },
+          "events": {}
+        },
+        "10min": {
+          "telecommands": {
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.2109375,
+              "random_rate": 0.014,
+              "n_cooccurrences": 351
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.20598591549295775,
+              "random_rate": 0.014,
+              "n_cooccurrences": 351
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.21926713947990545,
+              "random_rate": 0.014,
+              "n_cooccurrences": 371
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.20958083832335328,
+              "random_rate": 0.014,
+              "n_cooccurrences": 140
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.22431865828092243,
+              "random_rate": 0.014,
+              "n_cooccurrences": 428
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.014,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.21937321937321938,
+              "random_rate": 0.014,
+              "n_cooccurrences": 154
+            }
+          },
+          "events": {}
+        },
+        "1hour": {
+          "telecommands": {
+            "telecommand_58": {
+              "linked": true,
+              "trigger_rate": 0.23317307692307693,
+              "random_rate": 0.017,
+              "n_cooccurrences": 388
+            },
+            "telecommand_59": {
+              "linked": true,
+              "trigger_rate": 0.22946009389671362,
+              "random_rate": 0.017,
+              "n_cooccurrences": 391
+            },
+            "telecommand_60": {
+              "linked": true,
+              "trigger_rate": 0.24231678486997635,
+              "random_rate": 0.017,
+              "n_cooccurrences": 410
+            },
+            "telecommand_61": {
+              "linked": true,
+              "trigger_rate": 0.2275449101796407,
+              "random_rate": 0.017,
+              "n_cooccurrences": 152
+            },
+            "telecommand_65": {
+              "linked": true,
+              "trigger_rate": 0.24737945492662475,
+              "random_rate": 0.017,
+              "n_cooccurrences": 472
+            },
+            "telecommand_69": {
+              "linked": true,
+              "trigger_rate": 0.8333333333333334,
+              "random_rate": 0.017,
+              "n_cooccurrences": 10
+            },
+            "telecommand_90": {
+              "linked": true,
+              "trigger_rate": 0.23076923076923078,
+              "random_rate": 0.017,
+              "n_cooccurrences": 162
+            }
+          },
+          "events": {}
+        }
+      },
+      "n_training_crossings": 47472
+    },
+    "elapsed_seconds": 184.02604937553406
+  }
+}
