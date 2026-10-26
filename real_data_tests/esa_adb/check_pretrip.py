@@ -18,12 +18,25 @@ transition whose timestamp falls outside every labelled window
 method as run_esa_adb_test.py / check_masking.py (same rules, same
 daily clear_fault(reset_leash_timer=False)).
 
+MEMORY FIX (2026-10-26, after the first real run crashed): the
+original design loaded every one of Mission1's 58 monitored channels
+fully into memory at once, up front, and held them all for the whole
+run. channel_43 alone is 15.4 million rows -- ~1.7GB as the plain
+Python lists load_channel_series returns -- and this machine has 6GB
+of RAM total, so that design was never going to fit; it crashed with
+MemoryError partway through (confirmed via bg_jobs/pretrip.log), not
+from anything to do with the session. Fixed by streaming one other
+channel at a time (iter_monitored_channel_rules) instead of
+preloading all of them, so peak memory is roughly one target channel
+plus one other channel at a time, not 58 at once.
+
 Run from the repo root, after download_esa_adb.py:
 
     python -m real_data_tests.esa_adb.check_pretrip
 """
 
 import bisect
+import gc
 import json
 import os
 import time
@@ -98,17 +111,17 @@ def false_fault_transitions(channel, rule_values, timestamps, values, labels, cu
     return [t for t in transitions if label_at(t, test_labels) is None], day_starts
 
 
-def load_all_monitored(mission_zip, prefix, anomaly_types, cutoff, exclude=()):
-    """{channel: (secs, values, level_high, level_low, jump_limit)} for
-    every OTHER monitored channel -- STRICT thresholds, derived the
-    normal way. `secs` (seconds-since-epoch) is precomputed ONCE here,
-    not per query -- channel_moved_in_window() below is called
-    thousands of times, so re-deriving .timestamp() per call would be
-    the dominant cost by far."""
+def iter_monitored_channel_rules(mission_zip, prefix, anomaly_types, cutoff, exclude=()):
+    """Yields (channel, secs, values, level_high, level_low, jump_limit)
+    for every OTHER monitored channel, ONE AT A TIME -- see the module
+    docstring's "MEMORY FIX" note for why this can no longer preload
+    all of them into one dict. `secs` (seconds-since-epoch) is still
+    precomputed once per channel, not per query -- it's
+    channel_moved_in_window() below that's called thousands of times,
+    not this."""
     path = os.path.join(DATA_DIR, mission_zip)
     channels_rows = load_channels_csv(path, prefix)
     monitored = [r["Channel"] for r in channels_rows if r["Target"] == "YES" and r["Channel"] not in exclude]
-    out = {}
     for ch in monitored:
         try:
             ts, vs = load_channel_series(path, prefix, ch)
@@ -117,10 +130,10 @@ def load_all_monitored(mission_zip, prefix, anomaly_types, cutoff, exclude=()):
             if rules["level_high"] is None or rules["jump_limit"] is None:
                 continue
             secs = [t.timestamp() for t in ts]
-            out[ch] = (secs, vs, rules["level_high"], rules["level_low"], rules["jump_limit"])
+            del ts
+            yield ch, secs, vs, rules["level_high"], rules["level_low"], rules["jump_limit"]
         except Exception as exc:
             print(f"  (skipping {ch} for cross-channel check: {exc!r})")
-    return out
 
 
 def channel_moved_in_window(secs, vs, level_high, level_low, jump_limit, window_start_ts, window_end_ts):
@@ -141,10 +154,10 @@ def channel_moved_in_window(secs, vs, level_high, level_low, jump_limit, window_
     return False
 
 
-def analyze_channel(channel, other_channels, telecommand_times, rule_values, timestamps, values, labels, cutoff):
+def analyze_channel(channel, mission_zip, prefix, anomaly_types, telecommand_times, rule_values, timestamps, values, labels, cutoff):
     false_transitions, day_starts = false_fault_transitions(channel, rule_values, timestamps, values, labels, cutoff)
 
-    records = []
+    pending = []  # (ts_seconds, rec) -- other_channels_moved filled in below, streamed
     for t in false_transitions:
         ts = t.timestamp()
         day_start = day_starts.get(t.date())
@@ -152,16 +165,28 @@ def analyze_channel(channel, other_channels, telecommand_times, rule_values, tim
             "timestamp": str(t),
             "time_of_day": t.strftime("%H:%M:%S"),
             "seconds_since_daily_clear": (ts - day_start.timestamp()) if day_start else None,
-            "by_window": {},
+            "by_window": {w: {"telecommands_fired": [], "other_channels_moved": []} for w in REACTION_WINDOWS_SECONDS},
         }
         for window_name, window_seconds in REACTION_WINDOWS_SECONDS.items():
             lo_ts = ts - window_seconds
             fired = [tc for tc, times in telecommand_times.items()
                      if bisect.bisect_right(times, ts) > bisect.bisect_right(times, lo_ts)]
-            moved = [ch for ch, (csecs, cvs, hi, low, jl) in other_channels.items()
-                     if channel_moved_in_window(csecs, cvs, hi, low, jl, lo_ts, ts)]
-            rec["by_window"][window_name] = {"telecommands_fired": fired, "other_channels_moved": moved}
-        records.append(rec)
+            rec["by_window"][window_name]["telecommands_fired"] = fired
+        pending.append((ts, rec))
+
+    # One other monitored channel in memory at a time -- see
+    # iter_monitored_channel_rules's docstring / module "MEMORY FIX" note.
+    for other_ch, csecs, cvs, hi, low, jl in iter_monitored_channel_rules(
+            mission_zip, prefix, anomaly_types, cutoff, exclude=(channel,)):
+        for ts_val, rec in pending:
+            for window_name, window_seconds in REACTION_WINDOWS_SECONDS.items():
+                lo_ts = ts_val - window_seconds
+                if channel_moved_in_window(csecs, cvs, hi, low, jl, lo_ts, ts_val):
+                    rec["by_window"][window_name]["other_channels_moved"].append(other_ch)
+        del csecs, cvs
+        gc.collect()
+
+    records = [rec for _, rec in pending]
 
     # Summaries: most common telecommands/channels across all false trips, per window.
     summary = {}
@@ -197,10 +222,6 @@ def main():
     start, end = MISSION_SPANS[MISSION_ZIP]
     cutoff = start + (end - start) * CUTOFF_FRACTION
 
-    print("Loading all monitored channels' STRICT thresholds once (shared across both target channels)...")
-    other_channels_full = load_all_monitored(MISSION_ZIP, prefix, anomaly_types, cutoff)
-    print(f"Loaded {len(other_channels_full)} monitored channels for cross-channel checks.")
-
     tc_ids = load_telecommand_ids(path, prefix)
     telecommand_times = {tc: sorted(load_telecommand_times(path, prefix, tc)) for tc in tc_ids}
     print(f"Loaded {len(telecommand_times)} telecommand firing series.")
@@ -220,9 +241,11 @@ def main():
         timestamps, values = load_channel_series(path, prefix, channel)
         labels = load_labels_for_channel(path, prefix, anomaly_types, channel)
         rule_values = derive_rules(timestamps, values, labels, cutoff)[SETTING_NAME]
-        others = {ch: v for ch, v in other_channels_full.items() if ch != channel}
-        results[channel] = analyze_channel(channel, others, telecommand_times, rule_values,
-                                            timestamps, values, labels, cutoff)
+        results[channel] = analyze_channel(channel, MISSION_ZIP, prefix, anomaly_types,
+                                             telecommand_times, rule_values,
+                                             timestamps, values, labels, cutoff)
+        del timestamps, values
+        gc.collect()
         results[channel]["elapsed_seconds"] = time.time() - t0
         with open(out_path, "w") as f:
             json.dump(results, f, default=str, indent=2)
