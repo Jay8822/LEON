@@ -39,5 +39,8 @@ def build_rule_book(derivation_seed=None):
             leash_slope_limit=entry["leash_slope_limit"],
             leash_soft_duration_seconds=LEASH_SOFT_DURATION_SECONDS,
             leash_hard_duration_seconds=LEASH_HARD_DURATION_SECONDS,
+            stuck_window_seconds=entry["stuck_window_seconds"],
+            min_normal_noise=entry["min_normal_noise"],
+            allow_steady=entry["allow_steady"],
         )
     return rules, blueprint

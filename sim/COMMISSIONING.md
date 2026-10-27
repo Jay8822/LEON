@@ -123,3 +123,112 @@ Corrections 1 and 2 applied; the third finding accepted as-is. No
 further changes to `sim/blueprint.py` or `sim/rulebook.py` after this
 file's checkpoint commit, whatever `sim/fault_injection.py`'s scored
 runs show.
+
+---
+
+# Second commissioning round -- Item 3b (27 October 2026)
+
+Jay's three design changes (expected causes carry a size; a new
+crossing while latched reaches the orchestrator; Stillness, a fourth
+sense) needed new blueprint/rule-book fields and a new mechanism in
+`sim/run_sim_test.py` (real per-sample expected RANGES, not just
+channel presence). Re-ran the clean, fault-free timeline again before
+touching `sim/fault_injection.py` at all, same discipline as the
+first round. Two real corrections needed; both investigated, not
+guessed at.
+
+## Correction 3 -- Stillness's own derivation didn't match how the real check actually runs
+
+**Finding:** Stillness fired on almost every channel, including ones
+no event ever touches (`avionics_bay_temp`, `attitude_rate`) -- the
+exact same symptom shape as Correction 1, a different mechanism.
+
+**Reason:** `min_normal_noise` was derived as a low percentile taken
+directly over individual windowed-range samples (one value per
+120-second block, 180 per 21,600s derivation chunk). But
+`agents/gracie.py`'s real Stillness check re-evaluates a SLIDING
+120-second window on EVERY sample, continuously, for the whole run --
+21,600 highly-overlapping chances for a dip, not 180 independent
+ones. A threshold calibrated against "what's typical for one
+isolated window" is nowhere near strict enough once a one-way-ratchet
+latch gets that many chances to fire somewhere across a whole run; by
+the time any one of those thousands of overlapping checks dips below
+the threshold, it won't release itself again until `clear_fault()`.
+
+**Fix:** `sim/blueprint.py`'s `derive_stillness_limit()` now uses the
+SAME chunk-extreme-then-percentile-across-chunks discipline every
+other limit here already uses (`derive_thresholds`/
+`derive_jump_limits`/`derive_leash_limits`): each derivation
+fragment's own STILLEST moment (its minimum sliding-window range
+anywhere within it, matching the real check's own evaluation
+density), then the low percentile taken across fragments' minimums,
+not across every individual window.
+
+**Verified:** re-ran the clean timeline after the fix --
+`avionics_bay_temp` and `attitude_rate` dropped to zero false FAULT
+samples, matching the Stillness-disabled control exactly.
+
+## Correction 4 -- solar_current needed `allow_steady` -- SPEC.md's own named example
+
+**Finding:** even after Correction 3, `solar_current` still showed
+Stillness FAULTs for the FULL duration of both `solar_occlusion`
+events (300/300 samples each).
+
+**Investigated, confirmed not a bug:** `solar_occlusion` pins
+`solar_current` at EXACTLY 0.0 for its whole duration -- zero
+variation, by design. This is precisely SPEC.md's own Blueprint
+bullet, verbatim: "sensors that legitimately read zero in some
+conditions (for example, light sensors in Earth's shadow)."
+Stillness was working exactly as designed, correctly flagging
+genuinely zero variation -- the blueprint itself was wrong to leave
+`solar_current` at the default `allow_steady=False` given its own
+`solar_occlusion` event already existed to produce exactly this
+condition.
+
+**Fix:** `solar_current`'s `allow_steady` is now `True` -- the one
+sensor in this sim with a blueprint-known legitimate steady
+condition. Every other sensor stays `allow_steady=False`; none of
+them have one.
+
+**Verified:** re-ran the clean timeline -- 0/22 false alarms on
+normal events (down from 11/22 before either fix), background false
+alarms down to the same two statistically-expected channels
+(`battery_voltage`, `fuel_flow`) the first commissioning round's
+Correction-1-fix state already showed and accepted.
+
+## Correction 5 -- the kick's expected range needs anchoring on the actual pre-event baseline, not the blueprint's fixed nominal
+
+**Finding:** a real, correctly-sized `course_correction_2` kick on
+`thrust` was still flagged FAULT partway through, even with the new
+size-aware expected-cause check active.
+
+**Reason:** `sim/real_data_sources.py`'s SYNTHETIC noise sources
+(`thrust` among them) are unbounded random walks with no mean
+reversion -- by sample ~12,240 of a 21,600-sample run, `thrust`'s
+baseline had drifted roughly 40 units away from its blueprint
+nominal (500.0) purely from accumulated noise, the same underlying
+fact Correction 1 already established (a random walk's spread grows
+with the run's own length). The expected range was computed as
+"nominal + the kick's own shape," which doesn't account for that
+drift at all -- so a perfectly correctly-sized kick, riding on top of
+a baseline that had wandered away from nominal, was wrongly judged
+"outside its expected size."
+
+**Fix:** `sim/run_sim_test.py`'s `active_expected_causes()` now
+anchors each kick's expected value on the channel's ACTUAL reading
+one second before the event started (`event_baselines()`), not the
+blueprint's fixed nominal -- correctly separating "is the kick itself
+the right size" (what this check should answer) from "has the
+baseline drifted" (a true, accepted fact about these sensors,
+already established, not this check's job to re-litigate).
+
+**Verified:** re-ran the clean timeline after the fix -- the
+`course_correction_2`/`thrust` false alarm is gone; 0/22 false alarms
+on normal events confirmed again with all three fixes together.
+
+## Checkpoint
+
+Corrections 3, 4 and 5 applied; nothing else changed. No further
+changes to `sim/blueprint.py`, `sim/rulebook.py` or
+`sim/run_sim_test.py`'s expected-cause mechanism after this file's
+checkpoint commit, whatever the faulted runs' results show.

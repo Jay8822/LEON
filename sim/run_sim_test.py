@@ -61,8 +61,9 @@ from agents.gracie import GracieAgent
 from agents.lunae import LunaeAgent
 from core.bus import EventBus
 
-from sim.craft import build_clean_timeline, TOTAL_SECONDS
+from sim.craft import build_clean_timeline, TOTAL_SECONDS, _kick_offset
 from sim.fault_injection import inject_faults
+from sim.human_signoff import HumanSignoff
 from sim.rulebook import build_rule_book
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
@@ -75,17 +76,84 @@ NON_URGENT_FAULT_WINDOW_SECONDS = 60.0
 LIGHT_FLAG_CYCLE_MINUTES = 10.0
 CHESTER_REFRESH_PERIOD_SECONDS = 600.0
 CHESTER_MAX_LAYERS = 6
+# Item 3b, Jay's approved change 6: same scale as CHESTER's own
+# refresh period, not a new invented number -- a sim-only "how often
+# a human actually checks in" delay, not a real spacecraft parameter.
+HUMAN_RESPONSE_DELAY_SECONDS = CHESTER_REFRESH_PERIOD_SECONDS
 
 
-def active_expected_causes(events, second_offset):
-    active = set()
+# Item 3b (Jay's approved change 1): a kick's expected RANGE tracks
+# its own ramp/decay shape at this exact second, not a flat range for
+# the whole event window -- centered on the actual value GRACIE will
+# read, with a tolerance that is generous enough to absorb the
+# sensor's own ordinary noise riding on top of a CORRECTLY-sized
+# kick, but tight enough to exclude sim/fault_injection.py's
+# WRONG_BURN_SCALE=0.25 bad_engine_burn (a 4x difference from the
+# normal scale=1.0 kicks -- comfortably outside either tolerance term
+# below). The floor term keeps the tolerance meaningful even right at
+# the start/end of a ramp, where the kick's own instantaneous offset
+# is near zero.
+#
+# COMMISSIONING FINDING: the expected value must be anchored on the
+# channel's ACTUAL reading right before the event starts, not the
+# blueprint's fixed nominal baseline. These sensors' noise is an
+# unbounded random walk (same reason real-data limits are derived
+# from same-length chunks, Correction 1) -- by late in a 21,600s run
+# it can have drifted tens of units away from nominal, so "nominal +
+# kick shape" alone badly undershot a correctly-sized, late-timeline
+# kick's actual expected value, and the real kick was wrongly
+# rejected as "outside its expected size." Anchoring on the pre-event
+# baseline (the actual reading at start_s-1) correctly separates "the
+# kick's own size is right" from "the baseline has drifted," which is
+# exactly the distinction this check needs to make.
+EXPECTED_KICK_TOLERANCE_FRACTION = 0.4   # x the kick's own peak
+EXPECTED_KICK_TOLERANCE_FLOOR_MULTIPLE = 5.0  # x the channel's own jump_limit
+
+
+def event_baselines(events, values):
+    """{event_name: {channel: value right before the event started}}
+    -- computed once, not per sample, since it never changes while
+    scoring a fixed, already-injected series."""
+    baselines = {}
     for ev in events:
-        if ev["start_s"] <= second_offset < ev["end_s"]:
-            active.update(ev["affected_channels"])
+        baselines[ev["name"]] = {
+            channel: values[channel][max(ev["start_s"] - 1, 0)]
+            for channel in ev.get("kick_peaks", {})
+        }
+    return baselines
+
+
+def active_expected_causes(events, second_offset, rule_book, baselines):
+    """{channel: (low, high) or None} -- per Jay's approved change 1.
+    "kick" effects get a real size-checked range tracking the kick's
+    own shape, anchored on the channel's actual pre-event baseline
+    (see module comment above); "jitter"/"zero" effects keep None (no
+    known size to check against, and no wrong-magnitude fault variant
+    tests them this round) -- see agents/gracie.py module docstring,
+    point 13."""
+    active = {}
+    for ev in events:
+        if not (ev["start_s"] <= second_offset < ev["end_s"]):
+            continue
+        for channel in ev["affected_channels"]:
+            effect = ev["effects"][channel]
+            if effect != "kick":
+                active[channel] = None
+                continue
+            peak = ev["kick_peaks"][channel]
+            baseline = baselines[ev["name"]][channel]
+            offset = _kick_offset(ev["start_s"], ev["duration_s"], peak, second_offset)
+            rule = rule_book[channel]
+            tolerance = max(
+                EXPECTED_KICK_TOLERANCE_FRACTION * abs(peak),
+                EXPECTED_KICK_TOLERANCE_FLOOR_MULTIPLE * rule.jump_limit,
+            )
+            expected_value = baseline + offset
+            active[channel] = (expected_value - tolerance, expected_value + tolerance)
     return active
 
 
-def build_craft(rule_book):
+def build_craft(rule_book, faults):
     bus = EventBus()
     gracie = GracieAgent(bus, rule_book)
     eden = EdenAgent(bus)
@@ -105,23 +173,26 @@ def build_craft(rule_book):
     ghost = GhostModeHarness(bus, eden, orchestrator)
     ethan = EthanAgent(bus)
     lunae = LunaeAgent(bus)
+    human = HumanSignoff(gracie, orchestrator, faults, HUMAN_RESPONSE_DELAY_SECONDS)
     return {
         "bus": bus, "gracie": gracie, "eden": eden, "orchestrator": orchestrator,
-        "chester": chester, "ghost": ghost, "ethan": ethan, "lunae": lunae,
+        "chester": chester, "ghost": ghost, "ethan": ethan, "lunae": lunae, "human": human,
     }
 
 
-def run_scored(rule_book, timestamps, values, events, use_expected_causes):
-    craft = build_craft(rule_book)
+def run_scored(rule_book, timestamps, values, events, faults, use_expected_causes):
+    craft = build_craft(rule_book, faults)
     gracie = craft["gracie"]
     per_channel_log = {ch: [] for ch in rule_book}
     aggregate_log = []
     start = timestamps[0]
+    baselines = event_baselines(events, values) if use_expected_causes else None
     for i, t in enumerate(timestamps):
         second_offset = (t - start).total_seconds()
         readings = {ch: values[ch][i] for ch in rule_book}
-        expected = active_expected_causes(events, second_offset) if use_expected_causes else None
+        expected = active_expected_causes(events, second_offset, rule_book, baselines) if use_expected_causes else None
         gracie.process_readings(readings, timestamp=t.timestamp(), expected_causes=expected)
+        craft["human"].tick(second_offset)  # Item 3b: may clear_fault() a released channel this cycle
         for ch in rule_book:
             last = gracie._last_readings[ch]
             per_channel_log[ch].append({
@@ -220,7 +291,7 @@ def main():
     for label, use_expected in (("without_expected_causes", False), ("with_expected_causes", True)):
         print(f"=== Running: {label} ===")
         per_channel_log, aggregate_log, craft = run_scored(
-            rule_book, timestamps, faulted_values, events, use_expected
+            rule_book, timestamps, faulted_values, events, faults, use_expected
         )
         fault_scores = score_faults(per_channel_log, faults)
         false_alarm_scores = score_false_alarms(per_channel_log, events)

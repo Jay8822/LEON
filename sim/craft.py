@@ -116,11 +116,18 @@ def build_clean_timeline(rule_book, blueprint, seed=SCENARIO_SEED):
     for name, kind, start_s, duration_s, scale in EVENT_SCHEDULE:
         affected = dict(EVENT_EFFECTS.get(kind, {}))
         max_end_s = start_s + duration_s  # grows to cover a kick's full decay, below
+        kick_peaks = {}  # Item 3b: exposed so run_sim_test.py can give
+                          # GRACIE a real expected RANGE that tracks the
+                          # kick's own ramp/decay shape, instead of a
+                          # flat per-event range -- same peak this
+                          # function actually injects, not recomputed
+                          # separately (one source of truth).
 
         for sensor_name, effect in affected.items():
             rule = rule_book[sensor_name]
             if effect == "kick":
                 peak = scale * KICK_MULTIPLE * rule.leash_slope_limit * duration_s
+                kick_peaks[sensor_name] = peak
                 kick_end_s = start_s + 2 * duration_s
                 max_end_s = max(max_end_s, kick_end_s)
                 for t in range(start_s, min(kick_end_s, TOTAL_SECONDS)):
@@ -135,7 +142,10 @@ def build_clean_timeline(rule_book, blueprint, seed=SCENARIO_SEED):
 
         events.append({
             "name": name, "kind": kind, "start_s": start_s, "end_s": max_end_s,
+            "duration_s": duration_s,
             "affected_channels": sorted(affected.keys()),
+            "effects": affected,       # {channel: "kick"|"jitter"|"zero"}
+            "kick_peaks": kick_peaks,  # {channel: peak}, kick-effect channels only
         })
 
     return timestamps, values, events

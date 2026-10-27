@@ -24,9 +24,13 @@ def replay_channel(channel, rule, timestamps, values, expected_windows=None):
     for i, (t, v) in enumerate(zip(timestamps, values)):
         second_offset = (t - timestamps[0]).total_seconds()
         expected = any(start <= second_offset < end for start, end in expected_windows)
+        # {channel: None} -- this helper only knows a window, not a
+        # real expected SIZE (agents/gracie.py module docstring, point
+        # 13), so None is the honest choice, same reasoning as
+        # real_data_tests/esa_adb/run_esa_adb_test_v2.py's migration.
         gracie.process_readings(
             {channel: v}, timestamp=t.timestamp(),
-            expected_causes={channel} if expected else None,
+            expected_causes={channel: None} if expected else None,
         )
         last = gracie._last_readings[channel]
         log.append({

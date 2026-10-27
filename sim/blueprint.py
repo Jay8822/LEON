@@ -56,12 +56,28 @@ sensor's OWN derived limit (leash slope limit for a ramping kick,
 jump limit for jitter) -- same discipline as leash_drift's
 EVENT_MULTIPLE, never tuned against any result. See sim/craft.py for
 the actual multiples and the full event schedule.
+
+STILLNESS (Item 3b, SPEC.md GRACIE section): stuck_window_seconds/
+min_normal_noise, same percentile-from-clean-noise discipline as
+level/jump/leash above, not invented -- min_normal_noise is the LOW
+(STILLNESS_PCT-th) percentile of windowed range (max-min) observed
+across the SAME clean derivation fragments, at a fixed
+STILLNESS_WINDOW_SECONDS. A sensor varying less than
+(100-STILLNESS_PCT)% of genuinely healthy windows do, over that same
+window length, is itself suspect. allow_steady is True for exactly
+one sensor, solar_current -- a COMMISSIONING FINDING, not the
+original design: it is this sim's own version of SPEC.md's named
+example, "light sensors in Earth's shadow," since solar_occlusion
+pins it at exactly 0.0 for the occlusion's full duration, which
+Stillness correctly caught as suspiciously still until the exemption
+was added. Every other sensor has no such legitimate steady
+condition, so every other sensor stays allow_steady=False.
 """
 import random
 from datetime import datetime, timedelta
 
 from real_data_tests.opssat_ad.run_opssat_ad_test import (
-    derive_thresholds, derive_jump_limits, derive_leash_limits,
+    derive_thresholds, derive_jump_limits, derive_leash_limits, percentile,
 )
 from sim.real_data_sources import SENSORS, build_noise_series, make_fragment
 
@@ -92,6 +108,12 @@ LEASH_HARD_DURATION_SECONDS = 150.0
 LEVEL_HIGH_PCT, LEVEL_LOW_PCT = 95, 5
 JUMP_PCT = 95
 LEASH_SLOPE_PCT = 99
+
+# Stillness (module docstring): long enough to average out ordinary
+# sample-to-sample noise, short enough to catch a genuinely stuck
+# sensor promptly within this sim's 21,600s run.
+STILLNESS_WINDOW_SECONDS = 120.0
+STILLNESS_PCT = 5
 
 # Which sensors each event kind affects, and how (module docstring).
 # "kick" = engine_bay_temp/battery_current's ramp-and-decay shape;
@@ -141,9 +163,56 @@ def _build_derivation_series(sensor_name, rng):
     return fragments
 
 
+def _windowed_ranges(values, window_samples):
+    """SLIDING window ranges (max - min), one per possible start
+    position -- same evaluation density as gracie.py's own Stillness
+    check, which re-evaluates a sliding window EVERY sample, not just
+    once per block. Non-overlapping blocks would massively under-
+    count how many chances a dip actually gets to fire across a
+    continuous run (COMMISSIONING FINDING below) -- same "look-
+    elsewhere" character as Correction 1's chunk-length mismatch, a
+    different mechanism, same root cause (derivation and scoring
+    checked different things). O(n*window) is acceptable here: a
+    one-time derivation cost, not a per-real-time-sample one (that
+    cost -- and the reason it must stay cheap there -- is exactly why
+    agents/gracie.py's own Stillness check short-circuits entirely
+    when min_normal_noise<=0.0 before doing any window bookkeeping)."""
+    ranges = []
+    n = len(values)
+    for start in range(0, n - window_samples + 1):
+        chunk = values[start:start + window_samples]
+        ranges.append(max(chunk) - min(chunk))
+    return ranges
+
+
+def derive_stillness_limit(fragments, window_seconds, pct):
+    """min_normal_noise: SAME chunk-extreme-then-percentile-across-
+    chunks discipline as derive_thresholds/derive_jump_limits/
+    derive_leash_limits (each fragment's OWN extreme, then a
+    percentile across fragments) -- here, each fragment's STILLEST
+    moment (the MINIMUM sliding-window range anywhere within it),
+    then the `pct`th percentile of those per-fragment minimums across
+    every fragment. COMMISSIONING FINDING: a percentile taken directly
+    over every individual sliding-window range (what this function
+    did originally) answers a different, much less extreme question --
+    "what's typical for ONE window" -- not "how still can an entire
+    chunk THIS LONG get at its stillest moment," which is what
+    actually matters when the real check re-evaluates every single
+    sample across a continuous run. That mismatch made Stillness fire
+    on nearly every channel, including ones no event ever touches."""
+    window_samples = int(window_seconds)
+    chunk_minimums = []
+    for frag in fragments:
+        ranges = _windowed_ranges(frag.values, window_samples)
+        if ranges:
+            chunk_minimums.append(min(ranges))
+    return percentile(chunk_minimums, pct)
+
+
 def derive_blueprint(derivation_seed=DERIVATION_SEED):
     """Returns {sensor_name: {"nominal", "units", "level_high",
-    "level_low", "jump_limit", "leash_slope_limit"}} -- the blueprint's
+    "level_low", "jump_limit", "leash_slope_limit", "stuck_window_
+    seconds", "min_normal_noise", "allow_steady"}} -- the blueprint's
     derived numbers, one fixed seed, reused identically by
     sim/rulebook.py to build GRACIE's rule book."""
     rng = random.Random(derivation_seed)
@@ -153,6 +222,7 @@ def derive_blueprint(derivation_seed=DERIVATION_SEED):
         thresholds = derive_thresholds(fragments, LEVEL_HIGH_PCT, LEVEL_LOW_PCT)[sensor_name]
         jump = derive_jump_limits(fragments, JUMP_PCT)[sensor_name]
         leash = derive_leash_limits(fragments, LEASH_SLOPE_PCT)[sensor_name]
+        stillness_limit = derive_stillness_limit(fragments, STILLNESS_WINDOW_SECONDS, STILLNESS_PCT)
         blueprint[sensor_name] = {
             "nominal": nominal,
             "units": units,
@@ -160,5 +230,17 @@ def derive_blueprint(derivation_seed=DERIVATION_SEED):
             "level_low": nominal + thresholds["low"],
             "jump_limit": jump["limit"],
             "leash_slope_limit": leash["limit"],
+            "stuck_window_seconds": STILLNESS_WINDOW_SECONDS,
+            "min_normal_noise": stillness_limit,
+            # COMMISSIONING FINDING: solar_current is EXACTLY SPEC.md's
+            # own named example of a sensor that "legitimately reads
+            # zero in some conditions" (its solar_occlusion event
+            # pins it at exactly 0.0 for the occlusion's full
+            # duration) -- Stillness correctly caught this as "too
+            # still" until this exemption was added, which is the
+            # check working as designed, not a bug in it. Every other
+            # sensor has no such legitimate steady condition in this
+            # sim.
+            "allow_steady": sensor_name == "solar_current",
         }
     return blueprint
