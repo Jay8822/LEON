@@ -128,3 +128,85 @@ already (falsely) latched, and the transition-based scorer has
 nothing new to catch. The masking hypothesis isn't just plausible
 here; it's the dominant explanation for why these two channels'
 Anomaly catch rate is as low as it is.
+
+## 2c — What happens just before each false trip?
+
+For every false FAULT transition on channel_43 (930) and channel_45
+(967) — "false" meaning outside every labelled window, same
+definition RESULTS.md's `false_counts` uses — checked what fired or
+moved in the preceding 1 minute / 10 minutes / 1 hour, and when in
+the day they happen. See `check_pretrip.py`.
+
+### Telecommands: barely any
+
+| Window | channel_43 trips with ANY telecommand | channel_45 trips with ANY telecommand |
+|---|---|---|
+| 1 min | 9 / 930 (1%) | 16 / 967 (2%) |
+| 10 min | 53 / 930 (6%) | 70 / 967 (7%) |
+| 1 hour | 220 / 930 (24%) | 248 / 967 (26%) |
+
+Even at the 1-hour window, where roughly a quarter of trips have
+*some* telecommand in the preceding hour (a wide window, on a craft
+that fires commands often), one telecommand accounts for most of
+that: telecommand_493 (142 of channel_43's 220 hourly hits, 162 of
+channel_45's 248). That's the same telecommand `learn_context.py`
+already flagged as firing so often in training that clearing the
+statistical bar doesn't mean much on its own ("weaker in character",
+see its module docstring). **Plain answer: these trips are not
+commanded** — at the window that actually matters for "did something
+just happen," essentially nothing fired.
+
+### Other channels moving: common, but the most frequent one isn't the one the rigorous check trusts
+
+| Window | channel_43 trips with another channel moving | channel_45 trips with another channel moving |
+|---|---|---|
+| 1 min | 445 / 930 (48%) | 490 / 967 (51%) |
+| 10 min | 789 / 930 (85%) | 831 / 967 (86%) |
+| 1 hour | 895 / 930 (96%) | 930 / 967 (96%) |
+
+channel_76 is the single most common companion at every window for
+both target channels (314/930 and 358/967 even within 1 minute). But
+`stand_in_blueprint.py`'s jitter-together check — built the rigorous
+way, against a random control, same method `learn_context.py` uses
+for commands — does **not** flag channel_76 as linked to channel_43
+or channel_45 at any window. It flags channel_61/62/63/64 instead
+(1-minute window only), and none of those four even make channel_43
+or channel_45's top-10 raw co-occurrence list. The likely explanation:
+channel_76 is itself a frequently, independently triggering channel,
+so it shows up near almost anything by sheer base rate, not because
+it's functionally tied to channel_43/45. **Plain answer: mostly
+coincidental, not a demonstrated link** — the one relationship that
+passes the stricter test is a minor player in the raw numbers, and
+the dominant raw co-mover doesn't pass the stricter test.
+
+### Time of day: a real pattern, and it's the same one 2b already found
+
+| Time of day | channel_43 trips | channel_45 trips |
+|---|---|---|
+| 00:00-04:00 | 426 (46%) | 527 (55%) |
+| 04:00-12:00 | 389 (42%) | 338 (35%) |
+| 12:00-18:00 | 92 (10%) | 84 (9%) |
+| 18:00-24:00 | 23 (2%) | 18 (2%) |
+
+Both channels' false trips are heavily front-loaded into the first
+half of the day and fall away sharply by evening. But they're not
+sitting right on top of the daily `clear_fault()` itself — only 2% of
+each channel's trips (21/930, 24/967) land within 5 minutes of it; the
+median trip happens 4.6 hours (channel_43) / 3.5 hours (channel_45)
+after that day's clear. So the pattern isn't "re-trips the instant the
+latch clears" — it's "re-trips sometime in the first several hours of
+the day, tailing off as the day goes on." That's consistent with, and
+sharpens, 2b's own example (channel_43's false latch on 2012-09-19
+began at 00:32, a few hours after midnight) — the same drift-vs-
+tightly-derived-threshold story from 2a, now shown to have a
+time-of-day shape rather than firing at any random moment.
+
+**Taken together, plain answer to "tied to other activity, or from
+nowhere?": neither, really.** They're not commanded, and the channel
+most often moving alongside them doesn't hold up as a genuine link
+once checked properly. But they're not random either — they have a
+real, reproducible time-of-day shape, concentrated in the first half
+of each day. That shape is best explained by the same cause 2a/2b
+already identified (drift past a tightly-derived threshold,
+compounding over each day since the last clear), not by some separate
+trigger this check turned up.
