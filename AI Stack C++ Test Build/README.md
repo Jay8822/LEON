@@ -12,6 +12,14 @@ available in the original environment; subsequently built and verified
 clean on three toolchains the same day — see "Status" below for the
 full record before trusting any of it.
 
+**LEGACY NOTE (2026-10-27):** `gracie.hpp`/`gracie.cpp` (single flat
+temp_c/radiation threshold check, below) is the **original scaffolding**
+from 2026-07-26 — it predates GRACIE's any-sensor, per-channel
+rule-book redesign in Python (`agents/gracie.py`, 2026-10-25) and does
+not reflect the current design. It's kept, untouched, purely so its
+existing test keeps passing. The current design's C++ core is
+`gracie_rulebook.hpp`/`gracie_rulebook.cpp` — see that section below.
+
 ## What "Power of 10" is
 
 Gerard Holzmann's ten rules for safety-critical C, adopted at JPL for
@@ -87,6 +95,88 @@ make every run's output timestamps different for no benefit, since
 nothing here reads wall-clock time meaningfully. If this ever takes
 input from a real sensor/clock source, this array is what gets replaced
 (see the Roadmap below), not patched to look more "real" in place.
+
+## gracie_rulebook: the per-channel rule-book GRACIE core (2026-10-27)
+
+Ported from `agents/gracie.py`'s any-sensor redesign, per Jay's "NEW
+TASK 1b" (see `Ccode update.txt`'s history for the full approved plan).
+**Honest framing, always**: this is shown to be portable to a
+safety-critical coding standard, matching the tested Python version on
+these inputs. Never "flight-ready" or "validated" — that needs far
+more than three proof datasets and a laptop.
+
+**Scope.** Ported: the per-channel rule book; level (including the
+"new crossing while already latched" distinct event, the one-way
+ratchet to FAULT); jump (incremental rate-of-change, momentary, never
+latches); leash (ring-buffer windowed slope, soft/hard duration state
+machine, including settling back to NOMINAL unless part of an active
+major fault via the channel's own FAULT or a linked channel's).
+**Not ported** (confirmed out of scope by Jay): the `expected_causes`
+input to level, the Diagnostic checklist, CHESTER's side — no
+EventBus, no `chester/watch` announcements, no aggregate multi-channel
+`health_state` roll-up. Every real-data test harness in this repo
+drives `GracieAgent` with exactly one channel in its rule book at a
+time, so that roll-up is never exercised by any proof dataset either
+way. This module is a standalone library + test/proof executables
+only — **not wired into `leon_sim`'s cyclic executive this round**
+(nothing downstream is ready to consume per-channel output yet).
+
+**Power-of-10 specifics.** Fixed capacities, stated as design limits:
+64 channels, a 2,048-entry ring buffer per channel for leash's
+windowed slope (Python's `deque` is unbounded; real data is bursty —
+one ESA-ADB channel needed up to ~1,200 entries in the worst case
+actually measured within a 3,600s window — so this is sized with
+headroom over that, not guessed; exceeding it returns
+`Status::kRingOverflow`, never silently truncated). `double`
+throughout, matching Python's `float64`.
+
+**A real bug, caught by the first test run, not assumed away:**
+`GracieRulebookState` (64 channels x the ring buffer) is ~2.1MB —
+far too large for a default thread stack (~1MB on Windows). The very
+first test run crashed with a stack overflow from declaring it as a
+plain local variable. Fixed by giving it `static` storage wherever
+it's instantiated (every test and the proof executable) — the
+correct fix, not just the one that stops the crash: a 2MB+ struct has
+no business on a call stack regardless of platform. Documented
+directly on the struct in `gracie_rulebook.hpp` so the next caller
+(e.g. if this is ever wired into `leon_sim`) doesn't hit it blind.
+
+**Proof (cross-language equivalence), three datasets, all PASS —
+every discrete field (severity, jump/leash-settled/new-crossing
+flags) matched EXACTLY, continuous slope values matched to 1e-9
+tolerance with the actual maximum observed difference reported
+either way, per Jay's instruction, not just a pass/fail bit:**
+
+| Dataset | Rows | Max slope difference observed |
+|---|---|---|
+| `simulated_tests/leash_drift` planted-drift streams, all 5 seeds, both channels (CADC0872, CADC0894) | 72,000 (10 x 7,200) | 0.000e+00 (bit-exact) |
+| OPS-SAT real test fragment (segment 1329, CADC0873, nominal, leash-evaluable) | 38 | 0.000e+00 (bit-exact) |
+| ESA-ADB Mission1 channel_62, STRICT, test period only | 147,289 | 0.000e+00 (bit-exact) |
+
+This proves the DETECTION/latching logic only — rule-book values
+(level/jump/leash limits) are exported from Python's already-derived
+numbers in each case, never re-derived in C++. The ESA-ADB slice's own
+leash ring buffer only reached 9/2,048 entries in practice (its
+bursty 3-second gaps happen to cluster outside the test period here)
+— reported plainly: this proof didn't stress the ring near capacity,
+even though channel_62 was chosen because it can.
+
+One real bug was caught and fixed along the way in the proof
+executable itself (not the ported core): its CSV writer used
+`ostream`'s default precision (6 significant digits), silently
+truncating the logged slope value and producing a false ~1e-7
+"mismatch" on the leash_drift dataset's higher-magnitude channel. Not
+papered over — found by actually inspecting the mismatching row,
+fixed with explicit `std::setprecision(17)` (lossless for an IEEE754
+double), re-run, confirmed bit-exact.
+
+**Reproducing this proof:** `python -m real_data_tests.cpp_proof.export_leash_drift`
+/ `export_opssat_fragment` / `export_esa_adb_channel62` (from the repo
+root) write each dataset's readings/rule-book/reference files to
+`real_data_tests/cpp_proof/out/` (gitignored, regenerable); then
+`build/proof_gracie_rulebook.exe <rule.txt> <readings.csv> <out.csv>`
+replays it in C++; then `python -m real_data_tests.cpp_proof.diff_proof_logs
+<reference.csv> <verdicts.csv> <label>` compares them.
 
 ## Compliance checklist (this code, rule by rule)
 
@@ -191,3 +281,7 @@ that needs a real build to shake out.
    clean via the `cppcheck` CMake target. A MISRA-aware analyzer and
    actual CI (this was all run manually, once, not automated) are
    still open before calling any of it flight-representative.
+6. ~~Port GRACIE's real (per-channel rule-book) design and prove it
+   against real data~~ — done 2026-10-27, see "gracie_rulebook" above.
+   Still open: wiring it into `leon_sim`'s cyclic executive; the
+   `expected_causes`/Diagnostic-checklist input; CHESTER's side.

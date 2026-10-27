@@ -16,6 +16,11 @@ namespace leon {
 enum class Status : std::uint8_t {
     kOk = 0,
     kInvalidArgument = 1,
+    // gracie_rulebook's leash ring buffer is fixed-size (Rule 3); this
+    // is returned instead of silently dropping the oldest unflushed
+    // entry when a dataset's sampling genuinely needs more capacity
+    // than provisioned. See leon_config.hpp's kLeashRingCapacity.
+    kRingOverflow = 2,
 };
 
 enum class HealthState : std::uint8_t {
@@ -49,6 +54,11 @@ struct FixedString {
 // loop bounds), unlike strcpy/strcat which will walk off the end of
 // whatever src happens to contain.
 Status fixed_string_set(FixedString* out, const char* src);
+
+// Bounded comparison against a plain C string, same Rule 2 loop cap
+// as fixed_string_set. Used by gracie_rulebook's by-name channel
+// lookup (a fixed, small (<=64) linear scan, not a map/hash).
+bool fixed_string_equals(const FixedString* fs, const char* src);
 
 struct TelemetryPacket {
     std::uint32_t timestamp;

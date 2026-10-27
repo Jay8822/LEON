@@ -38,6 +38,11 @@ real_data_tests/*/data/
 # committed while a run is still in progress; revisit once finished.
 real_data_tests/*/results/
 
+# NEW TASK 1b's exported CSV/sidecar/verdict files for the C++ GRACIE
+# core's cross-language proof -- regenerable from the export_*.py
+# scripts and the real data, same reasoning as results/ above.
+real_data_tests/cpp_proof/out/
+
 # Scratch file used for review exchanges with Jay — not project content.
 Ccode update.txt
 

@@ -1,0 +1,71 @@
+# real_data_tests/cpp_proof/diff_proof_logs.py
+# Added 2026-10-27 -- Jay Pratt + AI (Claude Sonnet 5, Anthropic).
+"""Compares the C++ proof executable's verdict log against the Python
+reference log, row for row, for NEW TASK 1b. Severity and the two
+boolean/transition fields must match EXACTLY; the leash slope (when
+both sides agree one exists) is allowed a 1e-9 epsilon -- but the
+MAXIMUM difference actually observed is always reported, per dataset,
+even when it's comfortably under tolerance, so the tolerance can't be
+hiding anything (Jay's addition 7 to the approved plan).
+
+Run from the repo root, after a dataset's _reference.csv (Python) and
+_verdicts.csv (C++, via proof_gracie_rulebook.exe) both exist:
+
+    python -m real_data_tests.cpp_proof.diff_proof_logs <reference.csv> <verdicts.csv> <label>
+"""
+import csv
+import sys
+
+DISCRETE_FIELDS = ["severity", "jump_event", "leash_settled", "new_crossing_while_latched", "has_slope"]
+SLOPE_TOLERANCE = 1e-9
+
+
+def load(path):
+    with open(path, newline="") as f:
+        return list(csv.DictReader(f))
+
+
+def diff(python_csv, cpp_csv, label):
+    py_rows = load(python_csv)
+    cpp_rows = load(cpp_csv)
+
+    if len(py_rows) != len(cpp_rows):
+        print(f"{label}: MISMATCH -- row count differs ({len(py_rows)} python vs {len(cpp_rows)} c++)")
+        return False
+
+    max_slope_diff = 0.0
+    mismatches = []
+    for i, (p, c) in enumerate(zip(py_rows, cpp_rows)):
+        if p["sample_index"] != c["sample_index"]:
+            print(f"{label}: sample_index mismatch at row {i}: {p['sample_index']} (python) "
+                  f"vs {c['sample_index']} (c++)")
+            return False
+        diffs = {f: (p[f], c[f]) for f in DISCRETE_FIELDS if p[f] != c[f]}
+        if diffs:
+            mismatches.append((p["sample_index"], diffs))
+            continue
+        if p["has_slope"] == "1":
+            d = abs(float(p["slope"]) - float(c["slope"]))
+            if d > max_slope_diff:
+                max_slope_diff = d
+
+    print(f"{label}: {len(py_rows)} rows compared. Max slope difference actually observed: {max_slope_diff:.3e}")
+    if mismatches:
+        print(f"{label}: MISMATCH -- {len(mismatches)} rows differ on a discrete field.")
+        for sample_index, diffs in mismatches[:10]:
+            print(f"    sample_index={sample_index}: {diffs}")
+        if len(mismatches) > 10:
+            print(f"    ... and {len(mismatches) - 10} more")
+        return False
+    if max_slope_diff > SLOPE_TOLERANCE:
+        print(f"{label}: MISMATCH -- max slope difference {max_slope_diff:.3e} exceeds "
+              f"the {SLOPE_TOLERANCE:.0e} tolerance")
+        return False
+    print(f"{label}: PASS -- every discrete field matches exactly; "
+          f"slope within tolerance (max observed {max_slope_diff:.3e})")
+    return True
+
+
+if __name__ == "__main__":
+    ok = diff(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else "dataset")
+    sys.exit(0 if ok else 1)

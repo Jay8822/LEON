@@ -26,6 +26,7 @@ add_library(leon_core STATIC
     src/gracie.cpp
     src/eden.cpp
     src/coordinator.cpp
+    src/gracie_rulebook.cpp
 )
 target_include_directories(leon_core PUBLIC include)
 
@@ -35,8 +36,15 @@ target_link_libraries(leon_sim PRIVATE leon_core)
 add_executable(test_gracie tests/test_gracie.cpp)
 target_link_libraries(test_gracie PRIVATE leon_core)
 
+add_executable(test_gracie_rulebook tests/test_gracie_rulebook.cpp)
+target_link_libraries(test_gracie_rulebook PRIVATE leon_core)
+
+add_executable(proof_gracie_rulebook tests/proof_gracie_rulebook.cpp)
+target_link_libraries(proof_gracie_rulebook PRIVATE leon_core)
+
 enable_testing()
 add_test(NAME gracie_health_state COMMAND test_gracie)
+add_test(NAME gracie_rulebook_health_state COMMAND test_gracie_rulebook)
 
 # Power-of-10 Rule 10 also calls for a static analyzer run daily. Wired
 # up here but not run automatically — cppcheck isn't installed in every
