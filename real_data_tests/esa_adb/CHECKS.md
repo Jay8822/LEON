@@ -210,3 +210,34 @@ of each day. That shape is best explained by the same cause 2a/2b
 already identified (drift past a tightly-derived threshold,
 compounding over each day since the last clear), not by some separate
 trigger this check turned up.
+
+### Follow-up: does the time-of-day pattern survive counting every raw crossing, not just the first per day?
+
+**No — it's substantially a test-method artefact, not a craft
+behaviour.** The front-loaded pattern above is counted in FAULT
+*transitions*: once a channel latches early in the day (right after
+the daily `clear_fault()` gives it a fresh chance to), it mostly stays
+latched, so the many further over-threshold readings later that day
+never register as new transitions. Counting instead every single raw
+sample that sits over the STRICT line — whatever the latch state,
+labelled periods excluded the same way as above — gives a very
+different picture:
+
+| Time of day | channel_43 (8,439 false samples) | channel_45 (10,325 false samples) | Duration-proportional baseline |
+|---|---|---|---|
+| 00:00-04:00 | 15% | 15% | 17% |
+| 04:00-12:00 | 34% | 34% | 33% |
+| 12:00-18:00 | 25% | 25% | 25% |
+| 18:00-24:00 | 25% | 25% | 25% |
+
+That's indistinguishable from flat — within a couple of points of what
+you'd get if false readings were spread uniformly across the day with
+no time-of-day effect at all (the "baseline" column is just each
+window's share of the 24 hours). **The channel really is over
+threshold fairly uniformly through the day; it's the combination of
+daily latch-clearing and transition-only counting that made it look
+front-loaded.** This doesn't undo 2a/2b's drift finding — the channel
+is still falsely over threshold because of drift relative to its
+tightly-derived limit, for the same reasons already established — it
+just means "when in the day" isn't actually part of that story. Noted
+here plainly rather than left standing uncorrected.
