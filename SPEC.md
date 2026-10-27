@@ -179,7 +179,7 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 
 ## Escalation chain (in order)
 
-1. **Self-check.** Each agent checks the incoming information against its own parameters, and where relevant against adjoining agents' parameters. It fixes what it can without escalating.
+1. **Self-check.** Each agent checks the incoming information against its own parameters, and where relevant against adjoining agents' parameters — including running the Diagnostic checklist when it has just raised a trip. It fixes what it can without escalating.
 2. **Load varies by mission phase.** Heavy traffic at take-off and similar phases; quieter at cruise. Expected behaviour, not a bug.
 3. **Unresolved items go to the orchestrator first**, not EDEN.
 4. **Orchestrator checks.** Against the rules every agent has, and its own harder parameters.
@@ -415,6 +415,16 @@ Status: **not built**.
   manual: it can still watch for readings outside a safe range, but it
   has no way to tell expected noise, known interference, or an
   expected zero, from something genuinely wrong.
+- Expected kicks: for each event on the craft (an engine burn, a
+  manoeuvre or course correction, a battery switch, and similar), the
+  blueprint lists which sensors react, roughly how, and for how long,
+  before settling back to normal — the same way a car's fuel pump,
+  starter motor and battery each give a brief kick when the engine
+  starts that fades into the background. A kick matching an expected
+  event, within its listed shape and duration, is logged as expected,
+  not flagged. A kick that doesn't match any expected event, or
+  outlasts its expected duration, is not excused — it passes through
+  untouched, same as anything else the blueprint doesn't explain.
 - Noise filter, driven by the blueprint: filters only what the
   blueprint explains as natural noise or known interference between
   sensors or systems. Logs everything it filters — nothing is
@@ -422,6 +432,26 @@ Status: **not built**.
   alongside the filtered view. A filter must never hide a real fault:
   anything the blueprint doesn't explain passes through untouched.
 - Status: not built.
+
+---
+
+## Diagnostic checklist (fault isolation)
+
+When a sensor trips, the raising agent runs this checklist as part of
+its own self-check (see Escalation chain, step 1) — before anything
+escalates further. The orchestrator can ask for it to be rerun if its
+own checks don't match. The answers are logged alongside the trip, so
+whoever reviews it sees the likely causes, not just "fault":
+
+1. What happened just before? A command, a burn, a manoeuvre, a course
+   correction?
+2. Did the related sensors (per the blueprint's known interference and
+   expected kicks) move too?
+3. Is it normal noise, according to the blueprint?
+4. Is the sensor itself healthy, or stuck, flat, quantised or jittery?
+5. Did the power change?
+
+Status: not built.
 
 ---
 

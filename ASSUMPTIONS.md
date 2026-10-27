@@ -1,6 +1,6 @@
 # LEON: Assumptions list
 
-An assumption is something that must be true for the design to work, that the design never checks. Found by red-teaming each component: how would I break it, and what was it relying on? First pass completed 22 October 2026; CHESTER section (A66–A73) added 24 October 2026; Ageing section (A74–A76) added 25 October 2026; Blueprint and noise section (A77–A79) added 26 October 2026. Not exhaustive; verification partners are expected to add more.
+An assumption is something that must be true for the design to work, that the design never checks. Found by red-teaming each component: how would I break it, and what was it relying on? First pass completed 22 October 2026; CHESTER section (A66–A73) added 24 October 2026; Ageing section (A74–A76) added 25 October 2026; Blueprint and noise section (A77–A80) added 26–27 October 2026. Not exhaustive; verification partners are expected to add more.
 
 [key] marks the most important. "Answer" is the design response, where one exists. "Open" means not yet answered.
 
@@ -108,3 +108,4 @@ An assumption is something that must be true for the design to work, that the de
 - A77. [key] The blueprint is correct and complete for this craft. Open: it comes from the builders; a wrong blueprint misleads every agent.
 - A78. [key] The noise filter never hides a real fault. Answer: it filters only what the blueprint explains, logs everything filtered, raw data kept.
 - A79. Interference relationships in the blueprint stay true over the mission (they can change as parts age). Open.
+- A80. [key] The checklist covers the real causes; an unlisted cause would be missed. Open.
