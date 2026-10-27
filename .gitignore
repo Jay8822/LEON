@@ -43,6 +43,10 @@ real_data_tests/*/results/
 # scripts and the real data, same reasoning as results/ above.
 real_data_tests/cpp_proof/out/
 
+# Item 3's scored simulation output -- regenerable (fixed seeds) from
+# sim/run_sim_test.py; the real write-up is sim/RESULTS.md.
+sim/out/
+
 # Scratch file used for review exchanges with Jay — not project content.
 Ccode update.txt
 
