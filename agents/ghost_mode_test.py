@@ -122,6 +122,7 @@ def test_real_upgraded_gracie_payload_still_triggers_ghost_mode():
             jump_limit=1000.0,
             leash_window_seconds=1.0, leash_slope_limit=1000.0,
             leash_soft_duration_seconds=1000.0, leash_hard_duration_seconds=2000.0,
+            stuck_window_seconds=1.0, min_normal_noise=0.0,  # Stillness not exercised here
         ),
     }
     gracie = GracieAgent(bus, rule_book)

@@ -50,6 +50,7 @@ GRACIE_RULE_BOOK = {
         jump_limit=10.0,
         leash_window_seconds=5.0, leash_slope_limit=2.0,
         leash_soft_duration_seconds=10.0, leash_hard_duration_seconds=20.0,
+        stuck_window_seconds=5.0, min_normal_noise=0.0,  # Stillness not exercised here
     ),
     "radiation": ChannelRule(
         name="radiation", units="rad",
@@ -57,6 +58,7 @@ GRACIE_RULE_BOOK = {
         jump_limit=10.0,
         leash_window_seconds=5.0, leash_slope_limit=2.0,
         leash_soft_duration_seconds=10.0, leash_hard_duration_seconds=20.0,
+        stuck_window_seconds=5.0, min_normal_noise=0.0,  # Stillness not exercised here
     ),
 }
 

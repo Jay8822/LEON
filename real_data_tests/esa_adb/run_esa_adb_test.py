@@ -323,6 +323,7 @@ def score_test_period(channel, rule_values, timestamps, values, labels, cutoff):
         leash_slope_limit=rule_values["leash_slope_limit"],
         leash_soft_duration_seconds=LEASH_SOFT_DURATION_SECONDS,
         leash_hard_duration_seconds=LEASH_HARD_DURATION_SECONDS,
+        stuck_window_seconds=LEASH_WINDOW_SECONDS, min_normal_noise=0.0,  # Stillness not exercised here
     )
     bus = EventBus()
     gracie = GracieAgent(bus, {channel: rule})

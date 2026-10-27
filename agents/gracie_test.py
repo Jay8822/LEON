@@ -28,6 +28,7 @@ TEMP_RULE = ChannelRule(
     jump_limit=5.0,
     leash_window_seconds=10.0, leash_slope_limit=1.0,
     leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
+    stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
 )
 RAD_RULE = ChannelRule(
     name="radiation", units="rad",
@@ -35,6 +36,7 @@ RAD_RULE = ChannelRule(
     jump_limit=3.0,
     leash_window_seconds=10.0, leash_slope_limit=0.5,
     leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
+    stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
 )
 # A separate fixture channel for the leash tests specifically: level
 # bounds set far outside anything the ramp below ever reaches, so a
@@ -47,6 +49,7 @@ DRIFT_RULE = ChannelRule(
     jump_limit=1_000.0,
     leash_window_seconds=10.0, leash_slope_limit=1.0,
     leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
+    stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
 )
 
 # A second drift-style channel, with REACHABLE level bounds (unlike
@@ -58,6 +61,7 @@ COMBO_RULE = ChannelRule(
     jump_limit=1_000.0,
     leash_window_seconds=10.0, leash_slope_limit=1.0,
     leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
+    stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
 )
 
 # Two channels for the LINKED-channel exception: A's own level bounds
@@ -70,6 +74,7 @@ LINKED_A_RULE = ChannelRule(
     jump_limit=1_000.0,
     leash_window_seconds=10.0, leash_slope_limit=1.0,
     leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
+    stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
     linked_channels=("linked_b",),
 )
 LINKED_B_RULE = ChannelRule(
@@ -78,12 +83,37 @@ LINKED_B_RULE = ChannelRule(
     jump_limit=1_000.0,
     leash_window_seconds=10.0, leash_slope_limit=1.0,
     leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
+    stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
+)
+
+# A channel with a REAL Stillness limit -- level/jump/leash bounds set
+# unreachable (same convention as DRIFT_RULE) so only Stillness can
+# fire, isolating what's being tested.
+STUCK_RULE = ChannelRule(
+    name="stuck_channel", units="u",
+    level_high=1_000_000.0, level_low=-1_000_000.0,
+    jump_limit=1_000_000.0,
+    leash_window_seconds=10.0, leash_slope_limit=1_000_000.0,
+    leash_soft_duration_seconds=1_000_000.0, leash_hard_duration_seconds=1_000_000.0,
+    stuck_window_seconds=5.0, min_normal_noise=2.0,
+)
+# Same limits, but explicitly exempted -- a sensor the blueprint says
+# legitimately holds steady (SPEC.md Stillness bullet).
+STEADY_RULE = ChannelRule(
+    name="steady_channel", units="u",
+    level_high=1_000_000.0, level_low=-1_000_000.0,
+    jump_limit=1_000_000.0,
+    leash_window_seconds=10.0, leash_slope_limit=1_000_000.0,
+    leash_soft_duration_seconds=1_000_000.0, leash_hard_duration_seconds=1_000_000.0,
+    stuck_window_seconds=5.0, min_normal_noise=2.0,
+    allow_steady=True,
 )
 
 RULE_BOOK = {
     "temp_c": TEMP_RULE, "radiation": RAD_RULE,
     "drift_channel": DRIFT_RULE, "combo_channel": COMBO_RULE,
     "linked_a": LINKED_A_RULE, "linked_b": LINKED_B_RULE,
+    "stuck_channel": STUCK_RULE, "steady_channel": STEADY_RULE,
 }
 
 
@@ -359,17 +389,22 @@ def test_new_crossing_while_latched_logs_but_does_not_change_anything():
     assert gracie._last_readings["temp_c"]["severity"] == "FAULT"
     assert gracie._states["temp_c"].level_crossing_active is True
 
-    # Nothing about this should have produced any WARNING-transition
-    # chester/watch noise -- level FAULT entry/re-entry isn't itself
-    # chester-announced (only WARNING transitions are).
-    assert chester == [], chester
-    print("  ok: a new crossing while already latched FAULT logs a fresh event, latch stays unchanged")
+    # Point 13: this second crossing IS now announced on chester/watch
+    # (so it can be forwarded to the orchestrator -- see
+    # agents/escalation_watch.py), unlike the first crossing or the
+    # settle-back in between. The latch itself is still untouched.
+    assert len(chester) == 1, chester
+    assert chester[0]["kind"] == "new_crossing_while_latched", chester[0]
+    assert chester[0]["channel"] == "temp_c"
+    print("  ok: a new crossing while already latched FAULT logs and announces a fresh event, latch stays unchanged")
 
 
 def test_expected_cause_logs_not_flags_but_never_downgrades_fault():
     gracie, _, _ = make_gracie()
-    # Expected cause present: a crossing is logged (WARNING), not flagged.
-    gracie.process_readings({"temp_c": 56}, timestamp=0, expected_causes={"temp_c"})
+    # Expected cause present, size unknown (None) -- point 12's
+    # original behaviour, preserved exactly: a crossing is logged
+    # (WARNING), not flagged.
+    gracie.process_readings({"temp_c": 56}, timestamp=0, expected_causes={"temp_c": None})
     assert gracie._last_readings["temp_c"]["severity"] == "WARNING"
     assert gracie.health_state == "WARNING"
 
@@ -383,10 +418,87 @@ def test_expected_cause_logs_not_flags_but_never_downgrades_fault():
     # An expected cause on a LATER cycle must never downgrade an
     # existing FAULT latch -- same one-way-ratchet rule as everywhere
     # else in this file.
-    gracie.process_readings({"temp_c": 56}, timestamp=2, expected_causes={"temp_c"})
+    gracie.process_readings({"temp_c": 56}, timestamp=2, expected_causes={"temp_c": None})
     assert gracie._last_readings["temp_c"]["severity"] == "FAULT", \
         "expected cause must never downgrade an existing FAULT latch"
     print("  ok: expected cause logs instead of flagging, but never downgrades an existing FAULT latch")
+
+
+def test_expected_cause_with_size_only_excuses_a_value_actually_inside_it():
+    """Point 13: an expected cause that carries a known expected size
+    only excuses a crossing whose value is actually inside that
+    range. A cause commanded at the WRONG size is not excused -- it
+    is flagged, the same as an unexplained crossing."""
+    gracie, _, _ = make_gracie()
+    # Value (56) is inside the given expected range -- logged, not flagged.
+    gracie.process_readings({"temp_c": 56}, timestamp=0, expected_causes={"temp_c": (50.0, 60.0)})
+    assert gracie._last_readings["temp_c"]["severity"] == "WARNING"
+    gracie.clear_fault("temp_c")
+
+    # Value (80) is OUTSIDE the given expected range -- a cause was
+    # commanded, but at the wrong size, so it is flagged exactly like
+    # an unexplained crossing (e.g. bad_engine_burn in sim/RESULTS.md).
+    gracie.process_readings({"temp_c": 80}, timestamp=1, expected_causes={"temp_c": (50.0, 60.0)})
+    assert gracie._last_readings["temp_c"]["severity"] == "FAULT", \
+        "a cause commanded at the wrong size must not be excused"
+    print("  ok: an expected cause with a known size only excuses a value actually inside it")
+
+
+def test_stillness_flags_a_sensor_that_never_varies_enough():
+    """STUCK_RULE: stuck_window_seconds=5.0, min_normal_noise=2.0.
+    Level/jump/leash are all set unreachable on this channel, so only
+    Stillness can produce a FAULT here."""
+    gracie, _, _ = make_gracie()
+    readings = [10.0, 10.5, 11.0, 10.8, 10.3, 10.6]  # range 1.0, under the 2.0 minimum
+    for t, v in enumerate(readings):
+        gracie.process_readings({"stuck_channel": v}, timestamp=float(t))
+        if t < 5:
+            # Window doesn't cover the full 5.0s yet -- no verdict possible.
+            assert gracie._last_readings["stuck_channel"]["sensor_health_fault"] is False
+
+    assert gracie._last_readings["stuck_channel"]["severity"] == "FAULT"
+    assert gracie._last_readings["stuck_channel"]["sensor_health_fault"] is True, \
+        "a Stillness fault must be tagged distinctly from an ordinary level/leash fault"
+    print("  ok: a sensor whose variation stays below the blueprint's minimum is flagged, tagged sensor-health")
+
+
+def test_stillness_does_not_fire_on_a_sensor_that_varies_enough():
+    gracie, _, _ = make_gracie()
+    readings = [0.0, 5.0, 10.0, 3.0, 8.0, 1.0]  # range 10.0, well over the 2.0 minimum
+    for t, v in enumerate(readings):
+        gracie.process_readings({"stuck_channel": v}, timestamp=float(t))
+    assert gracie._last_readings["stuck_channel"]["severity"] == "NOMINAL"
+    assert gracie._last_readings["stuck_channel"]["sensor_health_fault"] is False
+    print("  ok: a sensor with real variation never trips Stillness")
+
+
+def test_allow_steady_exempts_a_channel_from_stillness():
+    """STEADY_RULE has the SAME stuck_window_seconds/min_normal_noise
+    as STUCK_RULE, but allow_steady=True -- SPEC.md: sensors that
+    legitimately hold steady must say so in the blueprint, so they're
+    judged correctly rather than flagged for being exactly as
+    designed."""
+    gracie, _, _ = make_gracie()
+    readings = [10.0, 10.5, 11.0, 10.8, 10.3, 10.6]  # identical pattern to the STUCK_RULE test above
+    for t, v in enumerate(readings):
+        gracie.process_readings({"steady_channel": v}, timestamp=float(t))
+    assert gracie._last_readings["steady_channel"]["severity"] == "NOMINAL"
+    assert gracie._last_readings["steady_channel"]["sensor_health_fault"] is False
+    print("  ok: allow_steady exempts a channel from Stillness entirely")
+
+
+def test_stillness_latch_is_released_by_clear_fault():
+    gracie, _, _ = make_gracie()
+    readings = [10.0, 10.5, 11.0, 10.8, 10.3, 10.6]
+    for t, v in enumerate(readings):
+        gracie.process_readings({"stuck_channel": v}, timestamp=float(t))
+    assert gracie._last_readings["stuck_channel"]["severity"] == "FAULT"
+    assert gracie._last_readings["stuck_channel"]["sensor_health_fault"] is True
+
+    gracie.clear_fault("stuck_channel")
+    assert gracie._last_readings["stuck_channel"]["severity"] == "NOMINAL"
+    assert gracie._last_readings["stuck_channel"]["sensor_health_fault"] is False
+    print("  ok: clear_fault releases a Stillness latch, same as any other")
 
 
 def test_unrecognized_channel_is_ignored_not_guessed_at():
@@ -413,6 +525,11 @@ def main():
         test_report_carries_actual_readings,
         test_new_crossing_while_latched_logs_but_does_not_change_anything,
         test_expected_cause_logs_not_flags_but_never_downgrades_fault,
+        test_expected_cause_with_size_only_excuses_a_value_actually_inside_it,
+        test_stillness_flags_a_sensor_that_never_varies_enough,
+        test_stillness_does_not_fire_on_a_sensor_that_varies_enough,
+        test_allow_steady_exempts_a_channel_from_stillness,
+        test_stillness_latch_is_released_by_clear_fault,
         test_unrecognized_channel_is_ignored_not_guessed_at,
     ]
     for test in tests:

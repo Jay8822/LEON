@@ -73,6 +73,7 @@ def test_real_gracie_announcements_are_watched():
             name="drift", units="u", level_high=1e9, level_low=-1e9, jump_limit=5.0,
             leash_window_seconds=10.0, leash_slope_limit=1.0,
             leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
+            stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised here
         ),
     }
     gracie = GracieAgent(bus, rule_book)

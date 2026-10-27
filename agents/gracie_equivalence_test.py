@@ -100,6 +100,7 @@ def test_leash_timing_matches_batch_for_every_seed_and_channel():
                 leash_window_seconds=LEASH_WINDOW_SECONDS, leash_slope_limit=limit,
                 leash_soft_duration_seconds=LEASH_SOFT_DURATION_SECONDS,
                 leash_hard_duration_seconds=LEASH_HARD_DURATION_SECONDS,
+                stuck_window_seconds=LEASH_WINDOW_SECONDS, min_normal_noise=0.0,  # Stillness not exercised here
             )
             bus = EventBus()
             gracie = GracieAgent(bus, {channel: rule})
@@ -151,6 +152,7 @@ def test_level_and_jump_match_batch_for_a_slice_of_ops_sat_fragments():
             jump_limit=jump_limits[channel]["limit"],
             leash_window_seconds=1.0, leash_slope_limit=_HARMLESS_HIGH,
             leash_soft_duration_seconds=_HARMLESS_HIGH, leash_hard_duration_seconds=_HARMLESS_HIGH,
+            stuck_window_seconds=1.0, min_normal_noise=0.0,  # Stillness not exercised here
         )
         bus = EventBus()
         gracie = GracieAgent(bus, {channel: rule})

@@ -138,6 +138,7 @@ def main():
         leash_slope_limit=NEVER_TRIGGERED,
         leash_soft_duration_seconds=NEVER_TRIGGERED,
         leash_hard_duration_seconds=NEVER_TRIGGERED,
+        stuck_window_seconds=LEASH_WINDOW_SECONDS, min_normal_noise=0.0,  # Stillness: not in the C++ port yet, not exercised here
     )
 
     # clear_before is always False -- this test is about the ring

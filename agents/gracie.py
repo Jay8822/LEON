@@ -117,6 +117,49 @@ Interpretive calls made, agreed with Jay before building (see
       deliberately out of scope here; real_data_tests/esa_adb/ decides
       which channels have one, from training-only command/event
       timing correlation, and simply passes the set in.
+13. Added 2026-10-27 (Item 3b, driven by the simulated craft's
+    findings -- see sim/RESULTS.md and Ccode update.txt), three
+    changes, each justified against a specific SPEC.md GRACIE line:
+    - Expected causes now carry a size (SPEC.md: "An expected cause
+      ... carries the blueprint's expected size ... with the
+      blueprint's own tolerance ... A rise inside an expected cause's
+      active window but outside its expected size is not excused").
+      `expected_causes` is now `{channel: (low, high) or None}` --
+      None preserves point 12's original behaviour exactly (a cause
+      was commanded, no known size, any value in that cause's window
+      is excused) for real_data_tests/esa_adb/'s correlation-based
+      usage, which genuinely can't claim to know a size. A (low, high)
+      tuple means the caller DOES know the blueprint's expected size
+      (the simulated craft, from its own blueprint) -- a value outside
+      it is treated as NOT excused, flagged the same as an unexplained
+      crossing, even though a cause was commanded.
+    - New crossing while already latched now reaches the orchestrator
+      (SPEC.md: "that is reported as a fresh event in its own right,
+      through the normal escalation chain to the orchestrator"). One
+      new call: this branch now also announces "new_crossing_while_
+      latched" on chester/watch (she already announces other kinds;
+      this is simply one more). The latch itself is untouched by this
+      -- nothing released, nothing reset. A new, separate, small file
+      (agents/escalation_watch.py) listens for this specific kind and
+      forwards it to the orchestrator -- a STAND-IN wiring, not GRACIE
+      calling the orchestrator directly, same architecture as every
+      other agent-to-agent path in this codebase today.
+    - Stillness, a fourth sense (SPEC.md: "If a sensor's variation
+      over that window falls below its blueprint-stated minimum, the
+      sensor itself is suspect ... GRACIE flags it as a sensor-health
+      fault, independently of level/jump/leash"). Two new required
+      ChannelRule fields, stuck_window_seconds/min_normal_noise (no
+      defaults -- min_normal_noise<=0.0 is the explicit, stated way a
+      caller disables this check for a channel, not an invented real
+      number); allow_steady exempts a channel entirely. Tagged
+      DISTINCTLY from an ordinary level/leash fault, in the log line
+      ("sensor suspect: X frozen", not "X fault") and in the report
+      (`sensor_health_fault` alongside `severity`), so a reader can
+      tell the instrument is in question, not the quantity it
+      measures. Latches exactly like level (one-way ratchet, only
+      clear_fault releases it) -- participates in the same
+      `latched_severity`/`health_state` rollup by construction, since
+      it sets the same field everything else does.
 
 No invented numbers: every ChannelRule field is required, no
 defaults (see agents/gracie_rulebook.py). Real callers and tests alike
@@ -137,6 +180,12 @@ from agents.gracie_rulebook import ChannelRule, RuleBook
 # expect. "LOGGED" (jump, soft leash) maps to WARNING; "FLAGGED"
 # (level, hard leash) maps to FAULT -- see module docstring, point 1.
 _SEVERITY_RANK = {"NOMINAL": 0, "WARNING": 1, "FAULT": 2}
+
+# Sentinel distinguishing "this channel has no entry in expected_causes
+# at all" from "it has an entry whose value is None" (point 13 above --
+# None is itself a meaningful value, "a cause was commanded, size
+# unknown," not the same as "no cause was commanded").
+_NO_EXPECTED_CAUSE = object()
 
 
 @dataclass
@@ -162,6 +211,17 @@ class _ChannelState:
     # logged in its own right even while latched_severity is still
     # FAULT from an earlier crossing (module docstring, point 12).
     level_crossing_active: bool = False
+    # Stillness (point 13): a sliding window of recent (timestamp,
+    # value) pairs, same incremental-and-trimmed shape as leash's own
+    # `window` above, but kept separate since the two senses cover
+    # different durations and leash's anchor-only trim can't answer
+    # "what's the full range over this window" the way Stillness
+    # needs. True from the moment Stillness first triggers until
+    # clear_fault -- the "sensor suspect" tag on the report, tracked
+    # separately from latched_severity so a reader can tell the
+    # instrument is in question, not the quantity it measures.
+    stillness_window: Deque[Tuple[float, float]] = field(default_factory=deque)
+    stillness_active: bool = False
 
 
 class GracieAgent:
@@ -208,12 +268,14 @@ class GracieAgent:
                 continue
             prior_severity = state.latched_severity
             state.latched_severity = "NOMINAL"
+            state.stillness_active = False
             if reset_leash_timer:
                 state.pull_run_start = None
                 state.soft_active = False
                 state.hard_active = False
             if ch in self._last_readings:
                 self._last_readings[ch]["severity"] = "NOMINAL"
+                self._last_readings[ch]["sensor_health_fault"] = False
             self._announce_warning_transition(ch, timestamp, prior_severity, "NOMINAL")
         self.logger.info(f"Cleared fault for {channel if channel else 'all channels'}")
         self._recompute_aggregate()
@@ -221,21 +283,33 @@ class GracieAgent:
 
     # --- the three senses, per channel --------------------------------
     def _process_level(self, channel: str, state: _ChannelState, value: float,
-                        expected: bool = False):
-        """`expected` -- SPEC.md GRACIE section: "Expected causes ...
-        are logged. No explanation ... flagged." GRACIE itself has no
-        idea what counts as an expected cause or where it comes from;
-        the caller decides and passes a plain bool (module docstring,
-        point 12). A crossing while expected is LOGGED (WARNING) and
-        never downgrades an existing FAULT latch -- the one-way-ratchet
-        rule everywhere else in this file."""
+                        timestamp: float, expected_cause=_NO_EXPECTED_CAUSE):
+        """`expected_cause` -- SPEC.md GRACIE section: "An expected
+        cause ... carries the blueprint's expected size ... with the
+        blueprint's own tolerance ... A rise inside an expected cause's
+        active window but outside its expected size is not excused."
+        GRACIE herself has no idea what counts as an expected cause or
+        where it comes from; the caller decides (module docstring,
+        point 12/13). Three states, via the `_NO_EXPECTED_CAUSE`
+        sentinel default: no entry at all (not expected); an entry of
+        None (a cause was commanded, size unknown -- excuses any
+        value, point 12's original behaviour, preserved exactly); an
+        entry of (low, high) (a cause was commanded with a known
+        expected size -- excuses only a value actually inside it). A
+        crossing that IS excused is LOGGED (WARNING) and never
+        downgrades an existing FAULT latch -- the one-way-ratchet rule
+        everywhere else in this file."""
         rule = state.rule
         crossing = value > rule.level_high or value < rule.level_low
         if not crossing:
             state.level_crossing_active = False
             return
         is_new_crossing = not state.level_crossing_active
-        if expected:
+        has_expected_cause = expected_cause is not _NO_EXPECTED_CAUSE
+        matches_expected = has_expected_cause and (
+            expected_cause is None or (expected_cause[0] <= value <= expected_cause[1])
+        )
+        if matches_expected:
             if is_new_crossing:
                 self.logger.info(
                     f"{channel}: LEVEL crossing with expected cause -- logged, not flagged "
@@ -256,8 +330,44 @@ class GracieAgent:
                     f"{channel}: LEVEL crossing while already latched FAULT -- new event "
                     f"(value={value}{rule.units}, high={rule.level_high}, low={rule.level_low})"
                 )
+                # Point 13: reported through to the orchestrator (via
+                # agents/escalation_watch.py's stand-in wiring), not
+                # just logged -- the latch itself is untouched by this.
+                self._announce_for_chester(channel, timestamp, "new_crossing_while_latched")
         state.latched_severity = "FAULT"
         state.level_crossing_active = True
+
+    def _process_stillness(self, channel: str, state: _ChannelState, timestamp: float,
+                            value: float) -> bool:
+        """SPEC.md GRACIE section, "Stillness": a sensor's variation
+        over `rule.stuck_window_seconds` must never fall below
+        `rule.min_normal_noise`, or the sensor itself is suspect.
+        `min_normal_noise<=0.0` (or `allow_steady`) is the explicit,
+        stated way a caller disables this for a channel -- checked
+        FIRST, before any window bookkeeping, both because a disabled
+        check can never fire either way and because every real-data
+        test harness in this repo disables it this round (see
+        agents/gracie_rulebook.py) and would otherwise pay an
+        O(window size) cost on every single sample for nothing across
+        millions of real readings.
+
+        Unlike leash's window (which only ever needs its two
+        endpoints to get a slope), Stillness needs the actual spread
+        of every value in the window, so it keeps its own deque,
+        trimmed the same incremental way -- oldest entries dropped
+        once they age out of `stuck_window_seconds` -- rather than
+        reusing leash's anchor-only trim."""
+        rule = state.rule
+        if rule.allow_steady or rule.min_normal_noise <= 0.0:
+            return False
+        window = state.stillness_window
+        window.append((timestamp, value))
+        while window and (timestamp - window[0][0]) > rule.stuck_window_seconds:
+            window.popleft()
+        if (timestamp - window[0][0]) < rule.stuck_window_seconds:
+            return False  # window doesn't cover the full stated duration yet
+        values = [v for _, v in window]
+        return (max(values) - min(values)) < rule.min_normal_noise
 
     def _process_jump(self, state: _ChannelState, timestamp: float, value: float) -> bool:
         """True if the rate since the last sample exceeds the jump
@@ -353,17 +463,21 @@ class GracieAgent:
 
     # --- main entry point ----------------------------------------------
     def process_readings(self, readings: Dict[str, float], timestamp: float,
-                          expected_causes: Optional[set] = None):
+                          expected_causes: Optional[Dict[str, Optional[Tuple[float, float]]]] = None):
         """readings: {channel_name: value}. Channels not in the rule
         book are logged and ignored -- no guessing at a channel GRACIE
         has no rule for.
 
-        expected_causes: optional set of channel names that have a
-        context-provided expected cause THIS cycle (module docstring,
-        point 12). Omitted or empty preserves the original behaviour
+        expected_causes: optional {channel: (expected_low, expected_high)
+        or None} -- a context-provided expected cause THIS cycle
+        (module docstring, points 12/13). None preserves point 12's
+        original behaviour (a cause was commanded, size unknown, any
+        value is excused); a (low, high) tuple only excuses a value
+        actually inside it (point 13 -- "not excused by that cause"
+        otherwise). Omitted or empty preserves the original behaviour
         exactly for every existing caller."""
         cycle_jump_channels = set()
-        expected_causes = expected_causes or ()
+        expected_causes = expected_causes or {}
 
         for channel, value in readings.items():
             state = self._states.get(channel)
@@ -375,10 +489,21 @@ class GracieAgent:
             rule = state.rule
             prior_severity = state.latched_severity
 
-            self._process_level(channel, state, value, expected=channel in expected_causes)
+            expected_cause = expected_causes.get(channel, _NO_EXPECTED_CAUSE)
+            self._process_level(channel, state, value, timestamp, expected_cause=expected_cause)
             jump_event = self._process_jump(state, timestamp, value)
             slope = self._update_window_and_get_slope(state, timestamp, value)
             leash_event = self._process_leash(channel, state, timestamp, slope)
+            is_stuck = self._process_stillness(channel, state, timestamp, value)
+            if is_stuck:
+                if not state.stillness_active:
+                    self.logger.info(
+                        f"sensor suspect: {channel} frozen (variation over "
+                        f"{rule.stuck_window_seconds:.0f}s below blueprint minimum "
+                        f"{rule.min_normal_noise}{rule.units})"
+                    )
+                state.stillness_active = True
+                state.latched_severity = "FAULT"
 
             if jump_event:
                 cycle_jump_channels.add(channel)
@@ -389,6 +514,7 @@ class GracieAgent:
                 "units": rule.units,
                 "severity": state.latched_severity,
                 "jump": jump_event,
+                "sensor_health_fault": state.stillness_active,
             }
 
             if jump_event:

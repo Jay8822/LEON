@@ -49,6 +49,7 @@ def main():
         leash_slope_limit=leash_limits["limit"],
         leash_soft_duration_seconds=LEASH_SOFT_DURATION_SECONDS,
         leash_hard_duration_seconds=LEASH_HARD_DURATION_SECONDS,
+        stuck_window_seconds=LEASH_WINDOW_SECONDS, min_normal_noise=0.0,  # Stillness: not in the C++ port yet, not exercised here
     )
 
     rows = [(i, t.timestamp(), v, False) for i, (t, v) in enumerate(zip(frag.timestamps, frag.values))]

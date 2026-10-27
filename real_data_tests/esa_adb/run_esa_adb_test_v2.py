@@ -249,6 +249,7 @@ def score_channel_variant(channel, rule_values, linked_channels, timestamps, val
         leash_slope_limit=rule_values["leash_slope_limit"],
         leash_soft_duration_seconds=LEASH_SOFT_DURATION_SECONDS,
         leash_hard_duration_seconds=LEASH_HARD_DURATION_SECONDS,
+        stuck_window_seconds=LEASH_WINDOW_SECONDS, min_normal_noise=0.0,  # Stillness not exercised here
         linked_channels=tuple(linked_channels),
     )
     bus = EventBus()
@@ -282,8 +283,13 @@ def score_channel_variant(channel, rule_values, linked_channels, timestamps, val
         hi_idx = bisect.bisect_right(trigger_times_sorted, ts)
         expected = hi_idx > lo_idx
 
+        # {channel: None} -- a cause was (statistically) commanded,
+        # but training-only command/event correlation genuinely can't
+        # claim to know its expected SIZE (agents/gracie.py module
+        # docstring, point 13), so None preserves the original
+        # "any value in the window is excused" behaviour exactly.
         gracie.process_readings({channel: v}, timestamp=ts,
-                                 expected_causes=({channel} if expected else None))
+                                 expected_causes=({channel: None} if expected else None))
 
         new_latched = gracie._last_readings[channel]["severity"]
         jump_now = gracie._last_readings[channel]["jump"]
