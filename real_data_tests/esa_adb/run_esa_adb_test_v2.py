@@ -47,6 +47,7 @@ Run from the repo root:
 """
 
 import bisect
+import gc
 import json
 import os
 import statistics
@@ -319,6 +320,16 @@ def run_mission(mission_zip):
             json.dump(results, f, default=str, indent=2)
         if "error" not in channel_result:
             print(f"{channel}: done in {channel_result['elapsed_seconds']:.1f}s -- checkpointed.")
+
+        # Precautionary, not a confirmed fix for the 2026-10-27 unexplained
+        # crash (no traceback, so the cause wasn't pinned down -- see
+        # Ccode update.txt) -- each channel's series is multi-million rows
+        # (up to ~1.7GB as plain Python lists), and this machine has 6GB
+        # RAM total, so dropping the big local names explicitly before the
+        # next iteration's load can't hurt even if reference counting was
+        # already doing this on its own.
+        timestamps = values = labels = None
+        gc.collect()
 
     return results
 
