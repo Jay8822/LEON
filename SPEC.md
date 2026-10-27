@@ -53,15 +53,29 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 - Ageing: her rule book is recalibrated over a long mission as components age and "normal" shifts — see Ageing.
 - Three severities: **flagged**, **logged for investigation** (a spike that returns to normal), and **nominal**.
 - Logged-for-investigation items are announced on the bus, with the current readings, for CHESTER to watch over — every jump, and every time a channel enters or leaves a logged/flagged state, once per transition, never repeated for a condition that's still ongoing — see "Leash — drift sense (stack-wide)" and CHESTER.
-- A rise is judged against context from other agents on the bus, not in isolation. Expected causes (engine burn from ETHAN, radiation cloud, manoeuvre) are logged. No explanation on the bus means flagged as an early warning.
+- A rise is judged against context from other agents on the bus, not in isolation. An expected cause (engine burn from ETHAN, radiation cloud, manoeuvre) carries the blueprint's expected size, direction and duration for that sensor, with the blueprint's own tolerance — a rise matching it is logged, not flagged. A rise inside an expected cause's active window but outside its expected size is not excused by that cause — it is flagged, the same as an unexplained rise. No explanation on the bus means flagged as an early warning.
 - Crossing a safe parameter by more than a set margin is flagged regardless of context.
 - New crossing while already latched: if a channel is already latched
   (FAULT, or a hard leash) and a new, separate crossing or event
-  happens on it, that is logged as a fresh event in its own right,
-  never silently swallowed by the existing latch. CHESTER keeps watch
+  happens on it, that is reported as a fresh event in its own right,
+  through the normal escalation chain to the orchestrator — the latch
+  itself is untouched, nothing released, nothing reset — never
+  silently swallowed by the existing latch. CHESTER keeps watch
   on any latch left on for a long time, so a persistent latch doesn't
   quietly absorb everything that happens underneath it. See
   `ASSUMPTIONS.md` A76.
+- Stillness: a sensor's reading always carries some genuine variation;
+  the blueprint states the minimum normal noise expected over a
+  stated window for every sensor (no default values). If a sensor's
+  variation over that window falls below its blueprint-stated
+  minimum, the sensor itself is suspect — stuck, frozen, or otherwise
+  unhealthy — and GRACIE flags it as a sensor-health fault,
+  independently of level/jump/leash. Sensors that legitimately hold
+  steady or step in some conditions (e.g. a quantised channel) must
+  say so in the blueprint, so they're judged correctly rather than
+  flagged for being exactly as designed. Answers the Diagnostic
+  checklist's "is the sensor itself healthy?" question continuously,
+  not just on demand — see Diagnostic checklist.
 - Deep health sweep: a stream of small faults is itself abnormal. GRACIE then runs a full health test down to every part she manages, so, for example, a blown fuse is found. Ship-wide — every agent runs its own sweep under the same trigger (see Cross-referencing principle).
 - Status: **built** — any-sensor, rule-book-driven, independent per-channel level/jump/leash (`agents/gracie.py`, `agents/gracie_rulebook.py`). Proven to give the same answers as the batch scripts it was rewritten from (`agents/gracie_equivalence_test.py`, against both real OPSSAT-AD data and the simulated leash test). Wired into the real `main.py` demo; confirmed still compatible with ghost mode. Also built, 26 October 2026: logging a fresh event on a new crossing while already latched, and an `expected_causes` input that logs a level crossing instead of flagging it (both `agents/gracie.py` module docstring, point 12) — GRACIE still has no idea what counts as an expected cause or where one comes from; deciding that stays entirely outside her, in real_data_tests/ for now. **Not built**: context-aware flagging for anything beyond an already-decided expected cause (judging a rise against what other agents report more generally), jump's cross-check, leash's context-gating (all three need other agents' signals GRACIE doesn't have yet), and the deep health sweep. Ageing is covered separately — see Ageing. CHESTER (built, `agents/chester.py`) already watches and light-flags what GRACIE announces today. Also built, 27 October 2026: the per-channel rule book, level/jump/leash and latching (excluding `expected_causes`) ported to a Power-of-10-constrained C++ core (`AI Stack C++ Test Build/include/gracie_rulebook.hpp`), shown to give the same answers as this Python version on three proof datasets (simulated leash-drift streams, a real OPS-SAT fragment, a real ESA-ADB channel) — see that build's README for the full proof. Not flight-ready or validated; not wired into any running craft.
 
@@ -448,7 +462,7 @@ whoever reviews it sees the likely causes, not just "fault":
 2. Did the related sensors (per the blueprint's known interference and
    expected kicks) move too?
 3. Is it normal noise, according to the blueprint?
-4. Is the sensor itself healthy, or stuck, flat, quantised or jittery?
+4. Is the sensor itself healthy, or stuck, flat, quantised or jittery? (GRACIE's Stillness check already answers part of this continuously, not just when this checklist runs — see GRACIE.)
 5. Did the power change?
 
 Status: not built.
