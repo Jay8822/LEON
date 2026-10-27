@@ -376,3 +376,95 @@ meaningful validation on its own.
 - A variant where the simulated human sometimes answers wrong (Jay's
   own note for later, not this round).
 - Isolation scoring, still deferred, same reason as the first round.
+
+# Re-score: "noticed" vs "flagged", per sense (27 October 2026,
+# Jay's ordered re-score, item A — done before Item 4)
+
+The gap above (`noisy_sensor` scoring as flat-out "missed" even
+though its JUMP sense fired on most of the fault's samples) is a
+scoring-DEFINITION gap, not a GRACIE gap — fixed here by scoring two
+genuinely different questions, per sense and combined, for every
+planted fault, matching `real_data_tests/esa_adb/`'s own
+caught_logged/caught_flagged convention extended to GRACIE's now-four
+senses:
+- **noticed (logged):** did GRACIE raise ANY activity for this
+  sense — a level crossing, a jump event, leash reaching soft, or
+  Stillness — during the fault's window? Jump counts here even though
+  it never changes `severity` at all.
+- **flagged (latched):** did that sense actually latch `severity` to
+  FAULT (leash's hard duration, for leash)?
+
+Blueprint/rule book stayed frozen throughout — this is a re-score of
+the SAME saved behaviour, not a re-run with anything changed.
+
+## Every planted fault, every seed: noticed is fast, flagged is a much higher bar
+
+| Seed | Fault | Combined noticed (delay, s) | Combined flagged (delay, s) | Senses that noticed | Senses that flagged |
+|---|---|---|---|---|---|
+| same_seed | dying_battery | 9 | 434 | level, jump | level |
+| same_seed | stuck_sensor | 100 | 100 | jump, stillness | stillness |
+| same_seed | noisy_sensor | 1 | 447 | level, jump | level |
+| same_seed | bad_engine_burn | 5 | **never** | jump, leash | — |
+| fresh_seed_1 | dying_battery | 6 | 670 | level, jump | level |
+| fresh_seed_1 | stuck_sensor | 108 | 108 | jump, stillness | stillness |
+| fresh_seed_1 | noisy_sensor | 1 | **never** | jump | — |
+| fresh_seed_1 | bad_engine_burn | 4 | **never** | jump, leash | — |
+| fresh_seed_2 | dying_battery | 7 | 644 | level, jump | level |
+| fresh_seed_2 | stuck_sensor | 93 | 93 | level, jump, stillness | level, stillness |
+| fresh_seed_2 | noisy_sensor | 1 | **never** | jump | — |
+| fresh_seed_2 | bad_engine_burn | 1 | **never** | jump, leash | — |
+| fresh_seed_3 | dying_battery | 1 | 476 | level, jump | level |
+| fresh_seed_3 | stuck_sensor | 106 | 106 | jump, stillness | stillness |
+| fresh_seed_3 | noisy_sensor | 0 | **never** | jump | — |
+| fresh_seed_3 | bad_engine_burn | 1 | **never** | jump, leash | — |
+
+(`with_expected_causes` is identical to `without` in every cell above
+— none of these four faults' own detection timing changes with the
+plan, same finding as the first re-test round, now confirmed at the
+per-sense level too.)
+
+**The headline, not previously visible under flagged-only scoring:
+every single fault, in every seed, is NOTICED within 0–9 seconds —
+almost always via JUMP, which fires on the very first large sample-to-
+sample discontinuity the fault creates.** "Flagged" is a dramatically
+higher, slower bar: `dying_battery` takes 434–670s to actually latch;
+`stuck_sensor` and `bad_engine_burn` either flag quickly via a
+different mechanism (Stillness, not level/jump) or never flag at all.
+`noisy_sensor` and `bad_engine_burn` NEVER flag in ANY seed —
+`noisy_sensor` only ever shows up as noticed (jump), never latched;
+`bad_engine_burn` reaches leash's SOFT edge (noticed) but never HARD
+(flagged), confirming the first re-test round's own correction (this
+fault is leash-driven, not level-driven, and `expected_causes`
+genuinely doesn't touch leash at all). **This is a real, concrete
+argument for CHESTER-level escalation of sustained "noticed, never
+flagged" conditions** — not built or scored this round, noted as a
+real candidate for later, not acted on now.
+
+## False alarms on normal events: when flagged, it's always LEVEL — never leash, jump or Stillness
+
+| Seed | Mode | Flagged | Noticed-only (never flagged) |
+|---|---|---|---|
+| same_seed | without plan | 13/22, all LEVEL | 5/22 |
+| same_seed | with plan | 2/22, all LEVEL | 16/22 |
+| fresh_seed_1 | without plan | 13/22, all LEVEL | 6/22 |
+| fresh_seed_1 | with plan | 4/22, all LEVEL | 15/22 |
+| fresh_seed_2 | without plan | 13/22, all LEVEL | 5/22 |
+| fresh_seed_2 | with plan | 2/22, all LEVEL | 16/22 |
+| fresh_seed_3 | without plan | 12/22, all LEVEL | 6/22 |
+| fresh_seed_3 | with plan | 2/22, all LEVEL | 16/22 |
+
+Every false alarm that ever reaches FLAGGED, in every seed, every
+mode, is LEVEL-driven — not one is leash, jump or Stillness. This
+matches design expectations (a normal event's expected kick is sized
+to plausibly cross LEVEL if unexplained, not to cross leash's slope
+limit or trip Stillness) rather than revealing anything new. The
+`expected_causes` plan's real effect, visible clearly here: it mostly
+converts a LEVEL false-FLAG into a LEVEL false-NOTICE (logged, not
+latched) — noticed-only count roughly triples (5–6 -> 15–16) exactly
+as flagged drops, consistent with the design intent, not a side
+effect.
+
+## What this adds to "what wasn't done"
+
+- The CHESTER-level "noticed, never flagged, for a long time"
+  escalation idea above — real, surfaced by this re-score, not built.

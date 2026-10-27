@@ -195,8 +195,12 @@ def run_scored(rule_book, timestamps, values, events, faults, use_expected_cause
         craft["human"].tick(second_offset)  # Item 3b: may clear_fault() a released channel this cycle
         for ch in rule_book:
             last = gracie._last_readings[ch]
+            cs = gracie._states[ch]  # per-sense activity flags, for the Item 3b-ordered re-score below
             per_channel_log[ch].append({
                 "sample_index": i, "severity": last["severity"], "jump_event": bool(last["jump"]),
+                "level_active": bool(cs.level_crossing_active),
+                "leash_soft_active": bool(cs.soft_active), "leash_hard_active": bool(cs.hard_active),
+                "stillness_active": bool(cs.stillness_active),
             })
         aggregate_log.append({
             "sample_index": i, "health_state": gracie.health_state, "eden_status": craft["eden"].status,
@@ -204,47 +208,104 @@ def run_scored(rule_book, timestamps, values, events, faults, use_expected_cause
     return per_channel_log, aggregate_log, craft
 
 
+#: Per-sense activity flag per log entry, and whether that sense ever
+#: latches to FAULT on its own (jump never does; Stillness has no
+#: WARNING-first stage, so its own "noticed" and "flagged" coincide --
+#: see sim/RESULTS.md's Item-3b-ordered re-score section for why).
+_SENSE_ACTIVE_KEY = {
+    "level": "level_active", "jump": "jump_event",
+    "leash": "leash_soft_active",  # leash's own "noticed" is the SOFT edge; hard is its "flagged"
+    "stillness": "stillness_active",
+}
+
+
+def _sense_noticed_flagged(window):
+    """Per sense AND combined, over one window (a slice of one
+    channel's per_channel_log): first sample index where that sense
+    was "noticed" (logged -- any activity, WARNING-level or above) and
+    where it was "flagged" (latched FAULT), or None/None if it never
+    was. Mirrors real_data_tests/esa_adb/'s own caught_logged/
+    caught_flagged scorecard convention, extended per-sense here since
+    GRACIE now has four independent senses, not three. "Flagged" is
+    read off severity==FAULT at the sample where the sense was active
+    -- the rolled-up latch is shared across senses, so this is the
+    best available attribution, not a claim that only that one sense
+    contributed to severity at that exact sample."""
+    out = {}
+    for sense, active_key in _SENSE_ACTIVE_KEY.items():
+        noticed_idx = next((e["sample_index"] for e in window if e[active_key]), None)
+        if sense == "jump":
+            flagged_idx = None  # jump never latches -- see module docstring, point 3
+        elif sense == "leash":
+            flagged_idx = next((e["sample_index"] for e in window if e["leash_hard_active"]), None)
+        else:
+            flagged_idx = next(
+                (e["sample_index"] for e in window if e[active_key] and e["severity"] == "FAULT"), None
+            )
+        out[sense] = {"noticed_sample_index": noticed_idx, "flagged_sample_index": flagged_idx}
+    # Combined noticed must include jump -- it never touches severity at
+    # all (never latches, by design), so a severity-only check would
+    # silently miss exactly the jump-only case this re-score exists to
+    # surface (see module docstring; Jay's own wording: "any WARNING,
+    # jump, leash-soft or other logged event"). Caught by checking this
+    # against the known noisy_sensor/fresh-seed case before trusting it.
+    combined_noticed = min(
+        (idx["noticed_sample_index"] for idx in out.values() if idx["noticed_sample_index"] is not None),
+        default=None,
+    )
+    combined_flagged = next((e["sample_index"] for e in window if e["severity"] == "FAULT"), None)
+    out["combined"] = {"noticed_sample_index": combined_noticed, "flagged_sample_index": combined_flagged}
+    return out
+
+
 def score_faults(per_channel_log, faults):
-    """For each planted fault: first sample index (if any) where its
-    channel's severity is WARNING or FAULT at/after the fault's
-    start_s -- detection delay in seconds from fault onset. MISSED if
-    never flagged before the run ends."""
+    """For each planted fault, per sense AND combined: the first
+    sample index (if any) where that sense was noticed (logged) and
+    where it was flagged (latched FAULT), each as a delay in seconds
+    from the fault's own start_s. None/None (reported as MISSED for
+    that sense) if it never fired before the run ends. Jay's ordered
+    re-score (Ccode update.txt, "RE-SCORE THE SIM") -- noticed and
+    flagged are genuinely different questions (see sim/RESULTS.md's
+    noisy_sensor finding: a fault that only ever shows up as repeated
+    jump events scored as flat-out "missed" under the old, flagged-
+    only scoring, even though it was noticed almost continuously)."""
     results = []
     for f in faults:
         channel = f["channel"].split(",")[0]  # ground-truth primary channel
-        log = per_channel_log[channel]
         start_idx = f["start_s"]
-        first_flag = None
-        for entry in log[start_idx:]:
-            if entry["severity"] in ("WARNING", "FAULT"):
-                first_flag = entry
-                break
-        if first_flag is None:
-            results.append({"fault": f["name"], "channel": channel, "detected": False,
-                             "delay_seconds": None, "severity_at_detection": None})
-        else:
-            results.append({
-                "fault": f["name"], "channel": channel, "detected": True,
-                "delay_seconds": first_flag["sample_index"] - start_idx,
-                "severity_at_detection": first_flag["severity"],
-            })
+        per_sense = _sense_noticed_flagged(per_channel_log[channel][start_idx:])
+        entry = {"fault": f["name"], "channel": channel, "senses": {}}
+        for sense, idx in per_sense.items():
+            noticed, flagged = idx["noticed_sample_index"], idx["flagged_sample_index"]
+            entry["senses"][sense] = {
+                "noticed": noticed is not None,
+                "noticed_delay_seconds": (noticed - start_idx) if noticed is not None else None,
+                "flagged": flagged is not None,
+                "flagged_delay_seconds": (flagged - start_idx) if flagged is not None else None,
+            }
+        results.append(entry)
     return results
 
 
 def score_false_alarms(per_channel_log, events):
-    """For every normal event, for every channel it affects: did that
-    channel show FAULT at any point during the event's own window
-    (start_s..end_s)? Reported per event/channel, not aggregated away."""
+    """For every normal event, for every channel it affects, per sense
+    AND combined: was it noticed (logged) and/or flagged (latched
+    FAULT) at any point during the event's own window (start_s..
+    end_s)? Reported per event/channel, not aggregated away."""
     results = []
     for ev in events:
         for ch in ev["affected_channels"]:
             window = per_channel_log[ch][ev["start_s"]:ev["end_s"]]
-            flagged = [e for e in window if e["severity"] == "FAULT"]
-            results.append({
-                "event": ev["name"], "channel": ch,
-                "false_fault_samples": len(flagged),
-                "false_alarmed": len(flagged) > 0,
-            })
+            per_sense = _sense_noticed_flagged(window)
+            entry = {"event": ev["name"], "channel": ch, "senses": {}}
+            for sense, idx in per_sense.items():
+                entry["senses"][sense] = {
+                    "noticed": idx["noticed_sample_index"] is not None,
+                    "flagged": idx["flagged_sample_index"] is not None,
+                }
+            # Backward-compatible top-level fields (combined/flagged), same meaning as before this round.
+            entry["false_alarmed"] = entry["senses"]["combined"]["flagged"]
+            results.append(entry)
     return results
 
 
@@ -335,7 +396,14 @@ def run_scenario(rule_book, blueprint, scenario_seed, timing_seed):
             "ghost_mode_disagreements": len(ghost_disagreements),
         }
         for fs in fault_scores:
-            print("   ", fs)
+            combined = fs["senses"]["combined"]
+            per_sense = ", ".join(
+                f"{s}={'N' if v['noticed'] else '-'}{'F' if v['flagged'] else '-'}"
+                for s, v in fs["senses"].items() if s != "combined"
+            )
+            print(f"    {fs['fault']} ({fs['channel']}): combined noticed="
+                  f"{combined['noticed_delay_seconds']} flagged={combined['flagged_delay_seconds']} "
+                  f"[{per_sense}]")
         n_false = sum(1 for a in false_alarm_scores if a["false_alarmed"])
         print(f"    false alarms on normal events: {n_false}/{len(false_alarm_scores)}")
         print(f"    background false alarms (channels): {list(background.keys())}")
