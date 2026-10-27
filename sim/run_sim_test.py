@@ -61,7 +61,7 @@ from agents.gracie import GracieAgent
 from agents.lunae import LunaeAgent
 from core.bus import EventBus
 
-from sim.craft import build_clean_timeline, TOTAL_SECONDS, _kick_offset
+from sim.craft import build_clean_timeline, TOTAL_SECONDS, SCENARIO_SEED, _kick_offset
 from sim.fault_injection import inject_faults
 from sim.human_signoff import HumanSignoff
 from sim.rulebook import build_rule_book
@@ -281,15 +281,40 @@ def score_background_false_alarms(per_channel_log, events, faults, total_seconds
     return results
 
 
-def main():
-    os.makedirs(OUT_DIR, exist_ok=True)
-    rule_book, blueprint = build_rule_book()
-    timestamps, clean_values, events = build_clean_timeline(rule_book, blueprint)
-    faulted_values, faults = inject_faults(timestamps, clean_values, rule_book, TOTAL_SECONDS)
+def run_commissioning_check(rule_book, blueprint, scenario_seed):
+    """Clean (fault-free) timeline, with_expected_causes only -- the
+    sanity gate Jay's approved change 3 asks every re-test seed to
+    pass. blueprint.py/rulebook.py are FROZEN after the checkpoint
+    commit, so any finding here is reported, never fixed."""
+    timestamps, clean_values, events = build_clean_timeline(rule_book, blueprint, seed=scenario_seed)
+    per_channel_log, _agg, _craft = run_scored(rule_book, timestamps, clean_values, events, [], True)
+    false_alarms = score_false_alarms(per_channel_log, events)
+    background = score_background_false_alarms(per_channel_log, events, [], TOTAL_SECONDS)
+    n_false = sum(1 for a in false_alarms if a["false_alarmed"])
+    return {
+        "false_alarms_on_normal_events": n_false, "total_normal_events": len(false_alarms),
+        "false_alarmed_detail": [a for a in false_alarms if a["false_alarmed"]],
+        "background_false_alarms": background,
+    }
 
-    report = {"faults": faults, "events": events, "runs": {}}
+
+def run_scenario(rule_book, blueprint, scenario_seed, timing_seed):
+    """One full scenario: commissioning check on this seed (reported,
+    not fixed), then the faulted, scored comparison (without/with
+    expected_causes)."""
+    commissioning = run_commissioning_check(rule_book, blueprint, scenario_seed)
+    print(f"  commissioning check: {commissioning['false_alarms_on_normal_events']}/"
+          f"{commissioning['total_normal_events']} false alarms on normal events "
+          f"(frozen blueprint/rule book -- reported as-is, not corrected)")
+
+    timestamps, clean_values, events = build_clean_timeline(rule_book, blueprint, seed=scenario_seed)
+    faulted_values, faults = inject_faults(
+        timestamps, clean_values, rule_book, TOTAL_SECONDS, events=events, timing_seed=timing_seed
+    )
+
+    scenario_report = {"faults": faults, "events": events, "commissioning_check": commissioning, "runs": {}}
     for label, use_expected in (("without_expected_causes", False), ("with_expected_causes", True)):
-        print(f"=== Running: {label} ===")
+        print(f"  --- {label} ---")
         per_channel_log, aggregate_log, craft = run_scored(
             rule_book, timestamps, faulted_values, events, faults, use_expected
         )
@@ -301,7 +326,7 @@ def main():
         ghost_log = craft["ghost"].comparison_log()
         ghost_disagreements = [g for g in ghost_log if not g["agree"]]
 
-        report["runs"][label] = {
+        scenario_report["runs"][label] = {
             "fault_detection": fault_scores,
             "false_alarms_on_normal_events": false_alarm_scores,
             "background_false_alarms": background,
@@ -310,12 +335,35 @@ def main():
             "ghost_mode_disagreements": len(ghost_disagreements),
         }
         for fs in fault_scores:
-            print(" ", fs)
+            print("   ", fs)
         n_false = sum(1 for a in false_alarm_scores if a["false_alarmed"])
-        print(f"  false alarms on normal events: {n_false}/{len(false_alarm_scores)}")
-        print(f"  background false alarms (channels): {list(background.keys())}")
-        print(f"  EDEN SAFE_MODE samples: {eden_safe_mode_samples}")
-        print(f"  ghost mode: {len(ghost_log)} comparisons, {len(ghost_disagreements)} disagreements")
+        print(f"    false alarms on normal events: {n_false}/{len(false_alarm_scores)}")
+        print(f"    background false alarms (channels): {list(background.keys())}")
+        print(f"    EDEN SAFE_MODE samples: {eden_safe_mode_samples}")
+        print(f"    ghost mode: {len(ghost_log)} comparisons, {len(ghost_disagreements)} disagreements")
+    return scenario_report
+
+
+# Item 3b re-testing (Jay: same seed for a direct before/after, THEN
+# fresh seeds never seen before, with new fault timings -- see
+# Ccode update.txt). timing_seed=None on the first entry reproduces
+# the original round's exact fault placement.
+SCENARIOS = [
+    ("same_seed", SCENARIO_SEED, None),
+    ("fresh_seed_1", 101, 101),
+    ("fresh_seed_2", 102, 102),
+    ("fresh_seed_3", 103, 103),
+]
+
+
+def main():
+    os.makedirs(OUT_DIR, exist_ok=True)
+    rule_book, blueprint = build_rule_book()  # frozen, derived once, reused across every scenario
+
+    report = {"scenarios": {}}
+    for label, scenario_seed, timing_seed in SCENARIOS:
+        print(f"=== Scenario: {label} (scenario_seed={scenario_seed}, timing_seed={timing_seed}) ===")
+        report["scenarios"][label] = run_scenario(rule_book, blueprint, scenario_seed, timing_seed)
 
     with open(os.path.join(OUT_DIR, "sim_results.json"), "w") as f:
         json.dump(report, f, indent=2, default=str)

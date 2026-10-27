@@ -204,4 +204,175 @@ status fields.
   at `bad_engine_burn`'s window boundary) is reported, not root-
   caused in full.
 - ETHAN/LUNAE real health-monitoring, as above.
-- A richer multi-seed run (this round is one fixed seed, as approved).
+- A richer multi-seed run (this round is one fixed seed, as approved
+  then) — see the Item 3b round below, which does exactly this.
+
+---
+
+# Item 3b re-test (27 October 2026) — three design changes, re-run on
+# the same seed AND three fresh seeds with new fault timings
+
+Three changes to GRACIE's core, driven directly by this page's own
+first-round findings above (full design: `Ccode update.txt`, "ITEM
+3b"; code: `agents/gracie.py`/`agents/gracie_rulebook.py`, commit
+`152a876`): expected causes now carry a real expected SIZE, not just
+"a cause was commanded"; a new crossing on an already-latched channel
+now reaches the orchestrator (`agents/escalation_watch.py`, a labelled
+STAND-IN); a new, fourth sense, **Stillness**, flags a channel whose
+variation stays below the blueprint's stated minimum.
+
+Also added this round: `sim/human_signoff.py` (Jay's approved change
+6) — a simulated human who releases a channel's latch once it's run
+past a response delay and isn't currently inside a real, live fault,
+driving `EscalationOrchestrator`'s actual sign-off state machine
+rather than bypassing it. Second commissioning round (`sim/
+COMMISSIONING.md`) found and fixed two more real design bugs before
+re-freezing (`f57bbd9`) — full detail there; short version: Stillness's
+own derivation didn't match how its real check actually runs, and
+`solar_current` needed `allow_steady=True` (it's this sim's own
+version of SPEC.md's "light sensors in Earth's shadow" example).
+
+**Per Jay's instruction, this is a genuine re-test, not a repeat**:
+the same seed as the first round, for a direct before/after on the
+exact same faults, AND three fresh seeds (scenario noise AND fault
+timing both re-randomized, `sim/fault_injection.py`'s new
+`timing_seed` parameter) never seen before freezing anything. All
+four results below, good and bad, exactly as they came out.
+
+## Did the three fixes actually fix what they were built for?
+
+| Finding this was meant to fix | Result, all 4 seeds |
+|---|---|
+| `stuck_sensor` invisible to all three original senses | **Fixed, and it generalises.** Caught by Stillness in EVERY seed (FAULT, delay 93–108s) — the clearest, most robust result in this round. |
+| `bad_engine_burn` demoted FAULT→WARNING by a size-blind expected cause | **Did not actually test what we thought.** See below — it turns out this fault's own detection was never level-driven to begin with. |
+| `new_crossing_while_latched` only logged, not escalated | **Built and proven to escalate** (`agents/escalation_watch_test.py`), but this sim doesn't independently confirm it changes anything observable at the aggregate level — see EDEN/aggregate section below. |
+
+### `bad_engine_burn`: the demotion story from the first round doesn't hold up — checked, not assumed
+
+In every one of the four seeds, `bad_engine_burn` is detected as
+**WARNING, not FAULT**, at a delay of 72–77 seconds — **identical
+between the without- and with-expected-causes runs, every time.**
+Checked directly, not inferred: `battery_current`'s value never once
+crosses its own LEVEL line anywhere in the fault's window, in any
+seed (confirmed by direct inspection of the injected series) — the
+WRONG_BURN_SCALE=0.25 kick is simply too small to reach LEVEL at all.
+What actually fires is **LEASH**: the kick's sustained rate of change
+clears `leash_slope_limit` for long enough to reach the soft duration
+(~72–77s in), which GRACIE's leash sense has never consulted
+`expected_causes` for, in any round. The first round's "FAULT without
+the plan → WARNING with it" was a real, observed number, but — now
+that `sim/human_signoff.py` stops channels from staying permanently
+latched from unrelated earlier events — it's clear that difference
+came from which *pre-existing* latch state each run happened to carry
+into the fault's window, not from this fault's own crossing being
+excused differently. **The expected-cause size fix is still real and
+necessary** — the commissioning check above caught it correctly
+excluding a wrong-sized kick from a completely different event
+(`course_correction_2`/`thrust`) — it simply isn't the mechanism that
+explains `bad_engine_burn` specifically. Reported plainly as a
+correction to the first round's own story, not glossed over.
+
+### `noisy_sensor`: generalises badly — caught in the original placement, missed in all three fresh ones
+
+| Seed | Detected? |
+|---|---|
+| same_seed (original placement) | FAULT, delay 447s |
+| fresh_seed_1 | **MISSED** |
+| fresh_seed_2 | **MISSED** |
+| fresh_seed_3 | **MISSED** |
+
+Checked why, not just noted it: `fuel_flow`'s LEVEL line was never
+crossed in any fresh-seed placement (confirmed by direct inspection —
+e.g. fresh_seed_1's actual values stayed within
+[0.168, 0.186] against bounds of [0.123, 0.258]). The fault's extra
+jitter is a FIXED width; whether it's enough to reach LEVEL depends on
+where `fuel_flow`'s own unbounded random-walk baseline happens to sit
+at the moment the fault lands — which is exactly what re-randomizing
+the timing was for, and exactly the kind of fragility it was supposed
+to surface. **A second, separate finding underneath this one**:
+`fuel_flow` was NOT actually blind to the fault in the fresh seeds —
+its JUMP sense fired on 1,447 of the fault's 1,800 samples in
+fresh_seed_1 (checked directly). `score_faults()` only ever looks at
+LATCHED severity (level/leash/Stillness), so a fault that only ever
+shows up as repeated jump events scores as "missed" even though
+GRACIE's aggregate `health_state` would show WARNING almost
+continuously throughout. This is a scoring-definition gap, not the
+same kind of structural blind spot `stuck_sensor` has — worth fixing
+in a later round's scoring (count jump-only coverage separately), not
+something to quietly patch into this round's numbers now.
+
+## False alarms on normal events (22 opportunities, every seed)
+
+| Seed | Without the plan | With the plan |
+|---|---|---|
+| same_seed | 13/22 | 2/22 |
+| fresh_seed_1 | 13/22 | **4/22** |
+| fresh_seed_2 | 13/22 | 2/22 |
+| fresh_seed_3 | 12/22 | 2/22 |
+
+The "without" column is fairly stable across seeds (12–13/22) — most
+normal events get falsely flagged without the plan, regardless of
+timing, as expected. The "with" column mostly matches the first
+round's 2/22, except fresh_seed_1 (4/22) — its own commissioning check
+(below) already showed 2 false alarms on the clean, fault-free
+timeline for this exact seed, so at least some of this seed's extra
+false alarms are the same already-accepted statistical phenomenon
+landing on a different noise draw, not a new defect. Without the
+plan's 22/22 from the very first round (before `sim/human_signoff.py`
+existed) is not directly comparable to this round's 12–13/22 — this
+round's human sign-off periodically releases channels that would
+previously have stayed permanently latched from an earlier,
+unrelated event, so fewer events inherit a stale pre-existing latch.
+
+## Commissioning check, repeated on every seed (frozen blueprint/rule book — reported, never corrected)
+
+| Seed | False alarms on the clean, fault-free timeline |
+|---|---|
+| same_seed | 0/22 |
+| fresh_seed_1 | **2/22** |
+| fresh_seed_2 | 0/22 |
+| fresh_seed_3 | 0/22 |
+
+fresh_seed_1's clean timeline shows 2 false alarms that the frozen
+blueprint/rule book cannot be adjusted to fix this round (Jay's
+commissioning guardrail: corrections only happen before the freeze
+commit). Same accepted phenomenon as the first round's own
+"investigated, not corrected" finding — a percentile-derived
+threshold has a non-zero false-alarm rate by construction, and a
+fresh seed is simply one more draw from that same distribution,
+landing slightly worse for this specific noise realisation.
+
+## EDEN's aggregate reaction: still dominated by SOME channel, every time, in every seed
+
+| Seed | Without the plan | With the plan |
+|---|---|---|
+| same_seed | 20,745/21,600 | 20,741/21,600 |
+| fresh_seed_1 | 19,170/21,600 | 18,545/21,600 |
+| fresh_seed_2 | 20,332/21,600 | 20,329/21,600 |
+| fresh_seed_3 | 19,859/21,600 | 19,232/21,600 |
+
+`sim/human_signoff.py` genuinely works at the PER-CHANNEL level (the
+background-false-alarm channel lists visibly shrink between without/
+with, and individual latches now provably clear — confirmed by
+`clear_fault` calls actually firing). But `GracieAgent.health_state`
+is a worst-case rollup across all nine channels, and with nine
+channels each carrying some non-zero false-alarm rate, the odds that
+EVERY one of them is simultaneously clear at any given instant stay
+low — so EDEN's own aggregate SAFE_MODE reaction barely moves, in
+every seed, with or without the plan. GhostModeHarness logged zero
+disagreements in every seed, every run — expected, given its
+documented narrow scope (same reasoning as the first round), not a
+meaningful validation on its own.
+
+## What this round adds to "what wasn't done"
+
+- Scoring doesn't currently count jump-only (non-latching) coverage
+  separately from latched-severity detection — `noisy_sensor`'s
+  fresh-seed misses above are a concrete case where this matters.
+- `agents/escalation_watch.py`'s forwarding isn't independently
+  scored in this sim (no second rule set to disagree with it, same
+  gap `GhostModeHarness` already has) — built and unit-tested, but
+  this run doesn't demonstrate it changing a craft-level outcome.
+- A variant where the simulated human sometimes answers wrong (Jay's
+  own note for later, not this round).
+- Isolation scoring, still deferred, same reason as the first round.
