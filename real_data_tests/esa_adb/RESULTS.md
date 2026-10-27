@@ -238,4 +238,117 @@ alarms. See `DRIFT.md` for the full measurement.
   would be far more informative than the raw per-sample count used
   here.
 - Jump's cross-check and leash's context-gating — still not built.
+
+## v2 rerun (stand-in linked_channels, noise-filter measurement,
+## context-checking x3 windows, per-reading + per-episode counts)
+
+Same 16 channels, same cut-off dates, same STRICT/LOOSE settings,
+same daily `clear_fault(reset_leash_timer=False)`. Four additions
+layered on top of the follow-up run, all built and run per Jay's
+26 October 2026 four-step round. Results in
+`results/ESA-Mission{1,2}-v2.json`. Zero failures, after two real
+infrastructure problems on this run (not scoring bugs) were caught
+and fixed first — see `Ccode update.txt`'s history and the commit
+log: `check_pretrip.py`'s MemoryError (58 channels held in memory at
+once), and this script's own unexplained crash partway through
+Mission2, fixed by converting `values` to a numpy array and proved
+identical to the pre-fix result on `channel_78` before trusting it.
+
+### (d) Per-reading vs per-episode: the gap flagged above, closed
+
+**Confirmed, and it's a big effect on Mission1.** Collapsing jump's
+false counts into episodes (a run of same-cause events with no gap
+longer than 3x that channel's own median sample interval) instead of
+counting every sample:
+
+| Mission | Setting | Jump false count, per-reading | Jump false count, per-episode | Reduction |
+|---|---|---|---|---|
+| Mission1 | STRICT | 3,098,112 | 662,008 | 4.7x |
+| Mission1 | LOOSE | 3,097,785 | 661,731 | 4.7x |
+| Mission2 | STRICT | 14,317 | 14,241 | ~1x (negligible) |
+| Mission2 | LOOSE | 8,962 | 8,962 | none |
+
+Exactly what the follow-up run's own write-up predicted: "a handful of
+genuinely unusual days look like a constant storm" at the per-sample
+level. Mission1's heaviest jump contributors really are a small number
+of sustained bad stretches, not millions of independent events — once
+collapsed, the picture is roughly 5x calmer. Mission2 doesn't show the
+same effect at all, meaning its jump false alarms genuinely are many
+separate, short events, not a few long storms — a real difference
+between the two missions' channels, not a scoring artefact either way.
+Level's counts are unchanged by this collapse (level already latches
+once per crossing, so per-reading and per-episode are nearly
+identical by construction — see the small table below). Leash stays
+at zero, as always.
+
+### (c) Context-checking (GRACIE's new `expected_causes` input)
+
+**A real but modest effect, and it doesn't touch genuine catches.**
+Training-only command/event correlation (`learn_context.py`) feeds
+GRACIE a per-sample "this crossing has an expected cause" flag; per
+SPEC.md, that demotes a level crossing from FLAGGED to LOGGED, never
+downgrading an existing FAULT latch.
+
+| Mission | Setting | Window | Level false, FLAGGED | Level false, LOGGED (demoted) |
+|---|---|---|---|---|
+| Mission1 | STRICT | 1 min | 2,291 | 2 |
+| Mission1 | STRICT | 10 min | 2,288 | 19 |
+| Mission1 | STRICT | 1 hour | 2,274 | 85 |
+| Mission2 | STRICT | 1 min | 190 | 0 |
+| Mission2 | STRICT | 10 min | 192 | 31 |
+| Mission2 | STRICT | 1 hour | 180 | 18 |
+
+Widening the window demotes more false alarms (as expected — a longer
+look-back catches more of them), but the effect stays small in
+absolute terms: at most ~4% of Mission1's false level alarms and ~15%
+of Mission2's, even at the widest (1-hour) window. **Anomaly catch
+rate is completely unchanged by this** (Mission1 STRICT level:
+23/40 caught, flagged or logged, identical at every window) — context-
+checking only ever softens false alarms here, it never costs or gains
+a real catch. Whether that's because the test channels' real anomalies
+never coincide with a command/event in the correlation list, or
+because the correlation itself is too narrow, isn't established by
+this pass.
+
+### (b) Noise-filter instrumentation (measurement only, not wired into scoring)
+
+89.2% of Mission1's sample-to-sample deltas and 91.7% of Mission2's
+fall within the learned stand-in's own noise band (`big_change_cutoff`
+from `stand_in_blueprint.py`). Built and measured as planned, but as
+the script's own module docstring says plainly: this does **not**
+alter anything fed to GracieAgent in this pass. `jump_limit` is
+already a 95th/99th-percentile *extreme* of day-level rate, so it
+already excludes ordinary noise by construction — the enormous jump
+count above comes from sustained elevated-but-still-above-jump_limit
+days (see "(d)" above), not borderline noise, so filtering "normal
+noise" out of jump detection wouldn't touch that finding either way.
+Reported here as a measurement, not expanded into a scoring change
+that was never approved.
+
+### (a) `linked_channels` (stand-in blueprint's jitter-together links)
+
+**Null result, as predicted and as already flagged honestly in the
+script's own module docstring before this run.** Wired into every
+`ChannelRule` exactly like any other rule-book value, for every
+channel the stand-in found a 1-minute jitter-together link for
+(Mission1 only: channel_39/43/45/62/63/64/70/75 area — see
+`results/ESA-Mission1-stand-in.json`). `linked_channels` only matters
+to leash's settling exception, and leash has never fired once in
+ESA-ADB, in any pass, any mission, any setting. Built and wired
+correctly, confirmed to make no difference to any scored number —
+reported as a null result, not silently dropped.
+
+## What wasn't done (v2 rerun)
+
+- The noise filter remains a measurement, not a live filter — SPEC.md
+  says a real noise filter needs a real blueprint (see Blueprint),
+  which this dataset doesn't have; wiring it into scoring here would
+  mean testing against a stand-in pretending to be a blueprint, not
+  GRACIE's real design.
+- Whether context-checking's small effect is a ceiling (the
+  correlation method genuinely has little more to find here) or a
+  floor (a richer blueprint/command list would find more) isn't
+  established by this pass.
+- Jump's cross-check and leash's context-gating from the earlier
+  follow-up run — still not built.
 - Still a first test, not a validation.
