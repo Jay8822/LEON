@@ -38,6 +38,22 @@ clear_fault(reset_leash_timer=False)):
     choice) -- computed once per channel, not a global constant, since
     channels are sampled at very different rates.
 
+MEMORY (2026-10-27, after LEON_v2_rerun died overnight with no
+traceback -- see Ccode update.txt): `values` is now converted to a
+numpy float64 array right after loading, instead of staying the plain
+Python list load_channel_series returns -- a list of boxed Python
+floats costs roughly 4x a numpy float64 array for the same data, and
+a single channel can be 15M+ rows on this 6GB machine. `timestamps`
+deliberately stays a plain list of datetime objects: derive_rules(),
+label_at() and this module's own loop all call .date()/.timestamp()
+on each one, which numpy's datetime64 doesn't support without a
+larger rewrite -- left alone to keep this change provably safe rather
+than guessing at a bigger one. Proved equivalent against the already-
+checkpointed (pre-conversion) result for channel_78
+(scratchpad/prove_numpy_equivalence.py, 2026-10-27) before trusting
+it. Also added a once-a-minute working-set memory log (Windows-only,
+via psapi, no new dependency) so a future crash leaves a trail.
+
 Prerequisites (run first, their results are read here):
     python -m real_data_tests.esa_adb.stand_in_blueprint
     python -m real_data_tests.esa_adb.learn_context
@@ -47,11 +63,15 @@ Run from the repo root:
 """
 
 import bisect
+import ctypes
 import gc
 import json
 import os
 import statistics
+import threading
 import time
+
+import numpy as np
 
 from agents.gracie import GracieAgent
 from agents.gracie_rulebook import ChannelRule
@@ -79,6 +99,55 @@ from real_data_tests.esa_adb.correlation import REACTION_WINDOWS_SECONDS
 from real_data_tests.esa_adb.learn_context import load_telecommand_times, load_event_times
 
 EPISODE_GAP_MULTIPLE = 3.0  # Jay's Step 4.5: a gap of more than 3x the channel's own median sample interval
+MEMLOG_INTERVAL_SECONDS = 60.0
+
+
+class _PROCESS_MEMORY_COUNTERS(ctypes.Structure):
+    _fields_ = [
+        ("cb", ctypes.c_ulong),
+        ("PageFaultCount", ctypes.c_ulong),
+        ("PeakWorkingSetSize", ctypes.c_size_t),
+        ("WorkingSetSize", ctypes.c_size_t),
+        ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+        ("QuotaPagedPoolUsage", ctypes.c_size_t),
+        ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+        ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+        ("PagefileUsage", ctypes.c_size_t),
+        ("PeakPagefileUsage", ctypes.c_size_t),
+    ]
+
+
+_kernel32 = ctypes.WinDLL("kernel32.dll")
+_kernel32.GetCurrentProcess.restype = ctypes.c_void_p
+_psapi = ctypes.WinDLL("psapi.dll")
+_psapi.GetProcessMemoryInfo.argtypes = [ctypes.c_void_p, ctypes.POINTER(_PROCESS_MEMORY_COUNTERS), ctypes.c_ulong]
+_psapi.GetProcessMemoryInfo.restype = ctypes.c_int
+
+
+def current_working_set_bytes():
+    """This process's current working set (RSS), via psapi -- no extra
+    dependency (psutil isn't installed), Windows-only like this whole
+    machine's job-running setup. GetCurrentProcess() returns a
+    pseudo-handle (-1, i.e. all bits set on 64-bit) -- without the
+    explicit restype/argtypes above, ctypes mis-marshals that and
+    GetProcessMemoryInfo silently fails every time. Caught by actually
+    testing this before trusting it, not assumed to work."""
+    counters = _PROCESS_MEMORY_COUNTERS()
+    counters.cb = ctypes.sizeof(_PROCESS_MEMORY_COUNTERS)
+    handle = _kernel32.GetCurrentProcess()
+    ok = _psapi.GetProcessMemoryInfo(handle, ctypes.byref(counters), counters.cb)
+    return counters.WorkingSetSize if ok else None
+
+
+def _log_memory_periodically(stop_event):
+    """Runs in a daemon thread for the life of the process -- logs once
+    a minute, flushed immediately (not left to stdout's normal
+    buffering), so a future crash leaves a trail of what memory looked
+    like right up to it. See module docstring's "MEMORY" note."""
+    while not stop_event.wait(MEMLOG_INTERVAL_SECONDS):
+        bytes_used = current_working_set_bytes()
+        if bytes_used is not None:
+            print(f"[mem] working set: {bytes_used / 1e6:.1f} MB", flush=True)
 
 
 def median_sample_interval(timestamps):
@@ -289,6 +358,7 @@ def run_mission(mission_zip):
         t0 = time.time()
         try:
             timestamps, values = load_channel_series(path, prefix, channel)
+            values = np.asarray(values, dtype=np.float64)  # see module docstring's "MEMORY" note
             labels = load_labels_for_channel(path, prefix, anomaly_types, channel)
             rules = derive_rules(timestamps, values, labels, cutoff)
             episode_gap_seconds = None
@@ -336,8 +406,14 @@ def run_mission(mission_zip):
 
 def main():
     print("ESA-ADB v2 (Step 3+4 rerun) -- FIRST TEST AGAINST REAL SPACECRAFT DATA. NOT A VALIDATION.")
-    for mission in ["ESA-Mission1.zip", "ESA-Mission2.zip"]:
-        run_mission(mission)
+    stop_memlog = threading.Event()
+    memlog_thread = threading.Thread(target=_log_memory_periodically, args=(stop_memlog,), daemon=True)
+    memlog_thread.start()
+    try:
+        for mission in ["ESA-Mission1.zip", "ESA-Mission2.zip"]:
+            run_mission(mission)
+    finally:
+        stop_memlog.set()
 
 
 if __name__ == "__main__":
