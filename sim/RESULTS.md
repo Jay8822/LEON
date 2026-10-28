@@ -9,6 +9,15 @@ anything. Per Jay's overriding condition for this round: **these
 results are reported exactly as they came out, good and bad, with no
 retry for a nicer-looking run.**
 
+**Update, 28 October 2026**: real NASA battery aging data is now
+available (`real_data_tests/nasa_liion_battery_aging/`,
+`real_data_tests/nasa_randomized_battery/` — Jay added both
+manually; the first was the exact dataset Item 3's own honest-limit
+note below said was unreachable). The `dying_battery` fault below
+still uses the SYNTHETIC decline curve described there — swapping in
+the real `Capacity` trace is queued for a later round, with its own
+commissioning and re-test, not done this round.
+
 ## What was built
 
 `sim/blueprint.py` + `sim/rulebook.py` (co-designed, frozen together —

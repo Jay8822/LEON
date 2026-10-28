@@ -34,6 +34,10 @@ bg_jobs/*
 # real_data_tests/*/download_*.py for source and licence.
 real_data_tests/*/data/
 
+# nasa_randomized_battery/ holds six dataset variants, each one level
+# deeper than the pattern above -- same reasoning, one extra level.
+real_data_tests/nasa_randomized_battery/*/data/
+
 # Checkpointed test-run results (resumable, regenerable) -- not
 # committed while a run is still in progress; revisit once finished.
 real_data_tests/*/results/
