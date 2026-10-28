@@ -13,10 +13,17 @@ expected_causes input (agents/gracie.py), not via ChannelRule.
 linked_channels, which is specifically leash's own settling-exception
 mechanism tied to another channel's FAULT latch -- a different
 concept this sim doesn't use.
+
+Item C (28 October 2026): each ChannelRule's five fault-class fields
+come straight from sim/blueprint.py's FAULT_CLASSES -- co-designed
+with the blueprint, not derived. sim/run_sim_test.py passes that SAME
+table (unmodified) as EdenAgent's own fault_class_table, per Jay's
+approval, point 2: EDEN's copy covers GRACIE's real table only this
+round, no fabricated rule sets for ETHAN/LUNAE/HALIA.
 """
 from agents.gracie_rulebook import ChannelRule
 from sim.blueprint import (
-    derive_blueprint,
+    derive_blueprint, FAULT_CLASSES,
     LEASH_WINDOW_SECONDS, LEASH_SOFT_DURATION_SECONDS, LEASH_HARD_DURATION_SECONDS,
 )
 
@@ -42,5 +49,10 @@ def build_rule_book(derivation_seed=None):
             stuck_window_seconds=entry["stuck_window_seconds"],
             min_normal_noise=entry["min_normal_noise"],
             allow_steady=entry["allow_steady"],
+            level_fault_class=FAULT_CLASSES[sensor_name]["level"],
+            jump_fault_class=FAULT_CLASSES[sensor_name]["jump"],
+            leash_soft_fault_class=FAULT_CLASSES[sensor_name]["leash_soft"],
+            leash_hard_fault_class=FAULT_CLASSES[sensor_name]["leash_hard"],
+            stillness_fault_class=FAULT_CLASSES[sensor_name]["stillness"],
         )
     return rules, blueprint

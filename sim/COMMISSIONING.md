@@ -232,3 +232,38 @@ Corrections 3, 4 and 5 applied; nothing else changed. No further
 changes to `sim/blueprint.py`, `sim/rulebook.py` or
 `sim/run_sim_test.py`'s expected-cause mechanism after this file's
 checkpoint commit, whatever the faulted runs' results show.
+
+# Third commissioning round -- Item C (28 October 2026)
+
+Item C added a fault-class table (`sim/blueprint.py`'s `FAULT_CLASSES`,
+five classes per sensor -- level/jump/leash_soft/leash_hard/
+stillness) and wired EDEN to react to it, but added NO new numeric
+blueprint/rule-book values -- level/jump/leash/Stillness limits are
+byte-identical to the second round's frozen state. Re-ran the clean
+timeline anyway, on principle (never assume a change is inert without
+checking), before touching anything fault-related.
+
+**Result: clean. Zero corrections needed.** 0/22 false alarms on
+normal events, same as the second round's frozen state. Background
+false alarms: `battery_voltage` 1,069 samples from sample 20,530 (was
+1,070 in the first round -- a 1-sample difference, not a real change).
+`fuel_flow` now shows only 600 samples from sample 13,514, where the
+FIRST commissioning round (before `sim/human_signoff.py` existed)
+reported 8,086 -- checked, not assumed: 13,514 + 8,086 = 21,600
+exactly, meaning that first round's false latch ran continuously to
+the very end of the timeline with nothing to ever release it.
+`sim/human_signoff.py` (added in the SECOND round, Item 3b) now
+correctly releases this same stray false latch after its stated
+`HUMAN_RESPONSE_DELAY_SECONDS` (600.0s) once the human checks it
+against the (empty, for a clean commissioning run) fault list and
+finds nothing real there -- 600 samples matches that delay exactly.
+This is human_signoff.py working correctly on an incidental false
+latch, not a new defect and not something this round introduced;
+flagged here because the raw number changed and deserves an honest
+explanation, not silence.
+
+## Checkpoint
+
+No corrections this round. Frozen state (blueprint/rule book numbers,
+unchanged; `FAULT_CLASSES`, new) committed before any fault run, same
+discipline as every round so far.

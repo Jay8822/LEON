@@ -76,10 +76,38 @@ condition, so every other sensor stays allow_steady=False.
 import random
 from datetime import datetime, timedelta
 
+from agents.escalation_orchestrator import FaultClass
 from real_data_tests.opssat_ad.run_opssat_ad_test import (
     derive_thresholds, derive_jump_limits, derive_leash_limits, percentile,
 )
 from sim.real_data_sources import SENSORS, build_noise_series, make_fragment
+
+# Item C fault classes (per sense, per sensor) -- a design decision,
+# same category as EVENT_EFFECTS above, NOT a derived number: co-
+# designed with the rest of the blueprint, frozen the same way, never
+# tuned against a result. Jay's approved table, with his one named
+# correction: LEVEL on every sensor is MAJOR except engine_bay_temp,
+# which is BOOM -- overheating near the engine could genuinely harm
+# the ship, so this sim actually exercises the boom path, not just
+# major/non-urgent. JUMP and LEASH SOFT are NON_URGENT everywhere
+# (momentary/WARNING-level by GRACIE's own design, matching her
+# existing LOGGED vocabulary). LEASH HARD and STILLNESS are MAJOR
+# everywhere (a sustained drift or a frozen sensor are both real
+# instrument/condition faults, not minor). Sense keys here ("level"/
+# "jump"/"leash_soft"/"leash_hard"/"stillness") match
+# agents/gracie.py's own causing_sense vocabulary exactly, so this
+# table is handed to EdenAgent's fault_class_table AS IS, with no
+# translation step (sim/run_sim_test.py).
+FAULT_CLASSES = {
+    sensor_name: {
+        "level": FaultClass.BOOM if sensor_name == "engine_bay_temp" else FaultClass.MAJOR,
+        "jump": FaultClass.NON_URGENT,
+        "leash_soft": FaultClass.NON_URGENT,
+        "leash_hard": FaultClass.MAJOR,
+        "stillness": FaultClass.MAJOR,
+    }
+    for sensor_name in SENSORS
+}
 
 DERIVATION_SEED = 0          # fixed, separate from SCENARIO_SEED
 # MUST match sim/craft.py's TOTAL_SECONDS (21,600 -- not imported

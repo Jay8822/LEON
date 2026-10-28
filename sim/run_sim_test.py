@@ -61,6 +61,7 @@ from agents.gracie import GracieAgent
 from agents.lunae import LunaeAgent
 from core.bus import EventBus
 
+from sim.blueprint import FAULT_CLASSES
 from sim.craft import build_clean_timeline, TOTAL_SECONDS, SCENARIO_SEED, _kick_offset
 from sim.fault_injection import inject_faults
 from sim.human_signoff import HumanSignoff
@@ -156,7 +157,10 @@ def active_expected_causes(events, second_offset, rule_book, baselines):
 def build_craft(rule_book, faults):
     bus = EventBus()
     gracie = GracieAgent(bus, rule_book)
-    eden = EdenAgent(bus)
+    # Item C: EDEN's own fault-class table is sim/blueprint.py's SAME
+    # FAULT_CLASSES, unmodified -- point 2 of Jay's approval, EDEN's
+    # copy covers GRACIE's real table only this round.
+    eden = EdenAgent(bus, fault_class_table=FAULT_CLASSES)
     bus.subscribe("telemetry/health", eden.on_health_event)
     orchestrator = EscalationOrchestrator(
         eden_rules={}, own_rules={},
@@ -309,6 +313,26 @@ def score_false_alarms(per_channel_log, events):
     return results
 
 
+def score_safe_state_time(aggregate_log):
+    """Item C, step 8: time (one aggregate_log entry == one second,
+    1Hz) spent in each of EDEN's real reactions. MONITORING is split
+    further into truly-nominal vs. non-urgent-flagged (GRACIE's own
+    aggregate health_state tells the two apart; EDEN's own `status`
+    string doesn't distinguish them) -- so this buckets by fault
+    class in substance: MONITORING_NOMINAL (nothing wrong),
+    MONITORING_NON_URGENT_FLAGGED (non-urgent, flagged and logged,
+    craft keeps running), HOLD (major), SAFE_MODE (boom)."""
+    buckets = {"IDLE": 0, "MONITORING_NOMINAL": 0, "MONITORING_NON_URGENT_FLAGGED": 0, "HOLD": 0, "SAFE_MODE": 0}
+    for e in aggregate_log:
+        status = e["eden_status"]
+        if status == "MONITORING":
+            key = "MONITORING_NOMINAL" if e["health_state"] == "NOMINAL" else "MONITORING_NON_URGENT_FLAGGED"
+        else:
+            key = status
+        buckets[key] = buckets.get(key, 0) + 1
+    return buckets
+
+
 def score_background_false_alarms(per_channel_log, events, faults, total_seconds):
     """Every FAULT sample on every channel, OUTSIDE any event's or
     fault's own window -- surfaces exactly the kind of baseline false
@@ -384,6 +408,7 @@ def run_scenario(rule_book, blueprint, scenario_seed, timing_seed):
         background = score_background_false_alarms(per_channel_log, events, faults, TOTAL_SECONDS)
 
         eden_safe_mode_samples = sum(1 for e in aggregate_log if e["eden_status"] == "SAFE_MODE")
+        safe_state_time = score_safe_state_time(aggregate_log)
         ghost_log = craft["ghost"].comparison_log()
         ghost_disagreements = [g for g in ghost_log if not g["agree"]]
 
@@ -392,6 +417,7 @@ def run_scenario(rule_book, blueprint, scenario_seed, timing_seed):
             "false_alarms_on_normal_events": false_alarm_scores,
             "background_false_alarms": background,
             "eden_safe_mode_sample_count": eden_safe_mode_samples,
+            "safe_state_time": safe_state_time,
             "ghost_mode_comparisons": len(ghost_log),
             "ghost_mode_disagreements": len(ghost_disagreements),
         }
@@ -408,6 +434,7 @@ def run_scenario(rule_book, blueprint, scenario_seed, timing_seed):
         print(f"    false alarms on normal events: {n_false}/{len(false_alarm_scores)}")
         print(f"    background false alarms (channels): {list(background.keys())}")
         print(f"    EDEN SAFE_MODE samples: {eden_safe_mode_samples}")
+        print(f"    safe-state time: {safe_state_time}")
         print(f"    ghost mode: {len(ghost_log)} comparisons, {len(ghost_disagreements)} disagreements")
     return scenario_report
 
@@ -421,6 +448,7 @@ SCENARIOS = [
     ("fresh_seed_1", 101, 101),
     ("fresh_seed_2", 102, 102),
     ("fresh_seed_3", 103, 103),
+    ("fresh_seed_4", 104, 104),  # Item C, step 8: at least one brand-new seed, never used before
 ]
 
 
