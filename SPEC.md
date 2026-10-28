@@ -76,6 +76,10 @@ Each agent is self-sufficient in its own domain and can act without permission. 
   flagged for being exactly as designed. Answers the Diagnostic
   checklist's "is the sensor itself healthy?" question continuously,
   not just on demand — see Diagnostic checklist.
+- Fault class: each sense (level, jump, leash soft, leash hard,
+  Stillness) has its own stated fault class per channel — major,
+  non-urgent or boom (see Fault classes) — from the rule book, no
+  default values. Unknown means major.
 - Deep health sweep: a stream of small faults is itself abnormal. GRACIE then runs a full health test down to every part she manages, so, for example, a blown fuse is found. Ship-wide — every agent runs its own sweep under the same trigger (see Cross-referencing principle).
 - Status: **built** — any-sensor, rule-book-driven, independent per-channel level/jump/leash (`agents/gracie.py`, `agents/gracie_rulebook.py`). Proven to give the same answers as the batch scripts it was rewritten from (`agents/gracie_equivalence_test.py`, against both real OPSSAT-AD data and the simulated leash test). Wired into the real `main.py` demo; confirmed still compatible with ghost mode. Also built, 26 October 2026: logging a fresh event on a new crossing while already latched, and an `expected_causes` input that logs a level crossing instead of flagging it (both `agents/gracie.py` module docstring, point 12) — GRACIE still has no idea what counts as an expected cause or where one comes from; deciding that stays entirely outside her, in real_data_tests/ for now. **Not built**: context-aware flagging for anything beyond an already-decided expected cause (judging a rise against what other agents report more generally), jump's cross-check, leash's context-gating (all three need other agents' signals GRACIE doesn't have yet), and the deep health sweep. Ageing is covered separately — see Ageing. CHESTER (built, `agents/chester.py`) already watches and light-flags what GRACIE announces today. Also built, 27 October 2026: the per-channel rule book, level/jump/leash and latching (excluding `expected_causes`) ported to a Power-of-10-constrained C++ core (`AI Stack C++ Test Build/include/gracie_rulebook.hpp`), shown to give the same answers as this Python version on three proof datasets (simulated leash-drift streams, a real OPS-SAT fragment, a real ESA-ADB channel) — see that build's README for the full proof. Not flight-ready or validated; not wired into any running craft.
 
@@ -183,7 +187,7 @@ Each agent is self-sufficient in its own domain and can act without permission. 
 
 - Not a general dispatcher. She is the escalation point of last resort within the agent tier. She only receives what falls outside an agent's own parameters. Her volume is naturally low.
 - Validates each report against the reporting agent's rules **and** her own parameters. Both must align before she treats it as real.
-- Holds a copy of every agent's rule set, plus her own harder rule set, including the plus/minus tolerance around each agent's parameters. This lets her judge priority, and stops any agent acting outside protocol.
+- Holds a copy of every agent's rule set, plus her own harder rule set, including the plus/minus tolerance around each agent's parameters and each reportable condition's fault class. This lets her judge priority, and stops any agent acting outside protocol. A non-urgent fault is flagged and logged, not held or put into any safe state — see Fault lifecycle and release. A major fault holds the craft (Hold, not Safe mode). Only a boom fault puts her into Safe mode, with the four-way sign-off that always waits for a human — see Ship safe states and Sign-off rules.
 - Confirms that anything raised has been fixed, even when an agent fixed it itself. Keeps one authoritative log.
 - Challenging EDEN: an agent that sees EDEN's ruling doesn't match the rules challenges it. The challenge is passed to a human, and a retest runs automatically, so both results are ready when the human picks it up. If no human can be reached, the orchestrator stands in for EDEN: it checks against its own rules and asks the agent to retest. Logged, flagged and investigated.
 - Loop detection: if the same agent triggers safe mode a second time, that agent becomes the suspect. If the rules check out and sign-off is complete, the agent is inspected against its own rules and checked for cross-wiring.
@@ -310,6 +314,9 @@ The sequence starts at the agent that raised the flag. The response depends on t
 
 - **Major fault**: an issue the agent cannot fix itself, because it takes too long, is too complicated, or needs human approval. Examples: a major course correction, an engine fault, a risk to the system.
 - **Non-urgent fault**: anything else.
+- **Boom fault**: the most serious kind of major fault — anything that could harm the ship or people (see Sign-off rules, Fault lifecycle and release).
+
+A rule book can state a class per reportable condition, not just one class for the whole agent — GRACIE, for example, classifies level, jump, leash soft, leash hard and Stillness separately per channel (see GRACIE).
 
 If the fault class is unknown, treat it as major.
 
