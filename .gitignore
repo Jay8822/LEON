@@ -25,6 +25,15 @@ venv/
 bg_jobs/*
 !bg_jobs/run_detached.bat
 
+# bg_jobs/queue/ holds the "keep the laptop working" job scripts
+# themselves (source, kept) -- a directory excluded by the wildcard
+# above must be explicitly un-ignored before git will look inside it
+# for anything, negated files included. Its own regenerable output
+# (checkpoints/results) goes back to being ignored, same reasoning as
+# every other */out//*/results/ pattern in this file.
+!bg_jobs/queue/
+bg_jobs/queue/out/
+
 # Editor/tooling config, not LEON itself.
 .claude/
 .mcp.json
