@@ -131,9 +131,13 @@ class BypassReason(Enum):
 
 class FaultClass(Enum):
     """SPEC.md "Fault classes" -- shared by the EDEN-silence degradation
-    path and the four-way sign-off retest ladder."""
+    path and the four-way sign-off retest ladder. BOOM added 2026-10-28
+    (Item C) -- SPEC.md already used the term in three other sections
+    (Timing, Sign-off rules, Fault lifecycle) before "Fault classes"
+    itself ever named it as its own value."""
     MAJOR = "MAJOR"
     NON_URGENT = "NON_URGENT"
+    BOOM = "BOOM"
 
 
 class SignOffParty(Enum):

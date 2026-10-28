@@ -139,6 +139,8 @@ def main():
         leash_soft_duration_seconds=NEVER_TRIGGERED,
         leash_hard_duration_seconds=NEVER_TRIGGERED,
         stuck_window_seconds=LEASH_WINDOW_SECONDS, min_normal_noise=0.0,  # Stillness: not in the C++ port yet, not exercised here
+        level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
+        leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
     )
 
     # clear_before is always False -- this test is about the ring

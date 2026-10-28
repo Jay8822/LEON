@@ -63,17 +63,22 @@ def build_real_wiring():
 # --- core behaviour: FAULT goes through, logged, agrees with EDEN ----------
 
 def test_fault_report_reaches_orchestrator_and_agrees_with_eden():
+    """This synthetic payload carries no "readings" (see
+    health_payload() above), so EDEN's fault-class table (empty, the
+    default) has nothing to look up -- falls back to MAJOR -> HOLD,
+    per SPEC.md's "unknown means major" (Item C, 2026-10-28). Not
+    SAFE_MODE any more; that's now reserved for boom-classed faults."""
     bus, eden, orchestrator, harness = build_real_wiring()
     bus.publish("telemetry/health", health_payload("FAULT"))
 
-    assert eden.status == "SAFE_MODE", eden.status
+    assert eden.status == "HOLD", eden.status
 
     comparisons = harness.comparison_log()
     assert len(comparisons) == 1, comparisons
     entry = comparisons[0]
     assert entry["source"] == "GRACIE"
     assert entry["ghost_outcome"] == "EDEN", entry
-    assert entry["old_wiring_status"] == "SAFE_MODE", entry
+    assert entry["old_wiring_status"] == "HOLD", entry
     assert entry["agree"] is True, entry
 
     orchestrator_log = orchestrator.decision_log()
@@ -123,6 +128,8 @@ def test_real_upgraded_gracie_payload_still_triggers_ghost_mode():
             leash_window_seconds=1.0, leash_slope_limit=1000.0,
             leash_soft_duration_seconds=1000.0, leash_hard_duration_seconds=2000.0,
             stuck_window_seconds=1.0, min_normal_noise=0.0,  # Stillness not exercised here
+            level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
+            leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
         ),
     }
     gracie = GracieAgent(bus, rule_book)
@@ -136,7 +143,7 @@ def test_real_upgraded_gracie_payload_still_triggers_ghost_mode():
     assert eden.status == "MONITORING"
 
     gracie.process_readings({"temp_c": 100}, timestamp=1)  # crosses level_high -> FAULT
-    assert eden.status == "SAFE_MODE"
+    assert eden.status == "HOLD"  # temp_c's level_fault_class is None here -- unknown means major
     comparisons = harness.comparison_log()
     assert len(comparisons) == 1, comparisons
     assert comparisons[0]["agree"] is True, comparisons[0]
@@ -165,11 +172,11 @@ def test_ghost_mode_depends_on_subscription_order_after_eden():
     entry = harness.comparison_log()[0]
     # The harness ran first, so it read eden.status before EDEN had
     # reacted to *this* event -- still whatever it was before (IDLE on
-    # a fresh agent), not SAFE_MODE, even though EDEN went to SAFE_MODE
+    # a fresh agent), not HOLD, even though EDEN went to HOLD
     # moments later. This mismatch is exactly what wrong ordering
     # looks like, and exactly why main.py's order matters.
-    assert entry["old_wiring_status"] != "SAFE_MODE", entry
-    assert eden.status == "SAFE_MODE"  # EDEN still reacted correctly, just after we looked
+    assert entry["old_wiring_status"] != "HOLD", entry
+    assert eden.status == "HOLD"  # EDEN still reacted correctly, just after we looked
     print("  ok: wrong subscription order is observably wrong, confirming the real order is load-bearing")
 
 
@@ -196,7 +203,7 @@ def test_harness_failure_never_affects_eden_or_the_bus():
     # regardless (core/bus.py). This test exercises both layers.
     bus.publish("telemetry/health", health_payload("FAULT"))
 
-    assert eden.status == "SAFE_MODE", "EDEN must react exactly as she would without ghost mode"
+    assert eden.status == "HOLD", "EDEN must react exactly as she would without ghost mode"
     assert harness.comparison_log() == []  # failed before it could record anything
     print("  ok: a harness-side failure is swallowed and logged -- EDEN still reacts normally")
 

@@ -29,6 +29,8 @@ TEMP_RULE = ChannelRule(
     leash_window_seconds=10.0, leash_slope_limit=1.0,
     leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
     stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
+    level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
+    leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
 )
 RAD_RULE = ChannelRule(
     name="radiation", units="rad",
@@ -37,6 +39,8 @@ RAD_RULE = ChannelRule(
     leash_window_seconds=10.0, leash_slope_limit=0.5,
     leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
     stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
+    level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
+    leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
 )
 # A separate fixture channel for the leash tests specifically: level
 # bounds set far outside anything the ramp below ever reaches, so a
@@ -50,6 +54,8 @@ DRIFT_RULE = ChannelRule(
     leash_window_seconds=10.0, leash_slope_limit=1.0,
     leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
     stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
+    level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
+    leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
 )
 
 # A second drift-style channel, with REACHABLE level bounds (unlike
@@ -62,6 +68,8 @@ COMBO_RULE = ChannelRule(
     leash_window_seconds=10.0, leash_slope_limit=1.0,
     leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
     stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
+    level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
+    leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
 )
 
 # Two channels for the LINKED-channel exception: A's own level bounds
@@ -75,6 +83,8 @@ LINKED_A_RULE = ChannelRule(
     leash_window_seconds=10.0, leash_slope_limit=1.0,
     leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
     stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
+    level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
+    leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
     linked_channels=("linked_b",),
 )
 LINKED_B_RULE = ChannelRule(
@@ -84,6 +94,8 @@ LINKED_B_RULE = ChannelRule(
     leash_window_seconds=10.0, leash_slope_limit=1.0,
     leash_soft_duration_seconds=20.0, leash_hard_duration_seconds=40.0,
     stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
+    level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
+    leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
 )
 
 # A channel with a REAL Stillness limit -- level/jump/leash bounds set
@@ -96,6 +108,8 @@ STUCK_RULE = ChannelRule(
     leash_window_seconds=10.0, leash_slope_limit=1_000_000.0,
     leash_soft_duration_seconds=1_000_000.0, leash_hard_duration_seconds=1_000_000.0,
     stuck_window_seconds=5.0, min_normal_noise=2.0,
+    level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
+    leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
 )
 # Same limits, but explicitly exempted -- a sensor the blueprint says
 # legitimately holds steady (SPEC.md Stillness bullet).
@@ -106,6 +120,8 @@ STEADY_RULE = ChannelRule(
     leash_window_seconds=10.0, leash_slope_limit=1_000_000.0,
     leash_soft_duration_seconds=1_000_000.0, leash_hard_duration_seconds=1_000_000.0,
     stuck_window_seconds=5.0, min_normal_noise=2.0,
+    level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
+    leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
     allow_steady=True,
 )
 
@@ -501,6 +517,58 @@ def test_stillness_latch_is_released_by_clear_fault():
     print("  ok: clear_fault releases a Stillness latch, same as any other")
 
 
+def test_causing_sense_is_level():
+    gracie, _, _ = make_gracie()
+    gracie.process_readings({"temp_c": 30}, timestamp=0)
+    assert gracie._last_readings["temp_c"]["causing_sense"] is None
+
+    gracie.process_readings({"temp_c": 56}, timestamp=1)
+    assert gracie._last_readings["temp_c"]["causing_sense"] == "level"
+
+    # Drops back in bounds -- the ratchet stays, and so must its cause.
+    gracie.process_readings({"temp_c": 30}, timestamp=2)
+    assert gracie._last_readings["temp_c"]["severity"] == "FAULT"
+    assert gracie._last_readings["temp_c"]["causing_sense"] == "level"
+
+    gracie.clear_fault("temp_c")
+    assert gracie._last_readings["temp_c"]["causing_sense"] is None
+    print("  ok: causing_sense is 'level' for a level crossing, persists until clear_fault")
+
+
+def test_causing_sense_is_leash_soft_then_leash_hard():
+    gracie, _, _ = make_gracie()
+    for t in range(0, 51):
+        gracie.process_readings({"drift_channel": 2.0 * t}, timestamp=float(t))
+        cause = gracie._last_readings["drift_channel"]["causing_sense"]
+        if t < 30:
+            assert cause is None, (t, cause)
+        elif t < 50:
+            assert cause == "leash_soft", (t, cause)
+        else:
+            assert cause == "leash_hard", (t, cause)
+    print("  ok: causing_sense tracks leash_soft, then switches to leash_hard once hard fires")
+
+
+def test_causing_sense_is_stillness():
+    gracie, _, _ = make_gracie()
+    readings = [10.0, 10.5, 11.0, 10.8, 10.3, 10.6]  # range 1.0, under STUCK_RULE's 2.0 minimum
+    for t, v in enumerate(readings):
+        gracie.process_readings({"stuck_channel": v}, timestamp=float(t))
+    assert gracie._last_readings["stuck_channel"]["causing_sense"] == "stillness"
+    print("  ok: causing_sense is 'stillness' for a Stillness fault")
+
+
+def test_causing_sense_never_becomes_jump():
+    gracie, _, _ = make_gracie()
+    gracie.process_readings({"temp_c": 0.0}, timestamp=0)
+    gracie.process_readings({"temp_c": 40.0}, timestamp=1)  # a jump, well clear of TEMP_RULE's level bounds
+    assert gracie._last_readings["temp_c"]["jump"] is True
+    assert gracie._last_readings["temp_c"]["severity"] == "NOMINAL"
+    assert gracie._last_readings["temp_c"]["causing_sense"] is None, \
+        "jump never latches, so it must never become causing_sense"
+    print("  ok: a jump alone never sets causing_sense -- it never touches latched_severity")
+
+
 def test_unrecognized_channel_is_ignored_not_guessed_at():
     gracie, _, _ = make_gracie()
     gracie.process_readings({"temp_c": 30, "mystery_channel": 999}, timestamp=0)
@@ -530,6 +598,10 @@ def main():
         test_stillness_does_not_fire_on_a_sensor_that_varies_enough,
         test_allow_steady_exempts_a_channel_from_stillness,
         test_stillness_latch_is_released_by_clear_fault,
+        test_causing_sense_is_level,
+        test_causing_sense_is_leash_soft_then_leash_hard,
+        test_causing_sense_is_stillness,
+        test_causing_sense_never_becomes_jump,
         test_unrecognized_channel_is_ignored_not_guessed_at,
     ]
     for test in tests:

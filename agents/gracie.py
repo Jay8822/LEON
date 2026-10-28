@@ -160,6 +160,21 @@ Interpretive calls made, agreed with Jay before building (see
       clear_fault releases it) -- participates in the same
       `latched_severity`/`health_state` rollup by construction, since
       it sets the same field everything else does.
+14. Added 2026-10-28 (Item C, SPEC.md's GRACIE "Fault class" bullet):
+    each channel's report now also carries `causing_sense` -- which
+    sense (one of "level"/"leash_soft"/"leash_hard"/"stillness", or
+    None) most recently raised `latched_severity` to its current
+    value. Jump never appears here: it never touches
+    `latched_severity` (point 3). Whoever consumes this (EDEN) looks
+    up that sense's fault class from her OWN copy of the rule book --
+    GRACIE herself carries fault-class fields on ChannelRule (see
+    agents/gracie_rulebook.py) purely for EDEN's benefit, never reads
+    them herself, same "GRACIE has no idea what happens downstream"
+    boundary as `expected_causes`. Persists with the latch: a
+    continued crossing re-affirms the same cause; dropping back in
+    bounds does NOT clear it (same one-way-ratchet reasoning as
+    `latched_severity` itself) -- only clear_fault, or leash's own
+    self-settle exception, clears it to None.
 
 No invented numbers: every ChannelRule field is required, no
 defaults (see agents/gracie_rulebook.py). Real callers and tests alike
@@ -222,6 +237,16 @@ class _ChannelState:
     # instrument is in question, not the quantity it measures.
     stillness_window: Deque[Tuple[float, float]] = field(default_factory=deque)
     stillness_active: bool = False
+    # Item C (point 14): which sense most recently raised
+    # latched_severity to its current (non-NOMINAL) value -- one of
+    # "level"/"leash_soft"/"leash_hard"/"stillness", or None. Jump
+    # never appears here: it never touches latched_severity at all
+    # (module docstring, point 3). Persists with the latch (a
+    # continued crossing re-affirms the same cause; dropping back in
+    # bounds does NOT clear this, same one-way-ratchet reasoning as
+    # latched_severity itself) -- EDEN (not GracieAgent) is the
+    # reader, via `causing_sense` in the report (see agents/eden.py).
+    causing_sense: Optional[str] = None
 
 
 class GracieAgent:
@@ -269,6 +294,7 @@ class GracieAgent:
             prior_severity = state.latched_severity
             state.latched_severity = "NOMINAL"
             state.stillness_active = False
+            state.causing_sense = None
             if reset_leash_timer:
                 state.pull_run_start = None
                 state.soft_active = False
@@ -276,6 +302,7 @@ class GracieAgent:
             if ch in self._last_readings:
                 self._last_readings[ch]["severity"] = "NOMINAL"
                 self._last_readings[ch]["sensor_health_fault"] = False
+                self._last_readings[ch]["causing_sense"] = None
             self._announce_warning_transition(ch, timestamp, prior_severity, "NOMINAL")
         self.logger.info(f"Cleared fault for {channel if channel else 'all channels'}")
         self._recompute_aggregate()
@@ -317,6 +344,7 @@ class GracieAgent:
                 )
             if _SEVERITY_RANK[state.latched_severity] < _SEVERITY_RANK["WARNING"]:
                 state.latched_severity = "WARNING"
+                state.causing_sense = "level"
             state.level_crossing_active = True
             return
         if is_new_crossing:
@@ -335,6 +363,7 @@ class GracieAgent:
                 # just logged -- the latch itself is untouched by this.
                 self._announce_for_chester(channel, timestamp, "new_crossing_while_latched")
         state.latched_severity = "FAULT"
+        state.causing_sense = "level"
         state.level_crossing_active = True
 
     def _process_stillness(self, channel: str, state: _ChannelState, timestamp: float,
@@ -443,6 +472,7 @@ class GracieAgent:
                 return None
             self.logger.info(f"{channel}: soft leash pull settled back to NOMINAL -- announcing for CHESTER")
             state.latched_severity = "NOMINAL"
+            state.causing_sense = None
             return "settled"
 
         if state.pull_run_start is None:
@@ -454,11 +484,13 @@ class GracieAgent:
             self.logger.info(f"{channel}: LEASH SOFT transition at t={timestamp} (slope={slope:.6g})")
             if _SEVERITY_RANK[state.latched_severity] < _SEVERITY_RANK["WARNING"]:
                 state.latched_severity = "WARNING"
+                state.causing_sense = "leash_soft"
         if elapsed >= rule.leash_hard_duration_seconds and not state.hard_active:
             state.hard_active = True
             self.logger.info(f"{channel}: LEASH HARD transition at t={timestamp} (slope={slope:.6g})")
             if _SEVERITY_RANK[state.latched_severity] < _SEVERITY_RANK["FAULT"]:
                 state.latched_severity = "FAULT"
+                state.causing_sense = "leash_hard"
         return None
 
     # --- main entry point ----------------------------------------------
@@ -504,6 +536,7 @@ class GracieAgent:
                     )
                 state.stillness_active = True
                 state.latched_severity = "FAULT"
+                state.causing_sense = "stillness"
 
             if jump_event:
                 cycle_jump_channels.add(channel)
@@ -515,6 +548,7 @@ class GracieAgent:
                 "severity": state.latched_severity,
                 "jump": jump_event,
                 "sensor_health_fault": state.stillness_active,
+                "causing_sense": state.causing_sense,
             }
 
             if jump_event:

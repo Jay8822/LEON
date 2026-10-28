@@ -32,6 +32,18 @@ caller to state "this channel's blueprint doesn't define a Stillness
 limit this round" (range is never negative, so the check can never
 fire), not an invented real number standing in for one.
 
+Fault class per sense, added 2026-10-28 (Item C, SPEC.md's GRACIE
+"Fault class" bullet and "Fault classes"): level/jump/leash-soft/
+leash-hard/Stillness each carry their own FaultClass (MAJOR,
+NON_URGENT or BOOM), required fields with no dataclass default --
+every caller must pass something, but that something may honestly be
+`None` ("this rule book doesn't state a class for this sense this
+round"), same "required but an explicit non-claim is allowed" pattern
+min_normal_noise=0.0 already uses. `None` means unknown, which SPEC.md
+and GRACIE's own "Fault class" bullet both say is treated as MAJOR by
+whoever looks it up (EDEN) -- GracieAgent itself never reads these
+fields; she only carries them for EDEN's benefit (see agents/eden.py).
+
 Explicitly NOT covered by a ChannelRule: jump's cross-check (did a
 related channel/agent also move) and leash's context-gating (an
 expected cause from another agent). Both need other agents' signals
@@ -40,7 +52,9 @@ order as everything else in SPEC.md's "Wiring plan and ghost mode".
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
+
+from agents.escalation_orchestrator import FaultClass
 
 
 @dataclass(frozen=True)
@@ -56,6 +70,14 @@ class ChannelRule:
     leash_hard_duration_seconds: float
     stuck_window_seconds: float   # Stillness: the window to check
     min_normal_noise: float       # Stillness: variation below this is suspect
+    # Fault class per sense (Item C) -- required, but None is an
+    # honest "not stated" value, same pattern as min_normal_noise=0.0
+    # above. EDEN (not GracieAgent) is the reader; see module docstring.
+    level_fault_class: Optional[FaultClass]
+    jump_fault_class: Optional[FaultClass]
+    leash_soft_fault_class: Optional[FaultClass]
+    leash_hard_fault_class: Optional[FaultClass]
+    stillness_fault_class: Optional[FaultClass]
     # Other channels this one is linked to, per SPEC.md's Leash
     # section: a settling soft pull on a channel linked to one
     # currently in an active major fault stays with that fault's

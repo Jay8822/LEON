@@ -43,6 +43,17 @@ Interpretive calls made this pass, agreed with Jay before building
    SPEC.md's own fallback already resolves (unknown means major). This
    harness doesn't classify anything itself; it only logs that the
    question doesn't yet apply to GRACIE.
+   UPDATE, 2026-10-28 (Item C): GracieAgent herself now CAN carry a
+   fault class per sense, and EdenAgent now reacts to it (HOLD for
+   major, SAFE_MODE for boom, no action for non-urgent) -- but this
+   harness still doesn't read `payload["readings"]` at all (point 4
+   below), so point 3's "unknown class" observation still holds for
+   every comparison THIS harness itself logs, as a property of what
+   it chooses to look at, not a claim that GRACIE/EDEN lack the
+   concept any more. Not expanded to classify anything itself this
+   round -- still scope point 5's "no rerun ladder, no sign-off,
+   nothing to attach to yet" reasoning, now extended to classification
+   too.
 
 4. No raw readings in this harness's own log. At the time this was
    built, GracieAgent.report_health() only ever published
@@ -118,7 +129,18 @@ class GhostModeHarness:
         ghost_result = self.orchestrator.decide(report, Severity.VIOLATED)
 
         old_wiring_status = self.eden.status
-        old_wiring_acted = old_wiring_status == "SAFE_MODE"
+        # Item C (2026-10-28): EDEN can now react with HOLD (major) as
+        # well as SAFE_MODE (boom) -- both are her actually taking
+        # protective action on a fault, as opposed to MONITORING
+        # (non-urgent, flagged and logged, nothing done). Checking
+        # only "SAFE_MODE" here would now read a real HOLD reaction as
+        # "EDEN did nothing," a false disagreement -- caught by
+        # re-reading this file's own reasoning once EDEN could react
+        # two different ways, not by a failing test (the synthetic
+        # payloads this file's own tests use carry no "readings", so
+        # they fall back to MAJOR -> HOLD and would have shown this
+        # immediately regardless).
+        old_wiring_acted = old_wiring_status in ("HOLD", "SAFE_MODE")
         ghost_would_escalate = ghost_result.outcome == "EDEN"
         agree = old_wiring_acted == ghost_would_escalate
 
