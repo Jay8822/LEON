@@ -377,6 +377,122 @@ meaningful validation on its own.
   own note for later, not this round).
 - Isolation scoring, still deferred, same reason as the first round.
 
+# Item C: EDEN's fault-class-aware reaction (28 October 2026)
+
+Three changes, driven by this page's own ~90% SAFE_MODE finding:
+GRACIE's rule book now states a fault class (major/non-urgent/boom)
+per sense per sensor; her report now says which sense is currently
+responsible for a channel's severity (`causing_sense`); EDEN looks
+that up against her own copy of the SAME table and reacts NON_URGENT
+-> flagged and logged only, MAJOR -> HOLD (not SAFE_MODE), BOOM ->
+SAFE_MODE with the mandatory human sign-off. Code: `agents/gracie.py`/
+`agents/gracie_rulebook.py`/`agents/eden.py` (commit `8eef826`); sim
+wiring and third commissioning round (commit `4fe727c`) found no
+blueprint/rule-book regressions. Re-tested on the same 5 seeds (the
+original 4 plus a brand-new `fresh_seed_4`), both expected-cause
+modes, same discipline as every round: reported exactly as it came
+out.
+
+## Fault detection: completely unchanged, as it should be
+
+Every fault's detection timing (noticed/flagged, per sense, per seed)
+is IDENTICAL to the pre-Item-C re-score above, in all 5 seeds, both
+modes. Expected, and confirmed rather than assumed: Item C never
+touches level/jump/leash/Stillness's own logic, only what happens
+AFTER a severity is already decided -- this is the correctness check
+that Item C didn't quietly change detection while fixing reaction.
+
+## The root-cause fix works: SAFE_MODE time drops dramatically, replaced by HOLD
+
+| Seed | Mode | HOLD (of 21,600s) | SAFE_MODE | MONITORING (nominal) | MONITORING (non-urgent, flagged) |
+|---|---|---|---|---|---|
+| same_seed | without plan | 19,005 (88%) | 1,800 (8%) | 795 | 0 |
+| same_seed | with plan | 19,738 (91%) | 1,081 (5%) | 781 | 0 |
+| fresh_seed_1 | without plan | 17,500 (81%) | 1,800 (8%) | 2,300 | 0 |
+| fresh_seed_1 | with plan | 17,839 (83%) | 1,072 (5%) | 2,689 | 0 |
+| fresh_seed_2 | without plan | 18,626 (86%) | 1,800 (8%) | 1,174 | 0 |
+| fresh_seed_2 | with plan | 19,369 (90%) | 1,068 (5%) | 1,163 | 0 |
+| fresh_seed_3 | without plan | 18,112 (84%) | 1,800 (8%) | 1,688 | 0 |
+| fresh_seed_3 | with plan | 18,512 (86%) | 2,009 (9%) | 2,009 | 0 |
+| fresh_seed_4 | without plan | 18,624 (86%) | 2,400 (11%) | 576 | 0 |
+| fresh_seed_4 | with plan | 13,311 (62%) | **7,728 (36%)** | 561 | 0 |
+
+The first round's own finding (EDEN in SAFE_MODE for ~90-96% of every
+run) is gone -- what was SAFE_MODE time is now correctly split, the
+large majority landing in HOLD (a real, distinct, less drastic
+reaction) and only a genuine boom-classed condition reaching
+SAFE_MODE. This is the fix working as intended.
+
+**MONITORING (non-urgent, flagged) is zero in every single cell,
+every seed, every mode.** Investigated, not assumed: `_classify()`
+takes the WORST class among every channel currently at WARNING or
+FAULT in the whole report, and with 9 channels each carrying some
+nonzero false-alarm or fault rate, there is essentially always SOME
+channel at MAJOR or BOOM somewhere on the craft once the run is more
+than a few minutes old -- so a genuinely non-urgent-only state (every
+non-nominal channel being jump/leash-soft and nothing else) never
+actually occurs in this sim. Same aggregate-masking shape as the
+first re-test round's EDEN finding, now showing up in the fault-class
+split too, not fixed by this change and not expected to be -- it's a
+property of having many independently-faulting channels, not a flaw
+in the classification itself.
+
+## A real finding, caught by checking the data, not assumed: SAFE_MODE time is inflated by an already-EXCUSED warning
+
+`engine_bay_temp`'s LEVEL class is BOOM (Jay's correction). Checked
+directly why `fresh_seed_4`'s SAFE_MODE time jumps to 7,728s (with the
+plan) against ~1,070-1,080s for every other seed: `engine_bay_temp`
+itself only has ONE real FAULT episode (600 samples, 18,873-19,473 --
+the same human-signoff-release pattern as elsewhere). The REST of the
+SAFE_MODE time, in every seed, comes from something the plan was
+supposed to have already handled -- at sample 1,527 of `same_seed`'s
+with-plan run, `engine_bay_temp` shows `severity=WARNING`,
+`level_active=True`. That combination is only reachable through
+`_process_level`'s MATCHED-expected-cause branch (the non-matched
+path always sets FAULT, never WARNING) -- confirmed by reading the
+code, not inferred -- which means this is an engine burn's or course
+correction's EXPECTED kick, correctly logged by GRACIE as WARNING,
+not flagged, exactly as designed. **But `EdenAgent._classify()` reacts
+to ANY WARNING-or-FAULT severity, regardless of why it's WARNING** --
+it has no way to tell "logged because genuinely non-urgent" apart from
+"logged because an expected cause already excused it." Since
+`engine_bay_temp`'s LEVEL sense is BOOM-classed, every one of its four
+expected kicks this round still drives EDEN to SAFE_MODE, even though
+GRACIE already correctly decided nothing was wrong. `fresh_seed_4`'s
+much larger number is this SAME mechanism plus an unusually long
+background false WARNING/FAULT episode on `engine_bay_temp` for that
+seed's own noise draw (consistent with the project's own established
+"one more draw from the false-alarm distribution" explanation used
+throughout this sim and the real ESA-ADB/OPS-SAT work) -- the excused-
+kick contribution alone, visible in the other four seeds, is roughly
+constant (~1,070-1,080s); fresh_seed_4 adds a much larger, separate
+background episode on top of it.
+
+**Not fixed this round, on purpose** -- the frozen blueprint, rule
+book and EDEN logic don't change after seeing a faulted result, same
+discipline as every round. This is reported here as a genuine gap for
+a future round to close (candidates, not decided: restrict EDEN's
+classification to FAULT-severity reports only; or have GRACIE's
+report distinguish "excused" from "genuinely non-urgent" explicitly,
+since both currently present as a plain WARNING with a
+`causing_sense`). Flagged plainly because an already-excused,
+correctly-logged kick driving the WHOLE CRAFT into SAFE_MODE is
+exactly the kind of consequence a boom classification should not have
+-- a real, concrete argument for fixing this before this mechanism is
+trusted for anything beyond a proof of concept.
+
+## What this round adds to "what wasn't done"
+
+- The EDEN classification gap above (reacts to excused WARNINGs, not
+  just genuinely unexplained ones) -- a real, found, unfixed gap.
+- EDEN's own tighter-tolerance validation (SPEC.md: "against the
+  agent's rules AND her own") -- deliberately its own future round,
+  not bundled in or skipped.
+- `agents/lunae.py`'s independent "any FAULT -> HOLD" reaction
+  (process_telemetry, separate from EDEN's new command) -- doesn't
+  affect this sim (never wired to it), but is a real, separate
+  inconsistency in the wider system, unexamined further this round.
+
 # Re-score: "noticed" vs "flagged", per sense (27 October 2026,
 # Jay's ordered re-score, item A — done before Item 4)
 
