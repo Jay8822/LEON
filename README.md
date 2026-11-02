@@ -53,6 +53,10 @@ I'm looking for a partner to help take this further — building it out and, jus
 
 My hope is for this to grow from a personal project into a proper system, and eventually into a licensable product line that could help fund further research into exactly the kind of fault-governance work this project is trying to get right. That's a goal, not something already underway — everything above describes where the project actually is today.
 
+## Copyright and use
+
+Copyright (c) 2025-2026 James (Jay) Pratt and Leon Systems Ltd. All rights reserved. This repository is published for viewing and evaluation only — see [`LICENSE`](LICENSE) for exactly what that does and doesn't allow.
+
 ## Contact
 
 leonsystemsltd@gmail.com
