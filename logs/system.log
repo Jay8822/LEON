@@ -1134,3 +1134,153 @@ from
 [2026-07-28 06:46:48] Health update from GRACIE: WARNING at 1785217608
 [2026-07-28 06:46:48] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1785217608, 'source': 'LUNAE'}
 [2026-07-28 06:46:49] Crew response: {'to': 'Commander Pratt', 'timestamp': 1785217609, 'response': "System Status: {'GRACIE': {'health': 'WARNING', 'last_update': 1785217608}, 'ETHAN': {'mode': 'IDLE', 'last_update': None}, 'LUNAE': {'nav_state': 'CRUISE', 'last_update': 1785217608}, 'EDEN': {'status': 'MONITORING', 'last_update': 1785217608}}. I remember 2 recent message(s) from you."}
+[2026-10-25 09:59:22] Crew response: {'to': 'James Pratt', 'timestamp': 1792922362, 'response': 'Received your message, James Pratt. What would you like to do next? Memory of last 3 messages still active.'}
+[2026-10-25 09:59:22] Health update from GRACIE: FAULT at 1792922362
+[2026-10-25 09:59:22] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-25 09:59:22] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1792922362, 'source': 'ETHAN_AI'}
+[2026-10-25 09:59:22] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1792922362, 'source': 'LUNAE'}
+[2026-10-25 09:59:23] Health update from GRACIE: FAULT at 1792922363
+[2026-10-25 09:59:23] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-25 09:59:23] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1792922363, 'source': 'ETHAN_AI'}
+[2026-10-25 09:59:23] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1792922363, 'source': 'LUNAE'}
+[2026-10-25 09:59:24] Health update from GRACIE: FAULT at 1792922364
+[2026-10-25 09:59:24] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-25 09:59:24] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1792922364, 'source': 'ETHAN_AI'}
+[2026-10-25 09:59:24] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1792922364, 'source': 'LUNAE'}
+[2026-10-25 09:59:25] Health update from GRACIE: FAULT at 1792922365
+[2026-10-25 09:59:25] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-25 09:59:25] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1792922365, 'source': 'ETHAN_AI'}
+[2026-10-25 09:59:25] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1792922365, 'source': 'LUNAE'}
+[2026-10-25 09:59:26] Health update from GRACIE: FAULT at 1792922366
+[2026-10-25 09:59:26] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-25 09:59:26] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1792922366, 'source': 'ETHAN_AI'}
+[2026-10-25 09:59:26] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1792922366, 'source': 'LUNAE'}
+[2026-10-25 09:59:27] Health update from GRACIE: FAULT at 1792922367
+[2026-10-25 09:59:27] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-25 09:59:27] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1792922367, 'source': 'ETHAN_AI'}
+[2026-10-25 09:59:27] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1792922367, 'source': 'LUNAE'}
+[2026-10-25 09:59:28] Health update from GRACIE: FAULT at 1792922368
+[2026-10-25 09:59:28] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-25 09:59:28] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1792922368, 'source': 'ETHAN_AI'}
+[2026-10-25 09:59:28] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1792922368, 'source': 'LUNAE'}
+[2026-10-25 09:59:29] Health update from GRACIE: FAULT at 1792922369
+[2026-10-25 09:59:29] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-25 09:59:29] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1792922369, 'source': 'ETHAN_AI'}
+[2026-10-25 09:59:29] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1792922369, 'source': 'LUNAE'}
+[2026-10-25 09:59:30] Health update from GRACIE: FAULT at 1792922370
+[2026-10-25 09:59:30] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-25 09:59:30] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1792922370, 'source': 'ETHAN_AI'}
+[2026-10-25 09:59:30] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1792922370, 'source': 'LUNAE'}
+[2026-10-25 09:59:31] Health update from GRACIE: FAULT at 1792922371
+[2026-10-25 09:59:31] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-25 09:59:31] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1792922371, 'source': 'ETHAN_AI'}
+[2026-10-25 09:59:31] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1792922371, 'source': 'LUNAE'}
+[2026-10-26 13:03:53] Crew response: {'to': 'James Pratt', 'timestamp': 1793019833, 'response': 'Received your message, James Pratt. What would you like to do next? Memory of last 3 messages still active.'}
+[2026-10-26 13:03:53] Health update from GRACIE: FAULT at 1793019833
+[2026-10-26 13:03:53] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-26 13:03:53] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793019833, 'source': 'ETHAN_AI'}
+[2026-10-26 13:03:53] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793019833, 'source': 'LUNAE'}
+[2026-10-26 13:03:54] Health update from GRACIE: FAULT at 1793019834
+[2026-10-26 13:03:54] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-26 13:03:54] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793019834, 'source': 'ETHAN_AI'}
+[2026-10-26 13:03:54] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793019834, 'source': 'LUNAE'}
+[2026-10-26 13:03:55] Health update from GRACIE: FAULT at 1793019835
+[2026-10-26 13:03:55] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-26 13:03:55] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793019835, 'source': 'ETHAN_AI'}
+[2026-10-26 13:03:55] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793019835, 'source': 'LUNAE'}
+[2026-10-26 13:03:56] Health update from GRACIE: FAULT at 1793019836
+[2026-10-26 13:03:56] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-26 13:03:56] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793019836, 'source': 'ETHAN_AI'}
+[2026-10-26 13:03:56] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793019836, 'source': 'LUNAE'}
+[2026-10-26 13:03:57] Health update from GRACIE: FAULT at 1793019837
+[2026-10-26 13:03:57] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-26 13:03:57] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793019837, 'source': 'ETHAN_AI'}
+[2026-10-26 13:03:57] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793019837, 'source': 'LUNAE'}
+[2026-10-26 13:03:58] Health update from GRACIE: FAULT at 1793019838
+[2026-10-26 13:03:58] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-26 13:03:58] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793019838, 'source': 'ETHAN_AI'}
+[2026-10-26 13:03:58] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793019838, 'source': 'LUNAE'}
+[2026-10-26 13:03:59] Health update from GRACIE: FAULT at 1793019839
+[2026-10-26 13:03:59] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-26 13:03:59] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793019839, 'source': 'ETHAN_AI'}
+[2026-10-26 13:03:59] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793019839, 'source': 'LUNAE'}
+[2026-10-26 13:04:00] Health update from GRACIE: FAULT at 1793019840
+[2026-10-26 13:04:00] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-26 13:04:00] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793019840, 'source': 'ETHAN_AI'}
+[2026-10-26 13:04:00] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793019840, 'source': 'LUNAE'}
+[2026-10-26 13:04:01] Health update from GRACIE: FAULT at 1793019841
+[2026-10-26 13:04:01] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-26 13:04:01] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793019841, 'source': 'ETHAN_AI'}
+[2026-10-26 13:04:01] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793019841, 'source': 'LUNAE'}
+[2026-10-26 13:04:02] Health update from GRACIE: FAULT at 1793019842
+[2026-10-26 13:04:02] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-26 13:04:02] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793019842, 'source': 'ETHAN_AI'}
+[2026-10-26 13:04:02] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793019842, 'source': 'LUNAE'}
+[2026-10-27 20:46:12] Crew response: {'to': 'James Pratt', 'timestamp': 1793133972, 'response': 'Received your message, James Pratt. What would you like to do next? Memory of last 3 messages still active.'}
+[2026-10-27 20:46:12] Health update from GRACIE: NOMINAL at 1793133972
+[2026-10-27 20:46:12] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793133972, 'source': 'LUNAE'}
+[2026-10-27 20:46:13] Health update from GRACIE: FAULT at 1793133973
+[2026-10-27 20:46:13] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-27 20:46:13] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793133973, 'source': 'ETHAN_AI'}
+[2026-10-27 20:46:13] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793133973, 'source': 'LUNAE'}
+[2026-10-27 20:46:14] Health update from GRACIE: FAULT at 1793133974
+[2026-10-27 20:46:14] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-27 20:46:14] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793133974, 'source': 'ETHAN_AI'}
+[2026-10-27 20:46:14] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793133974, 'source': 'LUNAE'}
+[2026-10-27 20:46:15] Health update from GRACIE: FAULT at 1793133975
+[2026-10-27 20:46:15] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-27 20:46:15] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793133975, 'source': 'ETHAN_AI'}
+[2026-10-27 20:46:15] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793133975, 'source': 'LUNAE'}
+[2026-10-27 20:46:16] Health update from GRACIE: FAULT at 1793133976
+[2026-10-27 20:46:16] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-27 20:46:16] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793133976, 'source': 'ETHAN_AI'}
+[2026-10-27 20:46:16] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793133976, 'source': 'LUNAE'}
+[2026-10-27 20:46:17] Health update from GRACIE: FAULT at 1793133977
+[2026-10-27 20:46:17] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-27 20:46:17] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793133977, 'source': 'ETHAN_AI'}
+[2026-10-27 20:46:17] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793133977, 'source': 'LUNAE'}
+[2026-10-27 20:46:18] Health update from GRACIE: FAULT at 1793133978
+[2026-10-27 20:46:18] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-27 20:46:18] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793133978, 'source': 'ETHAN_AI'}
+[2026-10-27 20:46:18] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793133978, 'source': 'LUNAE'}
+[2026-10-27 20:46:19] Health update from GRACIE: FAULT at 1793133979
+[2026-10-27 20:46:19] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-27 20:46:19] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793133979, 'source': 'ETHAN_AI'}
+[2026-10-27 20:46:19] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793133979, 'source': 'LUNAE'}
+[2026-10-27 20:46:20] Health update from GRACIE: FAULT at 1793133980
+[2026-10-27 20:46:20] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-27 20:46:20] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793133980, 'source': 'ETHAN_AI'}
+[2026-10-27 20:46:20] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793133980, 'source': 'LUNAE'}
+[2026-10-27 20:46:21] Health update from GRACIE: FAULT at 1793133981
+[2026-10-27 20:46:21] Command issued: {'command': 'SAFE_MODE', 'mode': None, 'reason': 'GRACIE_FAULT'}
+[2026-10-27 20:46:21] System state update: {'propulsion_mode': 'NTP', 'timestamp': 1793133981, 'source': 'ETHAN_AI'}
+[2026-10-27 20:46:21] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793133981, 'source': 'LUNAE'}
+[2026-10-28 10:30:54] Crew response: {'to': 'James Pratt', 'timestamp': 1793183454, 'response': 'Received your message, James Pratt. What would you like to do next? Memory of last 3 messages still active.'}
+[2026-10-28 10:30:54] Health update from GRACIE: NOMINAL at 1793183454
+[2026-10-28 10:30:54] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793183454, 'source': 'LUNAE'}
+[2026-10-28 10:30:55] Health update from GRACIE: WARNING at 1793183455
+[2026-10-28 10:30:55] Navigation state update: {'nav_state': 'HOLD', 'timestamp': 1793183455, 'source': 'LUNAE'}
+[2026-10-28 10:30:55] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793183455, 'source': 'LUNAE'}
+[2026-10-28 10:30:56] Health update from GRACIE: NOMINAL at 1793183456
+[2026-10-28 10:30:56] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793183456, 'source': 'LUNAE'}
+[2026-10-28 10:30:57] Health update from GRACIE: FAULT at 1793183457
+[2026-10-28 10:30:57] Navigation state update: {'nav_state': 'HOLD', 'timestamp': 1793183457, 'source': 'LUNAE'}
+[2026-10-28 10:30:57] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793183457, 'source': 'LUNAE'}
+[2026-10-28 10:30:58] Health update from GRACIE: FAULT at 1793183458
+[2026-10-28 10:30:58] Navigation state update: {'nav_state': 'HOLD', 'timestamp': 1793183458, 'source': 'LUNAE'}
+[2026-10-28 10:30:58] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793183458, 'source': 'LUNAE'}
+[2026-10-28 10:30:59] Health update from GRACIE: FAULT at 1793183459
+[2026-10-28 10:30:59] Navigation state update: {'nav_state': 'HOLD', 'timestamp': 1793183459, 'source': 'LUNAE'}
+[2026-10-28 10:30:59] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793183459, 'source': 'LUNAE'}
+[2026-10-28 10:31:00] Health update from GRACIE: FAULT at 1793183460
+[2026-10-28 10:31:00] Navigation state update: {'nav_state': 'HOLD', 'timestamp': 1793183460, 'source': 'LUNAE'}
+[2026-10-28 10:31:00] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793183460, 'source': 'LUNAE'}
+[2026-10-28 10:31:01] Health update from GRACIE: FAULT at 1793183461
+[2026-10-28 10:31:01] Navigation state update: {'nav_state': 'HOLD', 'timestamp': 1793183461, 'source': 'LUNAE'}
+[2026-10-28 10:31:01] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793183461, 'source': 'LUNAE'}
+[2026-10-28 10:31:02] Health update from GRACIE: FAULT at 1793183462
+[2026-10-28 10:31:02] Navigation state update: {'nav_state': 'HOLD', 'timestamp': 1793183462, 'source': 'LUNAE'}
+[2026-10-28 10:31:02] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793183462, 'source': 'LUNAE'}
+[2026-10-28 10:31:03] Health update from GRACIE: FAULT at 1793183463
+[2026-10-28 10:31:03] Navigation state update: {'nav_state': 'HOLD', 'timestamp': 1793183463, 'source': 'LUNAE'}
+[2026-10-28 10:31:03] Navigation state update: {'nav_state': 'CRUISE', 'timestamp': 1793183463, 'source': 'LUNAE'}

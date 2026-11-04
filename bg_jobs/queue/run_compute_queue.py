@@ -58,15 +58,42 @@ PROOF_EXE_DEFAULT = os.path.join(
 
 
 def _load_status():
+    # 2026-10-29: a disk-full crash truncated this file mid-write, and the
+    # next run then crashed at startup on the empty file before reaching
+    # any job -- treat anything unreadable as "nothing recorded yet"
+    # instead, and say so, rather than taking the whole queue down again.
     if os.path.exists(STATUS_PATH):
         with open(STATUS_PATH) as f:
-            return json.load(f)
+            raw = f.read()
+        if raw.strip():
+            try:
+                return json.loads(raw)
+            except json.JSONDecodeError:
+                print(f"WARNING: {STATUS_PATH} is corrupted/unreadable -- starting from empty status.")
+        else:
+            print(f"WARNING: {STATUS_PATH} is empty -- starting from empty status.")
     return {}
 
 
 def _save_status(status):
-    with open(STATUS_PATH, "w") as f:
+    # Atomic (write-then-replace) so a crash mid-write can never leave a
+    # corrupted/empty status file -- the direct cause of the above.
+    tmp_path = STATUS_PATH + ".tmp"
+    with open(tmp_path, "w") as f:
         json.dump(status, f, indent=2, default=str)
+    os.replace(tmp_path, STATUS_PATH)
+
+
+def _save_status_safe(status):
+    # 2026-10-29: this status save itself (not the job) is what actually
+    # crashed the whole queue (disk-full, uncaught, outside any per-job
+    # try/except) -- a save failure must never take down the rest of the
+    # queue either, same isolation the module docstring already promises
+    # for job failures.
+    try:
+        _save_status(status)
+    except OSError as exc:
+        print(f"WARNING: could not write {STATUS_PATH} ({exc!r}) -- continuing without saving status.")
 
 
 def _now():
@@ -85,7 +112,7 @@ def main():
 
         print(f"\n[{key}] STARTING, {_now()} -- {description}")
         status[key] = {"outcome": "RUNNING", "started_at": _now()}
-        _save_status(status)
+        _save_status_safe(status)
 
         try:
             import importlib
@@ -103,7 +130,7 @@ def main():
                 "finished_at": _now(), "traceback": tb,
             }
             print(f"[{key}] FAILED, {_now()} -- logged, moving to the next job.\n{tb}")
-        _save_status(status)
+        _save_status_safe(status)
 
     print(f"\n=== Compute queue finished, {_now()} ===")
     for key, _, _ in JOBS:
