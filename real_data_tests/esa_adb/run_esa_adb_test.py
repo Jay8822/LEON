@@ -266,14 +266,45 @@ def label_at(timestamp, labels):
     return None
 
 
+class LabelLookup:
+    """Same result as label_at(timestamp, labels) -- the first label
+    (in ORIGINAL list order) covering timestamp, or None -- but O(1)
+    amortized for a caller that queries with non-decreasing
+    timestamps, which is the only way derive_rules() and
+    score_channel_variant() ever call it. label_at() itself does an
+    O(n_labels) scan per call; labels are few, but this runs once per
+    reading, millions of times per channel (2026-11-04, "JOB 2 SPEED-
+    UP", profiled at ~23% of a channel's post-logging-fix runtime).
+    label_at() is left as-is for any other caller."""
+
+    def __init__(self, labels):
+        self._labels = labels
+        self._order = sorted(range(len(labels)), key=lambda i: labels[i][1])
+        self._next_i = 0
+        self._active = []  # [(orig_idx, category, end), ...]
+
+    def at(self, timestamp):
+        labels, order = self._labels, self._order
+        while self._next_i < len(order) and labels[order[self._next_i]][1] <= timestamp:
+            idx = order[self._next_i]
+            self._active.append((idx, labels[idx][0], labels[idx][2]))
+            self._next_i += 1
+        if self._active:
+            self._active = [a for a in self._active if a[2] >= timestamp]
+        if not self._active:
+            return None
+        return min(self._active, key=lambda a: a[0])[1]
+
+
 def derive_rules(timestamps, values, labels, cutoff):
     """Chunks the TRAINING + NOMINAL-only portion into calendar days,
     returns {setting_name: ChannelRule}."""
     day_max, day_min, day_jump, day_leash = {}, {}, {}, {}
+    label_lookup = LabelLookup(labels)
     for t, v in zip(timestamps, values):
         if t >= cutoff:
             continue
-        category = label_at(t, labels)
+        category = label_lookup.at(t)
         if category is not None:
             continue  # excluded from derivation -- labelled, not nominal
         day = t.date()

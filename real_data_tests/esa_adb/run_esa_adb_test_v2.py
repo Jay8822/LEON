@@ -92,6 +92,7 @@ from real_data_tests.esa_adb.run_esa_adb_test import (
     load_labels_for_channel,
     load_anomaly_types,
     label_at,
+    LabelLookup,
     select_channels,
     derive_rules,
 )
@@ -236,7 +237,8 @@ def linked_trigger_times(path, prefix, mission_zip, channel, setting_name, windo
 
 
 def score_channel_variant(channel, rule_values, linked_channels, timestamps, values, labels, cutoff,
-                           noise_band, window_seconds, trigger_times_sorted, episode_gap_seconds):
+                           noise_band, window_seconds, trigger_times_sorted, episode_gap_seconds,
+                           log_nominal_readings=True, log_publishes=True):
     if any(rule_values[k] is None for k in
            ("level_high", "level_low", "jump_limit", "leash_slope_limit")):
         return {"skipped": "insufficient nominal training days to derive a limit"}
@@ -254,18 +256,19 @@ def score_channel_variant(channel, rule_values, linked_channels, timestamps, val
         leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
         linked_channels=tuple(linked_channels),
     )
-    bus = EventBus()
-    gracie = GracieAgent(bus, {channel: rule})
+    bus = EventBus(log_publishes=log_publishes)
+    gracie = GracieAgent(bus, {channel: rule}, log_nominal_readings=log_nominal_readings)
 
     level_events, jump_events, leash_events, any_events = [], [], [], []
     prior_latched, prior_aggregate, last_day, last_value = "NOMINAL", "NOMINAL", None, None
     explained_noise, total_deltas = 0, 0
     big_change_cutoff = noise_band.get("big_change_cutoff") if noise_band else None
+    label_lookup = LabelLookup(labels)
 
     for t, v in zip(timestamps, values):
         if t < cutoff:
             continue
-        if label_at(t, labels) == "Communication Gap":
+        if label_lookup.at(t) == "Communication Gap":
             continue
         day = t.date()
         if last_day is not None and day != last_day:

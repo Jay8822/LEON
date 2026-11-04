@@ -14,9 +14,19 @@ class EventBus:
     remaining subscribers still receive the event.
     """
 
-    def __init__(self, name: str = "event_bus"):
+    def __init__(self, name: str = "event_bus", log_publishes: bool = True):
+        """log_publishes: whether publish() logs its generic
+        per-publish line. Defaults to True -- unchanged behaviour for
+        every existing caller. 2026-11-04: job2 constructs a fresh,
+        throwaway EventBus per channel/setting/window combo, so this
+        line fires once per reading there (Ccode update.txt, "JOB 2
+        SPEED-UP"); only job2 passes False. Each agent's own specific
+        event announcement (jump/level/leash/fault/CHESTER) is a
+        separate self.logger.info() call on the AGENT, not this one --
+        real events stay logged either way."""
         self.subscribers: Dict[str, List[Callable[[dict], None]]] = {}
         self.logger = setup_agent_logger(name)
+        self._log_publishes = log_publishes
 
     def subscribe(self, topic: str, handler: Callable[[dict], None]):
         handler_name = getattr(handler, "__name__", repr(handler))
@@ -30,7 +40,8 @@ class EventBus:
 
     def publish(self, topic: str, payload: dict):
         handlers = self.subscribers.get(topic, [])
-        self.logger.info(f"Publishing '{topic}' to {len(handlers)} handler(s): {payload}")
+        if self._log_publishes:
+            self.logger.info(f"Publishing '{topic}' to {len(handlers)} handler(s): {payload}")
         for handler in list(handlers):
             try:
                 handler(payload)

@@ -250,10 +250,21 @@ class _ChannelState:
 
 
 class GracieAgent:
-    def __init__(self, bus: EventBus, rule_book: RuleBook):
+    def __init__(self, bus: EventBus, rule_book: RuleBook, log_nominal_readings: bool = True):
+        """log_nominal_readings: whether report_health() logs its
+        routine per-reading line. Defaults to True -- unchanged
+        behaviour for every existing caller. 2026-11-04: job2's own
+        per-reading NOMINAL line (one per reading x 6 settings/windows
+        x millions of readings) measured at ~79% of a channel's
+        runtime (Ccode update.txt, "JOB 2 SPEED-UP"); only job2 passes
+        False. Jump/level/leash/fault/CHESTER events each have their
+        own separate self.logger.info() call elsewhere in this file --
+        none of those are gated by this flag, so real events are
+        still logged either way."""
         self.logger = setup_agent_logger("gracie")
         self.bus = bus
         self.rule_book = rule_book
+        self._log_nominal_readings = log_nominal_readings
         self._states: Dict[str, _ChannelState] = {
             name: _ChannelState(rule=rule) for name, rule in rule_book.items()
         }
@@ -600,7 +611,8 @@ class GracieAgent:
     def report_health(self, timestamp=None):
         if timestamp is None:
             timestamp = int(time.time())
-        self.logger.info(f"Reporting health: {self.health_state}")
+        if self._log_nominal_readings:
+            self.logger.info(f"Reporting health: {self.health_state}")
         self.bus.publish("telemetry/health", {
             "system_health": self.health_state,
             "source": "GRACIE",

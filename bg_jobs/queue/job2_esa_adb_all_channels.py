@@ -27,10 +27,14 @@ score, identical to running without it. stand_in_blueprint.py's noise
 bands, by contrast, WERE computed for every monitored channel, so
 those are real for every new channel too.
 
-Checkpointed per channel (resume-skip), same discipline as the
-original script. This will take a VERY long time (measured per-
-channel rate, extrapolated below) -- expected, meant to run
-unattended for days.
+Checkpointed per PASS (one of 6 settings/windows combinations per
+channel), not just per channel -- changed 2026-11-04 (speed-up round)
+after stopping the live run for the logging/label_at fixes cost a
+full redo of the channel then in progress, since the old per-channel-
+only checkpoint had nothing to resume from mid-channel. Resume never
+re-enters GRACIE mid-pass; it only ever skips passes already on disk
+and starts the next whole one, same as a first run. This will take a
+long time -- expected, meant to run unattended for days.
 
 Run from the repo root:
     python -m bg_jobs.queue.job2_esa_adb_all_channels
@@ -44,7 +48,7 @@ import time
 import numpy as np
 
 from real_data_tests.esa_adb.run_esa_adb_test import (
-    DATA_DIR, RESULTS_DIR, MISSION_SPANS, CUTOFF_FRACTION,
+    DATA_DIR, RESULTS_DIR, MISSION_SPANS, CUTOFF_FRACTION, SETTINGS,
     load_channel_series, load_channels_csv, load_labels_for_channel, load_anomaly_types,
     select_channels, derive_rules,
 )
@@ -55,6 +59,30 @@ from real_data_tests.esa_adb.run_esa_adb_test_v2 import (
 )
 
 JOB_RESULTS_SUFFIX = "-v2-allchannels.json"
+
+
+def _channel_complete(channel_result):
+    """True only if every setting x window pass is present and there's
+    no recorded error. SETTINGS/REACTION_WINDOWS_SECONDS are both
+    fixed, known dicts -- this never needs to load the channel's data."""
+    if channel_result is None or "error" in channel_result:
+        return False
+    return all(
+        setting_name in channel_result
+        and all(window_name in channel_result[setting_name] for window_name in REACTION_WINDOWS_SECONDS)
+        for setting_name in SETTINGS
+    )
+
+
+def _atomic_write_results(results, results_path):
+    # Atomic (write-then-replace): the 2026-10-29 disk-full crash hit
+    # this exact pattern in run_compute_queue.py's own status file and
+    # left it truncated/unreadable -- this checkpoint is the one thing
+    # that must survive that, since it's what resume reads back.
+    tmp_path = results_path + ".tmp"
+    with open(tmp_path, "w") as f:
+        json.dump(results, f, default=str, indent=2)
+    os.replace(tmp_path, results_path)
 
 
 def remaining_channels(mission_zip, prefix):
@@ -96,7 +124,7 @@ def run_mission_remaining(mission_zip, channel_limit_rows=None):
     print(f"=== {mission_zip}: {len(to_do)} new channels (not in the original 16) ===")
 
     for channel in to_do:
-        if channel in results:
+        if _channel_complete(results.get(channel)):
             print(f"{channel}: already done, skipping (resume).")
             continue
         t0 = time.time()
@@ -113,10 +141,25 @@ def run_mission_remaining(mission_zip, channel_limit_rows=None):
                 episode_gap_seconds = EPISODE_GAP_MULTIPLE * interval
             noise_band = stand_in["noise_bands"].get(channel, {})
 
-            channel_result = {"n_samples": len(values), "episode_gap_seconds": episode_gap_seconds}
+            # Resume at PASS granularity (2026-11-04, speed-up round):
+            # a channel used to only ever get written to disk after ALL
+            # 6 passes finished, so any interruption mid-channel lost
+            # everything done on it so far -- this is what made the
+            # speed-up fix cost a full redo of channel_18. Never
+            # resumes GRACIE mid-pass -- each pass is its own fresh
+            # GracieAgent/EventBus regardless, so "resume" only ever
+            # means "start the next whole pass," same as a first run.
+            existing = results.get(channel)
+            channel_result = dict(existing) if existing is not None else {}
+            channel_result.pop("error", None)
+            channel_result["n_samples"] = len(values)
+            channel_result["episode_gap_seconds"] = episode_gap_seconds
+
             for setting_name, rule_values in rules.items():
-                channel_result[setting_name] = {}
+                channel_result.setdefault(setting_name, {})
                 for window_name, window_seconds in REACTION_WINDOWS_SECONDS.items():
+                    if window_name in channel_result[setting_name]:
+                        continue  # this pass already checkpointed -- resume, don't redo
                     jitter = stand_in["jitter_together"].get(window_name, {}).get(channel, [])
                     linked_channels = [d["linked_to"] for d in jitter if d["linked_to"] in already_scored_set]
                     trigger_times = linked_trigger_times(
@@ -125,17 +168,24 @@ def run_mission_remaining(mission_zip, channel_limit_rows=None):
                     channel_result[setting_name][window_name] = score_channel_variant(
                         channel, rule_values, linked_channels, timestamps, values, labels, cutoff,
                         noise_band, window_seconds, trigger_times, episode_gap_seconds,
+                        log_nominal_readings=False, log_publishes=False,
                     )
-            channel_result["elapsed_seconds"] = time.time() - t0
-        except Exception as exc:
-            channel_result = {"error": repr(exc), "elapsed_seconds": time.time() - t0}
-            print(f"{channel}: FAILED after {channel_result['elapsed_seconds']:.1f}s -- {exc!r}")
+                    results[channel] = channel_result
+                    _atomic_write_results(results, results_path)
+                    print(f"{channel}/{setting_name}/{window_name}: done -- checkpointed.")
 
-        results[channel] = channel_result
-        with open(results_path, "w") as f:
-            json.dump(results, f, default=str, indent=2)
-        if "error" not in channel_result:
+            channel_result["elapsed_seconds"] = time.time() - t0
+            results[channel] = channel_result
+            _atomic_write_results(results, results_path)
             print(f"{channel}: done in {channel_result['elapsed_seconds']:.1f}s -- checkpointed.")
+        except Exception as exc:
+            elapsed = time.time() - t0
+            channel_result = results.get(channel, {})
+            channel_result["error"] = repr(exc)
+            channel_result["elapsed_seconds"] = elapsed
+            results[channel] = channel_result
+            _atomic_write_results(results, results_path)
+            print(f"{channel}: FAILED after {elapsed:.1f}s -- {exc!r}")
 
         timestamps = values = labels = None
         gc.collect()
