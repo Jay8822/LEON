@@ -123,7 +123,7 @@ def main():
             module.main()
             status[key] = {"outcome": "SUCCESS", "started_at": status[key]["started_at"], "finished_at": _now()}
             print(f"[{key}] SUCCESS, {_now()}")
-        except Exception:
+        except (Exception, SystemExit):
             tb = traceback.format_exc()
             status[key] = {
                 "outcome": "FAILED", "started_at": status[key]["started_at"],
