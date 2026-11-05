@@ -62,6 +62,16 @@ sim/out/
 
 # Scratch file used for review exchanges with Jay — not project content.
 Ccode update.txt
+ChatGPT relay.txt.txt
+
+# Throwaway measurement/proof scripts, written to prove a change
+# before it lands -- not meant to be kept once their job is done.
+scratchpad/
+
+# The ntfy topic name works like a password (anyone who has it can
+# post to Jay's phone) -- explicit entry for clarity, though bg_jobs/*
+# above already covers it.
+bg_jobs/notify_topic.txt
 
 # Jay's private handover brief — not for the public repo.
 HANDOVER.md
