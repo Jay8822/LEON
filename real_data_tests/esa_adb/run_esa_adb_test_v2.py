@@ -187,15 +187,19 @@ def _rank(sev):
     return _RANK.get(sev, 0)
 
 
+def severities_in_window(events, start, end):
+    """events: [(datetime, severity), ...]. Hoisted out of _score() so
+    per_event_hits() (per-event catch rate) can share it exactly --
+    same GRACE_SECONDS, same inclusive bounds, same tie to real catch
+    detection, no second copy to drift out of sync."""
+    lo, hi = start.timestamp() - GRACE_SECONDS, end.timestamp() + GRACE_SECONDS
+    return [sev for t, sev in events if lo <= t.timestamp() <= hi]
+
+
 def _score(cause_events, test_labels):
     """Same scorecard/false_counts method as run_esa_adb_test.py's
     score_test_period(), extracted so it can run twice -- once on raw
     per-reading events, once on per-episode-collapsed events."""
-
-    def severities_in_window(events, start, end):
-        lo, hi = start.timestamp() - GRACE_SECONDS, end.timestamp() + GRACE_SECONDS
-        return [sev for t, sev in events if lo <= t.timestamp() <= hi]
-
     scorecard = {}
     for category, start, end in test_labels:
         bucket = scorecard.setdefault(category, {
@@ -220,6 +224,34 @@ def _score(cause_events, test_labels):
     return scorecard, false_counts
 
 
+def per_event_hits(cause_events, test_labels_with_id):
+    """Per-event catch rate (Ccode update.txt, 2026-11-05, "JAY --
+    APPROVED" item A): same window-hit logic as _score(), but keyed
+    by labels.csv's own event ID instead of counted as channel-label
+    pairs, since a multivariate/global event's label recurs across
+    every channel it touched. test_labels_with_id: [(event_id,
+    category, start, end), ...], already restricted to the test
+    period the same way score_channel_variant's own test_labels is
+    (e >= cutoff, category != "Communication Gap"). One channel's
+    labels at a time -- the caller unions the result across every
+    channel sharing an event ID (flagged if flagged on ANY of them,
+    GRACIE watches the whole ship). False-alarm counts are untouched
+    by this -- they stay per-channel, exactly as already reported."""
+    out = {}
+    for event_id, category, start, end in test_labels_with_id:
+        bucket = out.setdefault(event_id, {
+            "category": category,
+            **{cause: {"logged": False, "flagged": False} for cause in cause_events}
+        })
+        for cause, events in cause_events.items():
+            hits = severities_in_window(events, start, end)
+            if hits:
+                bucket[cause]["logged"] = True
+            if "FAULT" in hits:
+                bucket[cause]["flagged"] = True
+    return out
+
+
 def linked_trigger_times(path, prefix, mission_zip, channel, setting_name, window_name, context_result):
     """Merged, sorted firing times (telecommands + events, full range --
     not training-only) for whatever's linked for this channel/setting/
@@ -238,7 +270,7 @@ def linked_trigger_times(path, prefix, mission_zip, channel, setting_name, windo
 
 def score_channel_variant(channel, rule_values, linked_channels, timestamps, values, labels, cutoff,
                            noise_band, window_seconds, trigger_times_sorted, episode_gap_seconds,
-                           log_nominal_readings=True, log_publishes=True):
+                           log_nominal_readings=True, log_publishes=True, return_events=False):
     if any(rule_values[k] is None for k in
            ("level_high", "level_low", "jump_limit", "leash_slope_limit")):
         return {"skipped": "insufficient nominal training days to derive a limit"}
@@ -254,6 +286,8 @@ def score_channel_variant(channel, rule_values, linked_channels, timestamps, val
         stuck_window_seconds=LEASH_WINDOW_SECONDS, min_normal_noise=0.0,  # Stillness not exercised here
         level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
         leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
+        clock_fault_class=None, clock_repeated_fault_class=None,  # Item C: not stated this round
+        clock_fault_repeat_count=3, clock_fault_repeat_window_seconds=60.0,  # fixture, not exercised by this test
         linked_channels=tuple(linked_channels),
     )
     bus = EventBus(log_publishes=log_publishes)
@@ -318,7 +352,7 @@ def score_channel_variant(channel, rule_values, linked_channels, timestamps, val
     episode_events = {cause: _collapse(events, episode_gap_seconds) for cause, events in cause_events.items()}
     per_episode_scorecard, per_episode_false = _score(episode_events, test_labels)
 
-    return {
+    result = {
         "rule": rule_values,
         "linked_channels": list(linked_channels),
         "noise_filter": {"explained": explained_noise, "total_deltas": total_deltas,
@@ -334,6 +368,15 @@ def score_channel_variant(channel, rule_values, linked_channels, timestamps, val
             "n_leash_events": len(episode_events["leash"]),
         },
     }
+    if return_events:
+        # Raw per-reading cause_events (level/jump/leash/any, each
+        # [(datetime, severity), ...]) -- for per_event_hits(), which
+        # needs the actual event timestamps, not just the aggregate
+        # counts above. Per-reading only; per-event catch rate isn't
+        # about episode-collapsing (that's a false-alarm-granularity
+        # question, orthogonal to whether a labelled event was caught).
+        result["_events"] = cause_events
+    return result
 
 
 def run_mission(mission_zip):

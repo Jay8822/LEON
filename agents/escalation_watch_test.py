@@ -41,6 +41,8 @@ def make_gracie_and_watch():
         stuck_window_seconds=1.0, min_normal_noise=0.0,  # Stillness not exercised here
         level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
         leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
+        clock_fault_class=None, clock_repeated_fault_class=None,  # Item C: not stated this round
+        clock_fault_repeat_count=3, clock_fault_repeat_window_seconds=60.0,  # fixture, not exercised by most tests here
     )
     gracie = GracieAgent(bus, {"temp_c": rule})
     orchestrator = make_orchestrator()
@@ -118,6 +120,8 @@ def test_watch_failure_never_affects_gracie_or_the_bus():
         stuck_window_seconds=1.0, min_normal_noise=0.0,
         level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
         leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
+        clock_fault_class=None, clock_repeated_fault_class=None,  # Item C: not stated this round
+        clock_fault_repeat_count=3, clock_fault_repeat_window_seconds=60.0,  # fixture, not exercised by most tests here
     )
     gracie = GracieAgent(bus, {"temp_c": rule})
     watch = EscalationWatch(bus, _ExplodingOrchestrator())

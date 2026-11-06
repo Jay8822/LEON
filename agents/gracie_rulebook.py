@@ -32,10 +32,23 @@ caller to state "this channel's blueprint doesn't define a Stillness
 limit this round" (range is never negative, so the check can never
 fire), not an invented real number standing in for one.
 
+A fifth, added 2026-11-05 (Ccode update.txt, "CLOCK-FAULT PLAN",
+found during real ESA-ADB data's backward-timestamp DST artifact):
+clock_fault_repeat_count / clock_fault_repeat_window_seconds -- how
+many out-of-order readings within how many seconds of each other
+before a clock fault escalates from a single flagged event to a
+sustained, MAJOR-class one. Required, no defaults -- real hardware
+sets these, same as every other limit; tests use clearly-labelled
+placeholder values.
+
 Fault class per sense, added 2026-10-28 (Item C, SPEC.md's GRACIE
 "Fault class" bullet and "Fault classes"): level/jump/leash-soft/
 leash-hard/Stillness each carry their own FaultClass (MAJOR,
 NON_URGENT or BOOM), required fields with no dataclass default --
+(clock, added 2026-11-05, has two: clock_fault_class for a single
+occurrence, clock_repeated_fault_class once N-in-T is reached -- same
+two-tier shape leash already uses for soft vs hard, for the same
+reason: one static field can't hold two different answers.)
 every caller must pass something, but that something may honestly be
 `None` ("this rule book doesn't state a class for this sense this
 round"), same "required but an explicit non-claim is allowed" pattern
@@ -78,6 +91,24 @@ class ChannelRule:
     leash_soft_fault_class: Optional[FaultClass]
     leash_hard_fault_class: Optional[FaultClass]
     stillness_fault_class: Optional[FaultClass]
+    # Clock health, added 2026-11-05 (Ccode update.txt, "CLOCK-FAULT
+    # PLAN"): a reading timestamped earlier than the channel's last one
+    # is always flagged -- Jay's core rule, "anything that isn't normal
+    # is flagged." Two tiers, same shape as leash's soft/hard (one
+    # sense, two causing_sense values, two fault classes, since a
+    # single static fault_class can't hold two different answers for
+    # "first time" vs "N-th time"): a single occurrence is
+    # clock_fault_class; clock_fault_repeat_count occurrences within
+    # clock_fault_repeat_window_seconds of each other escalates to
+    # clock_repeated_fault_class ("a clock you can't trust affects
+    # every log, timer and sign-off"). N/T measured against the last
+    # TRUSTED (forward-moving) timestamp before each jump, never the
+    # readings' own still-suspect timestamps -- see module docstring
+    # of agents/gracie.py's _process_clock.
+    clock_fault_class: Optional[FaultClass]
+    clock_repeated_fault_class: Optional[FaultClass]
+    clock_fault_repeat_count: int
+    clock_fault_repeat_window_seconds: float
     # Other channels this one is linked to, per SPEC.md's Leash
     # section: a settling soft pull on a channel linked to one
     # currently in an active major fault stays with that fault's

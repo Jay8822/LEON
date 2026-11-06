@@ -69,6 +69,8 @@ def check_channel(channel, rule_values, timestamps, values, labels, cutoff):
         stuck_window_seconds=LEASH_WINDOW_SECONDS, min_normal_noise=0.0,  # Stillness not exercised here
         level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
         leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
+        clock_fault_class=None, clock_repeated_fault_class=None,  # Item C: not stated this round
+        clock_fault_repeat_count=3, clock_fault_repeat_window_seconds=60.0,  # fixture, not exercised by this check
     )
     bus = EventBus()
     gracie = GracieAgent(bus, {channel: rule})

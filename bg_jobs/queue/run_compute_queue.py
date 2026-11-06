@@ -49,6 +49,8 @@ JOBS = [
      "NASA battery ageing measurement, look only"),
     ("job5_cpp_proof_bigger", "bg_jobs.queue.job5_cpp_proof_bigger",
      "C++ proof on full channel_62 plus channel_63/64/65"),
+    ("job6_per_event_catch_rate", "bg_jobs.queue.job6_per_event_catch_rate",
+     "Per-event catch rate, all 105 monitored channels, STRICT/LOOSE"),
 ]
 
 PROOF_EXE_DEFAULT = os.path.join(

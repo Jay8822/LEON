@@ -34,7 +34,8 @@ OUT_DIR = os.path.join(PROOF_DIR, "out")
 
 READINGS_HEADER = ["sample_index", "timestamp", "value", "clear_before"]
 VERDICT_HEADER = ["sample_index", "severity", "jump_event", "leash_settled",
-                  "new_crossing_while_latched", "has_slope", "slope"]
+                  "new_crossing_while_latched", "has_slope", "slope",
+                  "clock_event", "clock_repeated"]
 
 
 def write_sidecar(path, rule: ChannelRule):
@@ -46,6 +47,8 @@ def write_sidecar(path, rule: ChannelRule):
         f.write(f"leash_slope_limit={rule.leash_slope_limit!r}\n")
         f.write(f"leash_soft_duration_seconds={rule.leash_soft_duration_seconds!r}\n")
         f.write(f"leash_hard_duration_seconds={rule.leash_hard_duration_seconds!r}\n")
+        f.write(f"clock_fault_repeat_count={rule.clock_fault_repeat_count!r}\n")
+        f.write(f"clock_fault_repeat_window_seconds={rule.clock_fault_repeat_window_seconds!r}\n")
         f.write(f"linked_channels={','.join(rule.linked_channels)}\n")
 
 
@@ -67,6 +70,7 @@ def write_reference_csv(path, log):
                 row["sample_index"], row["severity"], int(row["jump_event"]),
                 int(row["leash_settled"]), int(row["new_crossing_while_latched"]),
                 int(row["has_slope"]), repr(row["slope"]),
+                int(row["clock_event"]), int(row["clock_repeated"]),
             ])
 
 
@@ -106,14 +110,18 @@ def run_reference(channel, rule: ChannelRule, rows):
                 and prior_severity == "FAULT"
             )
             slope, outcome = captured_leash[-1]
+            last_reading = gracie._last_readings[channel]
+            clock_event = bool(last_reading["clock_event"])
             log.append({
                 "sample_index": idx,
                 "severity": state.latched_severity,
-                "jump_event": bool(gracie._last_readings[channel]["jump"]),
+                "jump_event": bool(last_reading["jump"]),
                 "leash_settled": outcome == "settled",
                 "new_crossing_while_latched": new_crossing_while_latched,
                 "has_slope": slope is not None,
                 "slope": slope if slope is not None else 0.0,
+                "clock_event": clock_event,
+                "clock_repeated": clock_event and last_reading["causing_sense"] == "clock_repeated",
             })
     finally:
         gracie_module.GracieAgent._process_leash = original_process_leash

@@ -36,6 +36,8 @@ struct SidecarRule {
     double leash_slope_limit = 0.0;
     double leash_soft_duration_seconds = 0.0;
     double leash_hard_duration_seconds = 0.0;
+    int clock_fault_repeat_count = 0;
+    double clock_fault_repeat_window_seconds = 0.0;
     std::vector<std::string> linked_channels;
 };
 
@@ -69,6 +71,10 @@ bool load_sidecar(const std::string& path, SidecarRule* out) {
             out->leash_soft_duration_seconds = std::stod(val);
         } else if (key == "leash_hard_duration_seconds") {
             out->leash_hard_duration_seconds = std::stod(val);
+        } else if (key == "clock_fault_repeat_count") {
+            out->clock_fault_repeat_count = std::stoi(val);
+        } else if (key == "clock_fault_repeat_window_seconds") {
+            out->clock_fault_repeat_window_seconds = std::stod(val);
         } else if (key == "linked_channels") {
             if (!val.empty()) {
                 std::stringstream ss(val);
@@ -165,6 +171,8 @@ int main(int argc, char** argv) {
     rule.leash_slope_limit = sidecar.leash_slope_limit;
     rule.leash_soft_duration_seconds = sidecar.leash_soft_duration_seconds;
     rule.leash_hard_duration_seconds = sidecar.leash_hard_duration_seconds;
+    rule.clock_fault_repeat_count = sidecar.clock_fault_repeat_count;
+    rule.clock_fault_repeat_window_seconds = sidecar.clock_fault_repeat_window_seconds;
     rule.linked_channel_count = 0;
     const std::size_t max_linked = static_cast<std::size_t>(leon::kMaxLinkedChannels);
     for (std::size_t i = 0; i < sidecar.linked_channels.size() && i < max_linked; ++i) {
@@ -188,7 +196,8 @@ int main(int argc, char** argv) {
     // this on the first run -- caught by comparing against the
     // Python reference, not assumed correct.
     out << std::setprecision(17);
-    out << "sample_index,severity,jump_event,leash_settled,new_crossing_while_latched,has_slope,slope\n";
+    out << "sample_index,severity,jump_event,leash_settled,new_crossing_while_latched,has_slope,slope,"
+           "clock_event,clock_repeated\n";
 
     for (const Reading& r : readings) {
         if (r.clear_before) {
@@ -212,7 +221,8 @@ int main(int argc, char** argv) {
         out << r.sample_index << ',' << severity_name(result.severity) << ','
             << (result.jump_event ? 1 : 0) << ',' << (result.leash_settled ? 1 : 0) << ','
             << (result.new_crossing_while_latched ? 1 : 0) << ',' << (result.has_slope ? 1 : 0) << ','
-            << result.slope << '\n';
+            << result.slope << ',' << (result.clock_event ? 1 : 0) << ','
+            << (result.clock_repeated ? 1 : 0) << '\n';
     }
     std::printf("Processed %zu readings -> %s\n", readings.size(), argv[3]);
     return 0;

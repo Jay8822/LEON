@@ -67,6 +67,52 @@ Status update_leash_window(ChannelState* cs, double timestamp, double value,
     return Status::kOk;
 }
 
+// --- clock health: ported from agents/gracie.py's _process_clock ---------
+
+// Mirrors _process_clock: a reading timestamped earlier than this
+// channel's last one is always flagged, checked BEFORE level/jump/
+// leash touch the timestamp. Resets jump's last sample and leash's
+// ring so neither ever sees an out-of-order sample -- their own next
+// call reseeds from this reading exactly as it would on the very
+// first call ever, same as the Python side. N occurrences within T
+// seconds of each other (measured against the last TRUSTED,
+// forward-moving timestamp before each jump, never the readings' own
+// still-suspect ones) sets *out_repeated. Returns Status::kOk unless
+// the occurrence ring is ever exhausted (see kMaxClockFaultOccurrences).
+Status process_clock(ChannelState* cs, double timestamp, bool* out_clock_event, bool* out_repeated) {
+    *out_clock_event = false;
+    *out_repeated = false;
+    if (!cs->has_last_timestamp) {
+        cs->has_last_timestamp = true;
+        cs->last_timestamp = timestamp;
+        return Status::kOk;
+    }
+    const double last_t = cs->last_timestamp;
+    if (timestamp < last_t) {
+        *out_clock_event = true;
+        cs->ring_head = 0;
+        cs->ring_count = 0;
+        cs->has_last_sample = false;
+
+        const double cutoff = last_t - cs->rule.clock_fault_repeat_window_seconds;
+        while (cs->clock_fault_count > 0 && cs->clock_fault_times[cs->clock_fault_head] < cutoff) {
+            cs->clock_fault_head = (cs->clock_fault_head + 1) % kMaxClockFaultOccurrences;
+            cs->clock_fault_count -= 1;
+        }
+        if (cs->clock_fault_count >= kMaxClockFaultOccurrences) {
+            return Status::kRingOverflow;
+        }
+        const int tail = (cs->clock_fault_head + cs->clock_fault_count) % kMaxClockFaultOccurrences;
+        cs->clock_fault_times[tail] = last_t;
+        cs->clock_fault_count += 1;
+
+        *out_repeated = cs->clock_fault_count >= cs->rule.clock_fault_repeat_count;
+        cs->latched_severity = Severity::kFault;
+    }
+    cs->last_timestamp = timestamp;
+    return Status::kOk;
+}
+
 // --- level, jump, leash: ported from agents/gracie.py's _process_* --------
 
 // Mirrors _process_level, WITHOUT the `expected` branch (out of
@@ -249,9 +295,18 @@ Status gracie_rulebook_process_reading(GracieRulebookState* state,
     ChannelState* cs = &state->channels[channel_index];
 
     // Order matches agents/gracie.py's process_readings exactly:
-    // level, then jump, then leash -- leash's active-major-fault
-    // check reads latched_severity AFTER level has already run this
-    // same cycle, so this order is load-bearing.
+    // clock health first -- resets jump's last sample and leash's
+    // ring before either ever sees an out-of-order timestamp -- then
+    // level, then jump, then leash. Leash's active-major-fault check
+    // reads latched_severity AFTER level has already run this same
+    // cycle, so this order is load-bearing.
+    bool clock_event = false;
+    bool clock_repeated = false;
+    const Status clock_status = process_clock(cs, timestamp, &clock_event, &clock_repeated);
+    if (clock_status != Status::kOk) {
+        return clock_status;
+    }
+
     bool new_crossing_while_latched = false;
     process_level(cs, value, &new_crossing_while_latched);
 
@@ -272,6 +327,8 @@ Status gracie_rulebook_process_reading(GracieRulebookState* state,
     out_result->new_crossing_while_latched = new_crossing_while_latched;
     out_result->has_slope = has_slope;
     out_result->slope = slope;
+    out_result->clock_event = clock_event;
+    out_result->clock_repeated = clock_repeated;
     return Status::kOk;
 }
 
@@ -284,6 +341,8 @@ Status gracie_rulebook_clear_fault(GracieRulebookState* state,
     }
     ChannelState* cs = &state->channels[channel_index];
     cs->latched_severity = Severity::kNominal;
+    cs->clock_fault_head = 0;
+    cs->clock_fault_count = 0;
     if (reset_leash_timer) {
         cs->has_pull_run_start = false;
         cs->soft_active = false;

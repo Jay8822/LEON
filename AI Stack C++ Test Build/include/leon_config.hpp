@@ -25,6 +25,16 @@ constexpr int kMaxLinkedChannels = 8;    // ChannelRule.linked_channels, Python 
 // returns Status::kRingOverflow -- reported, never silently truncated.
 constexpr int kLeashRingCapacity = 2048;
 
+// Clock health (2026-11-05, Ccode update.txt "CLOCK-FAULT PLAN"): a
+// small ring of recent backward-jump occurrence times, for the
+// N-within-T-seconds escalation. N (ChannelRule.clock_fault_repeat_
+// count) is a rule-book value set from real hardware, with no
+// measured worst case yet -- unlike kLeashRingCapacity above, this is
+// generous headroom over any plausible N (expected single digits),
+// not a measured figure. Same reporting if ever exceeded:
+// Status::kRingOverflow, never silently truncated.
+constexpr int kMaxClockFaultOccurrences = 32;
+
 }  // namespace leon
 
 #endif  // LEON_CONFIG_HPP

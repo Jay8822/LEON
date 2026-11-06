@@ -27,7 +27,8 @@ generator's own mechanical simulation predicted -- not just
 import csv
 import sys
 
-DISCRETE_FIELDS = ["severity", "jump_event", "leash_settled", "new_crossing_while_latched", "has_slope"]
+DISCRETE_FIELDS = ["severity", "jump_event", "leash_settled", "new_crossing_while_latched", "has_slope",
+                    "clock_event", "clock_repeated"]
 SLOPE_TOLERANCE = 1e-9
 
 

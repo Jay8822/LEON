@@ -200,6 +200,28 @@ def load_labels_for_channel(mission_zip_path, prefix, anomaly_types, channel):
     return out
 
 
+def load_labels_with_id_for_channel(mission_zip_path, prefix, anomaly_types, channel):
+    """Same as load_labels_for_channel, but keeps each row's labels.csv
+    event ID -- the same ID recurs across every channel a
+    multivariate/global event touched (confirmed directly: e.g.
+    id_1 appears on channel_12/13/14/15/16, each with its own,
+    slightly different StartTime/EndTime). Returns
+    [(id, category, start, end), ...]. Added for the per-event catch
+    rate (Ccode update.txt, 2026-11-05, "JAY -- APPROVED" item A) --
+    load_labels_for_channel itself is untouched, every existing caller
+    keeps the plain (category, start, end) tuples it always returned."""
+    with zipfile.ZipFile(mission_zip_path) as z:
+        reader = csv.DictReader(io.StringIO(z.read(f"{prefix}/labels.csv").decode()))
+        rows = [r for r in reader if r["Channel"] == channel]
+    out = []
+    for r in rows:
+        category = anomaly_types.get(r["ID"], "Unknown")
+        start = datetime.fromisoformat(r["StartTime"].replace("Z", "+00:00")).replace(tzinfo=None)
+        end = datetime.fromisoformat(r["EndTime"].replace("Z", "+00:00")).replace(tzinfo=None)
+        out.append((r["ID"], category, start, end))
+    return out
+
+
 def load_anomaly_types(mission_zip_path, prefix):
     with zipfile.ZipFile(mission_zip_path) as z:
         reader = csv.DictReader(io.StringIO(z.read(f"{prefix}/anomaly_types.csv").decode()))
@@ -357,6 +379,8 @@ def score_test_period(channel, rule_values, timestamps, values, labels, cutoff):
         stuck_window_seconds=LEASH_WINDOW_SECONDS, min_normal_noise=0.0,  # Stillness not exercised here
         level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
         leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
+        clock_fault_class=None, clock_repeated_fault_class=None,  # Item C: not stated this round
+        clock_fault_repeat_count=3, clock_fault_repeat_window_seconds=60.0,  # fixture, not exercised by this test
     )
     bus = EventBus()
     gracie = GracieAgent(bus, {channel: rule})

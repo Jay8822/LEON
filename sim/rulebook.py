@@ -54,5 +54,14 @@ def build_rule_book(derivation_seed=None):
             leash_soft_fault_class=FAULT_CLASSES[sensor_name]["leash_soft"],
             leash_hard_fault_class=FAULT_CLASSES[sensor_name]["leash_hard"],
             stillness_fault_class=FAULT_CLASSES[sensor_name]["stillness"],
+            # Clock health didn't exist when the blueprint/FAULT_CLASSES
+            # table was co-designed and frozen (sim/COMMISSIONING.md) --
+            # None is the honest "not stated" value, same meaning as
+            # everywhere else in this file, not a derived blueprint
+            # number. Not touching FAULT_CLASSES itself -- frozen.
+            clock_fault_class=None, clock_repeated_fault_class=None,
+            # Same reasoning for N/T -- no commissioned value exists.
+            # Clearly-labelled placeholder, not a real hardware number.
+            clock_fault_repeat_count=3, clock_fault_repeat_window_seconds=60.0,
         )
     return rules, blueprint

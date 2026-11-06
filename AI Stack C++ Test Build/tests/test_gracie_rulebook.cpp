@@ -331,6 +331,91 @@ void test_find_channel_reports_unrecognized_name() {
     std::printf("  ok: a channel with no rule-book entry is reported as not found\n");
 }
 
+void test_clock_fault_on_backward_timestamp() {
+    // Ccode update.txt, 2026-11-05, "CLOCK-FAULT PLAN": a reading
+    // timestamped earlier than the channel's last one is flagged
+    // FAULT, and leash's ring / jump's last sample reset and reseed
+    // from that reading -- not left stale.
+    static GracieRulebookState state{};
+    check(leon::gracie_rulebook_init(&state) == Status::kOk, "init");
+    ChannelRule rad_rule = make_rule(40.0, 0.0, 3.0, 10.0, 0.5, 20.0, 40.0);
+    rad_rule.clock_fault_repeat_count = 3;
+    rad_rule.clock_fault_repeat_window_seconds = 60.0;
+    const int radiation = add_channel(&state, "radiation", rad_rule);
+
+    check(process(&state, radiation, 10.0, 5.0).severity == Severity::kNominal, "t=10 nominal");
+    check(process(&state, radiation, 20.0, 5.0).severity == Severity::kNominal, "t=20 nominal");
+
+    const ProcessResult r = process(&state, radiation, 15.0, 5.0);  // backward: 15 < 20
+    check(r.clock_event == true, "clock_event fires");
+    check(r.clock_repeated == false, "only 1 occurrence so far, N=3");
+    check(r.severity == Severity::kFault, "a backward timestamp is flagged FAULT");
+    const leon::ChannelState& cs = state.channels[radiation];
+    check(cs.ring_count == 1, "leash ring must reset, not keep the pre-jump entries");
+    check(cs.has_last_sample == true && cs.last_sample_timestamp == 15.0,
+          "jump's last sample must reseed from this reading");
+    std::printf("  ok: a single backward timestamp is flagged FAULT, leash/jump state reset\n");
+}
+
+void test_clock_fault_escalates_to_repeated_within_window() {
+    static GracieRulebookState state{};
+    check(leon::gracie_rulebook_init(&state) == Status::kOk, "init");
+    ChannelRule rad_rule = make_rule(40.0, 0.0, 3.0, 10.0, 0.5, 20.0, 40.0);
+    rad_rule.clock_fault_repeat_count = 3;
+    rad_rule.clock_fault_repeat_window_seconds = 60.0;
+    const int radiation = add_channel(&state, "radiation", rad_rule);
+
+    process(&state, radiation, 100.0, 5.0);
+    check(process(&state, radiation, 90.0, 5.0).clock_repeated == false, "jump 1, ref=100");
+    process(&state, radiation, 95.0, 5.0);
+    check(process(&state, radiation, 85.0, 5.0).clock_repeated == false, "jump 2, ref=95 (within 60s of 100)");
+    process(&state, radiation, 90.0, 5.0);
+    check(process(&state, radiation, 80.0, 5.0).clock_repeated == true,
+          "jump 3, ref=90 (within 60s of 100) -- 3rd occurrence must escalate");
+    std::printf("  ok: N occurrences within T seconds escalate to clock_repeated\n");
+}
+
+void test_clock_fault_does_not_escalate_outside_the_window() {
+    static GracieRulebookState state{};
+    check(leon::gracie_rulebook_init(&state) == Status::kOk, "init");
+    ChannelRule rad_rule = make_rule(40.0, 0.0, 3.0, 10.0, 0.5, 20.0, 40.0);
+    rad_rule.clock_fault_repeat_count = 3;
+    rad_rule.clock_fault_repeat_window_seconds = 60.0;
+    const int radiation = add_channel(&state, "radiation", rad_rule);
+
+    process(&state, radiation, 1000.0, 5.0);
+    check(process(&state, radiation, 990.0, 5.0).clock_repeated == false, "jump 1, ref=1000");
+    process(&state, radiation, 995.0, 5.0);
+    check(process(&state, radiation, 985.0, 5.0).clock_repeated == false, "jump 2, ref=995 (within 60s of 1000)");
+    process(&state, radiation, 2000.0, 5.0);
+    check(process(&state, radiation, 1990.0, 5.0).clock_repeated == false,
+          "jump 3, ref=2000 -- far outside 60s of jumps 1/2, which must have aged out");
+    std::printf("  ok: occurrences older than T seconds don't count toward the N-in-T escalation\n");
+}
+
+void test_clear_fault_resets_the_clock_fault_occurrence_count() {
+    static GracieRulebookState state{};
+    check(leon::gracie_rulebook_init(&state) == Status::kOk, "init");
+    ChannelRule rad_rule = make_rule(40.0, 0.0, 3.0, 10.0, 0.5, 20.0, 40.0);
+    rad_rule.clock_fault_repeat_count = 3;
+    rad_rule.clock_fault_repeat_window_seconds = 60.0;
+    const int radiation = add_channel(&state, "radiation", rad_rule);
+
+    process(&state, radiation, 100.0, 5.0);
+    process(&state, radiation, 90.0, 5.0);
+    process(&state, radiation, 95.0, 5.0);
+    process(&state, radiation, 85.0, 5.0);
+    check(state.channels[radiation].clock_fault_count == 2, "2 occurrences recorded");
+
+    check(leon::gracie_rulebook_clear_fault(&state, radiation, true) == Status::kOk, "clear_fault");
+    check(state.channels[radiation].clock_fault_count == 0, "clear_fault resets the occurrence count");
+
+    process(&state, radiation, 200.0, 5.0);
+    check(process(&state, radiation, 190.0, 5.0).clock_repeated == false,
+          "1st occurrence since sign-off must not immediately re-escalate");
+    std::printf("  ok: clear_fault resets the clock-fault occurrence count, not just the latch\n");
+}
+
 }  // namespace
 
 int main() {
@@ -345,6 +430,10 @@ int main() {
     test_leash_settles_back_stays_with_a_linked_channels_active_fault();
     test_new_crossing_while_latched_logs_but_does_not_change_anything();
     test_find_channel_reports_unrecognized_name();
+    test_clock_fault_on_backward_timestamp();
+    test_clock_fault_escalates_to_repeated_within_window();
+    test_clock_fault_does_not_escalate_outside_the_window();
+    test_clear_fault_resets_the_clock_fault_occurrence_count();
     std::printf("All GRACIE rule-book core checks passed.\n");
     return 0;
 }

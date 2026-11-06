@@ -59,6 +59,12 @@ struct ChannelRule {
     double leash_slope_limit;              // units per second
     double leash_soft_duration_seconds;
     double leash_hard_duration_seconds;
+    // Clock health (2026-11-05): N occurrences of a backward-jumped
+    // timestamp within T seconds of each other escalates from a
+    // single flagged event to a sustained one. No defaults -- set
+    // from real hardware, same discipline as every limit above.
+    int clock_fault_repeat_count;              // N
+    double clock_fault_repeat_window_seconds;  // T
     // Other channels this one is linked to (by name, resolved by
     // lookup at check-time, not by index -- so registration order
     // never matters). An empty set is a genuine default (no claimed
@@ -83,6 +89,19 @@ struct ChannelState {
     bool has_last_sample;        // for jump
     double last_sample_timestamp;
     double last_sample_value;
+
+    // Clock health (2026-11-05): the last timestamp seen for this
+    // channel, checked before any sense uses a new one.
+    bool has_last_timestamp;
+    double last_timestamp;
+    // Trusted-reference times of recent backward-jump occurrences,
+    // for the N-within-T escalation -- each entry is the last
+    // TRUSTED (forward-moving) timestamp immediately before that
+    // occurrence, never the occurrence's own still-suspect one. Same
+    // fixed-ring shape as the leash ring above, much smaller.
+    double clock_fault_times[kMaxClockFaultOccurrences];
+    int clock_fault_head;
+    int clock_fault_count;
 
     LeashRingEntry ring[kLeashRingCapacity];  // for leash's windowed slope
     int ring_head;                            // index of the oldest valid entry
@@ -124,6 +143,8 @@ struct ProcessResult {
     bool new_crossing_while_latched;       // a fresh level crossing started while already latched FAULT
     bool has_slope;                        // whether the leash window was full enough to produce a slope
     double slope;                          // the windowed slope, only meaningful if has_slope
+    bool clock_event;                      // this reading's timestamp was earlier than the last one
+    bool clock_repeated;                   // clock_event, and N occurrences fell within T seconds
 };
 
 Status gracie_rulebook_init(GracieRulebookState* state);
@@ -145,10 +166,12 @@ Status gracie_rulebook_find_channel(const GracieRulebookState* state,
                                      int* out_index);
 
 // Processes one reading for one already-registered channel. Order
-// matches agents/gracie.py's process_readings exactly: level, then
-// jump, then leash -- leash's "part of an active major fault" check
-// reads latched_severity AFTER level has already run this same cycle,
-// so the order is load-bearing, not incidental.
+// matches agents/gracie.py's process_readings exactly: clock health
+// first (2026-11-05 -- resets jump's last sample and leash's ring
+// before either ever sees an out-of-order timestamp), then level,
+// then jump, then leash -- leash's "part of an active major fault"
+// check reads latched_severity AFTER level has already run this same
+// cycle, so the order is load-bearing, not incidental.
 Status gracie_rulebook_process_reading(GracieRulebookState* state,
                                         int channel_index,
                                         double timestamp,
@@ -157,8 +180,9 @@ Status gracie_rulebook_process_reading(GracieRulebookState* state,
 
 // Mirrors agents/gracie.py's clear_fault(channel, reset_leash_timer).
 // Does NOT touch the leash ring buffer or level_crossing_active --
-// same as the Python side, which only ever resets latched_severity
-// and (if reset_leash_timer) pull_run_start/soft_active/hard_active.
+// same as the Python side, which only ever resets latched_severity,
+// clock_fault_times, and (if reset_leash_timer) pull_run_start/
+// soft_active/hard_active.
 Status gracie_rulebook_clear_fault(GracieRulebookState* state,
                                     int channel_index,
                                     bool reset_leash_timer);

@@ -31,6 +31,8 @@ TEMP_RULE = ChannelRule(
     stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
     level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
     leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
+    clock_fault_class=None, clock_repeated_fault_class=None,  # Item C: not stated this round
+    clock_fault_repeat_count=3, clock_fault_repeat_window_seconds=60.0,  # fixture, not exercised by most tests here
 )
 RAD_RULE = ChannelRule(
     name="radiation", units="rad",
@@ -41,6 +43,8 @@ RAD_RULE = ChannelRule(
     stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
     level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
     leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
+    clock_fault_class=None, clock_repeated_fault_class=None,  # Item C: not stated this round
+    clock_fault_repeat_count=3, clock_fault_repeat_window_seconds=60.0,  # fixture, not exercised by most tests here
 )
 # A separate fixture channel for the leash tests specifically: level
 # bounds set far outside anything the ramp below ever reaches, so a
@@ -56,6 +60,8 @@ DRIFT_RULE = ChannelRule(
     stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
     level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
     leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
+    clock_fault_class=None, clock_repeated_fault_class=None,  # Item C: not stated this round
+    clock_fault_repeat_count=3, clock_fault_repeat_window_seconds=60.0,  # fixture, not exercised by most tests here
 )
 
 # A second drift-style channel, with REACHABLE level bounds (unlike
@@ -70,6 +76,8 @@ COMBO_RULE = ChannelRule(
     stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
     level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
     leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
+    clock_fault_class=None, clock_repeated_fault_class=None,  # Item C: not stated this round
+    clock_fault_repeat_count=3, clock_fault_repeat_window_seconds=60.0,  # fixture, not exercised by most tests here
 )
 
 # Two channels for the LINKED-channel exception: A's own level bounds
@@ -85,6 +93,8 @@ LINKED_A_RULE = ChannelRule(
     stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
     level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
     leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
+    clock_fault_class=None, clock_repeated_fault_class=None,  # Item C: not stated this round
+    clock_fault_repeat_count=3, clock_fault_repeat_window_seconds=60.0,  # fixture, not exercised by most tests here
     linked_channels=("linked_b",),
 )
 LINKED_B_RULE = ChannelRule(
@@ -96,6 +106,8 @@ LINKED_B_RULE = ChannelRule(
     stuck_window_seconds=10.0, min_normal_noise=0.0,  # Stillness not exercised by this rule
     level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
     leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
+    clock_fault_class=None, clock_repeated_fault_class=None,  # Item C: not stated this round
+    clock_fault_repeat_count=3, clock_fault_repeat_window_seconds=60.0,  # fixture, not exercised by most tests here
 )
 
 # A channel with a REAL Stillness limit -- level/jump/leash bounds set
@@ -110,6 +122,8 @@ STUCK_RULE = ChannelRule(
     stuck_window_seconds=5.0, min_normal_noise=2.0,
     level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
     leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
+    clock_fault_class=None, clock_repeated_fault_class=None,  # Item C: not stated this round
+    clock_fault_repeat_count=3, clock_fault_repeat_window_seconds=60.0,  # fixture, not exercised by most tests here
 )
 # Same limits, but explicitly exempted -- a sensor the blueprint says
 # legitimately holds steady (SPEC.md Stillness bullet).
@@ -122,6 +136,8 @@ STEADY_RULE = ChannelRule(
     stuck_window_seconds=5.0, min_normal_noise=2.0,
     level_fault_class=None, jump_fault_class=None, leash_soft_fault_class=None,
     leash_hard_fault_class=None, stillness_fault_class=None,  # Item C: not stated this round
+    clock_fault_class=None, clock_repeated_fault_class=None,  # Item C: not stated this round
+    clock_fault_repeat_count=3, clock_fault_repeat_window_seconds=60.0,  # fixture, not exercised by most tests here
     allow_steady=True,
 )
 
@@ -577,6 +593,86 @@ def test_unrecognized_channel_is_ignored_not_guessed_at():
     print("  ok: a channel with no rule-book entry is logged and ignored, not guessed at")
 
 
+def test_clock_fault_on_backward_timestamp():
+    """Ccode update.txt, 2026-11-05, "CLOCK-FAULT PLAN": a reading
+    timestamped earlier than the channel's last one is flagged FAULT
+    (causing_sense="clock"), and leash's window / jump's last sample
+    reset and reseed from that reading -- not left stale."""
+    gracie, _, _ = make_gracie()
+    gracie.process_readings({"radiation": 5}, timestamp=10)
+    gracie.process_readings({"radiation": 5}, timestamp=20)
+    assert gracie._last_readings["radiation"]["severity"] == "NOMINAL"
+
+    gracie.process_readings({"radiation": 5}, timestamp=15)  # backward: 15 < 20
+    assert gracie._last_readings["radiation"]["clock_event"] is True
+    assert gracie._last_readings["radiation"]["causing_sense"] == "clock"
+    assert gracie._last_readings["radiation"]["severity"] == "FAULT"
+    state = gracie._states["radiation"]
+    assert len(state.window) == 1, "leash window must reset, not keep the pre-jump entries"
+    assert state.last_sample == (15, 5), "jump's last_sample must reseed from this reading"
+    print("  ok: a single backward timestamp is flagged FAULT (causing_sense='clock'), leash/jump state reset")
+
+
+def test_clock_fault_escalates_to_repeated_within_window():
+    """RULE_BOOK's fixture: clock_fault_repeat_count=3,
+    clock_fault_repeat_window_seconds=60.0 -- clearly-labelled
+    placeholders (Ccode update.txt: "N and T ... tests use clearly
+    labelled placeholder values"), not real hardware numbers. N
+    occurrences within T seconds of each other, measured against the
+    last TRUSTED timestamp before each jump, escalate causing_sense
+    to "clock_repeated"."""
+    gracie, _, _ = make_gracie()
+    gracie.process_readings({"radiation": 5}, timestamp=100)
+    gracie.process_readings({"radiation": 5}, timestamp=90)  # jump 1, trusted ref=100
+    assert gracie._last_readings["radiation"]["causing_sense"] == "clock"
+    gracie.process_readings({"radiation": 5}, timestamp=95)
+    gracie.process_readings({"radiation": 5}, timestamp=85)  # jump 2, trusted ref=95 (within 60s of 100)
+    assert gracie._last_readings["radiation"]["causing_sense"] == "clock", "only 2 occurrences so far, N=3"
+    gracie.process_readings({"radiation": 5}, timestamp=90)
+    gracie.process_readings({"radiation": 5}, timestamp=80)  # jump 3, trusted ref=90 (within 60s of 100)
+    assert gracie._last_readings["radiation"]["causing_sense"] == "clock_repeated", \
+        "3rd occurrence within T seconds of the others must escalate"
+    print("  ok: N occurrences within T seconds escalate causing_sense to 'clock_repeated'")
+
+
+def test_clock_fault_does_not_escalate_outside_the_window():
+    """Occurrences older than T seconds (relative to the newest one's
+    own trusted reference) must age out of the N-in-T count, same
+    incremental-trim discipline as leash's and stillness's windows."""
+    gracie, _, _ = make_gracie()
+    gracie.process_readings({"radiation": 5}, timestamp=1000)
+    gracie.process_readings({"radiation": 5}, timestamp=990)  # jump 1, ref=1000
+    gracie.process_readings({"radiation": 5}, timestamp=995)
+    gracie.process_readings({"radiation": 5}, timestamp=985)  # jump 2, ref=995 (within 60s of 1000)
+    assert gracie._last_readings["radiation"]["causing_sense"] == "clock"
+    gracie.process_readings({"radiation": 5}, timestamp=2000)
+    gracie.process_readings({"radiation": 5}, timestamp=1990)  # jump 3, ref=2000 -- far outside 60s of jumps 1/2
+    assert gracie._last_readings["radiation"]["causing_sense"] == "clock", \
+        "stale occurrences (>T seconds old) must not count toward the N-in-T escalation"
+    print("  ok: occurrences older than T seconds don't count toward the N-in-T escalation")
+
+
+def test_clear_fault_resets_the_clock_fault_occurrence_count():
+    """clear_fault is the human-sign-off reset -- a future single
+    backward jump after sign-off shouldn't immediately re-escalate
+    because of occurrences from before the sign-off."""
+    gracie, _, _ = make_gracie()
+    gracie.process_readings({"radiation": 5}, timestamp=100)
+    gracie.process_readings({"radiation": 5}, timestamp=90)
+    gracie.process_readings({"radiation": 5}, timestamp=95)
+    gracie.process_readings({"radiation": 5}, timestamp=85)
+    assert len(gracie._states["radiation"].clock_fault_times) == 2
+
+    gracie.clear_fault("radiation")
+    assert len(gracie._states["radiation"].clock_fault_times) == 0
+
+    gracie.process_readings({"radiation": 5}, timestamp=200)
+    gracie.process_readings({"radiation": 5}, timestamp=190)  # jump 3rd-ever, but 1st since sign-off
+    assert gracie._last_readings["radiation"]["causing_sense"] == "clock", \
+        "clear_fault must reset the N-in-T occurrence count, not just the latch"
+    print("  ok: clear_fault resets the clock-fault occurrence count, not just the latch")
+
+
 def main():
     tests = [
         test_level_is_independent_per_channel,
@@ -603,6 +699,10 @@ def main():
         test_causing_sense_is_stillness,
         test_causing_sense_never_becomes_jump,
         test_unrecognized_channel_is_ignored_not_guessed_at,
+        test_clock_fault_on_backward_timestamp,
+        test_clock_fault_escalates_to_repeated_within_window,
+        test_clock_fault_does_not_escalate_outside_the_window,
+        test_clear_fault_resets_the_clock_fault_occurrence_count,
     ]
     for test in tests:
         test()

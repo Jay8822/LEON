@@ -247,6 +247,16 @@ class _ChannelState:
     # latched_severity itself) -- EDEN (not GracieAgent) is the
     # reader, via `causing_sense` in the report (see agents/eden.py).
     causing_sense: Optional[str] = None
+    # Clock health (Ccode update.txt, 2026-11-05, "CLOCK-FAULT PLAN"):
+    # the last timestamp seen for this channel, checked before any
+    # sense uses a new one. None only before the very first reading.
+    last_timestamp: Optional[float] = None
+    # Trusted-reference times of recent backward-jump occurrences, for
+    # the N-within-T escalation (see _process_clock) -- each entry is
+    # the LAST TRUSTED (forward-moving) timestamp immediately before
+    # that occurrence, never the occurrence's own still-suspect one.
+    # Trimmed the same incremental way as leash's/stillness's windows.
+    clock_fault_times: Deque[float] = field(default_factory=deque)
 
 
 class GracieAgent:
@@ -306,6 +316,7 @@ class GracieAgent:
             state.latched_severity = "NOMINAL"
             state.stillness_active = False
             state.causing_sense = None
+            state.clock_fault_times.clear()
             if reset_leash_timer:
                 state.pull_run_start = None
                 state.soft_active = False
@@ -318,6 +329,55 @@ class GracieAgent:
         self.logger.info(f"Cleared fault for {channel if channel else 'all channels'}")
         self._recompute_aggregate()
         self.report_health(timestamp)
+
+    # --- clock health, checked before any sense uses the timestamp ----
+    def _process_clock(self, channel: str, state: _ChannelState, timestamp: float) -> bool:
+        """SPEC.md GRACIE "clock health" (Ccode update.txt, 2026-11-05,
+        "CLOCK-FAULT PLAN"): a reading timestamped earlier than this
+        channel's last one is always flagged -- Jay's core rule,
+        "anything that isn't normal is flagged." Checked BEFORE level/
+        jump/leash/stillness touch the timestamp at all, so none of
+        them ever sees an out-of-order sample.
+
+        On detection, every sense whose state depends on elapsed time
+        resets and reseeds from THIS reading -- done here by clearing
+        window/stillness_window/last_sample; each one's own next call
+        appends (timestamp, value) as its normal first step (or, for
+        jump, treats this reading as if it were the very first ever),
+        so no manual reseed is needed beyond the clear. Level doesn't
+        need time, so it's untouched (module docstring already states
+        this; unaffected by this change).
+
+        N occurrences within T seconds of each other escalate from a
+        single flagged event to a sustained one -- "a clock you can't
+        trust affects every log, timer and sign-off." Measured against
+        the last TRUSTED (forward-moving) timestamp immediately before
+        each jump, never the readings' own still-suspect timestamps --
+        GRACIE has no other clock to check a broken one against, and
+        using it anyway would be circular.
+
+        Sets latched_severity="FAULT" unconditionally, same as level's
+        own style -- FAULT is already the ceiling, so this can never
+        violate the one-way-ratchet other senses rely on. Returns True
+        if this reading was itself out of order."""
+        last_t = state.last_timestamp
+        is_backward = last_t is not None and timestamp < last_t
+        if is_backward:
+            self.logger.info(
+                f"{channel}: CLOCK FAULT -- timestamp went backward (from {last_t} to {timestamp})"
+            )
+            state.window.clear()
+            state.stillness_window.clear()
+            state.last_sample = None
+            state.clock_fault_times.append(last_t)
+            cutoff = last_t - state.rule.clock_fault_repeat_window_seconds
+            while state.clock_fault_times and state.clock_fault_times[0] < cutoff:
+                state.clock_fault_times.popleft()
+            repeated = len(state.clock_fault_times) >= state.rule.clock_fault_repeat_count
+            state.latched_severity = "FAULT"
+            state.causing_sense = "clock_repeated" if repeated else "clock"
+        state.last_timestamp = timestamp
+        return is_backward
 
     # --- the three senses, per channel --------------------------------
     def _process_level(self, channel: str, state: _ChannelState, value: float,
@@ -532,6 +592,8 @@ class GracieAgent:
             rule = state.rule
             prior_severity = state.latched_severity
 
+            clock_event = self._process_clock(channel, state, timestamp)
+
             expected_cause = expected_causes.get(channel, _NO_EXPECTED_CAUSE)
             self._process_level(channel, state, value, timestamp, expected_cause=expected_cause)
             jump_event = self._process_jump(state, timestamp, value)
@@ -560,8 +622,11 @@ class GracieAgent:
                 "jump": jump_event,
                 "sensor_health_fault": state.stillness_active,
                 "causing_sense": state.causing_sense,
+                "clock_event": clock_event,
             }
 
+            if clock_event:
+                self._announce_for_chester(channel, timestamp, "clock_fault")
             if jump_event:
                 self._announce_for_chester(channel, timestamp, "jump")
             if leash_event == "settled":
@@ -598,7 +663,8 @@ class GracieAgent:
     def _announce_for_chester(self, channel: str, timestamp: float, kind: str):
         """SPEC.md: "Agents announce their own faults and anomalies on
         the bus; CHESTER keeps watch over them." `kind` is one of
-        "jump", "warning_entered", "warning_left", "leash_settled"."""
+        "jump", "warning_entered", "warning_left", "leash_settled",
+        "new_crossing_while_latched", "clock_fault"."""
         self.logger.info(f"{channel}: announcing '{kind}' on chester/watch")
         self.bus.publish("chester/watch", {
             "kind": kind,
