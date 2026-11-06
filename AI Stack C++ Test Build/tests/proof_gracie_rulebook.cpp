@@ -36,6 +36,9 @@ struct SidecarRule {
     double leash_slope_limit = 0.0;
     double leash_soft_duration_seconds = 0.0;
     double leash_hard_duration_seconds = 0.0;
+    double stuck_window_seconds = 0.0;
+    double min_normal_noise = 0.0;
+    bool allow_steady = false;
     int clock_fault_repeat_count = 0;
     double clock_fault_repeat_window_seconds = 0.0;
     std::vector<std::string> linked_channels;
@@ -71,6 +74,12 @@ bool load_sidecar(const std::string& path, SidecarRule* out) {
             out->leash_soft_duration_seconds = std::stod(val);
         } else if (key == "leash_hard_duration_seconds") {
             out->leash_hard_duration_seconds = std::stod(val);
+        } else if (key == "stuck_window_seconds") {
+            out->stuck_window_seconds = std::stod(val);
+        } else if (key == "min_normal_noise") {
+            out->min_normal_noise = std::stod(val);
+        } else if (key == "allow_steady") {
+            out->allow_steady = (val == "1" || val == "True" || val == "true");
         } else if (key == "clock_fault_repeat_count") {
             out->clock_fault_repeat_count = std::stoi(val);
         } else if (key == "clock_fault_repeat_window_seconds") {
@@ -133,6 +142,23 @@ const char* severity_name(leon::Severity s) {
     return "UNKNOWN";
 }
 
+// Matches proof_common.py's write_reference_csv/run_reference exactly
+// (row["causing_sense"] or "none", lowercase) -- diff_proof_logs.py
+// compares these as plain strings, so both sides must spell every
+// value identically.
+const char* causing_sense_name(leon::CausingSense c) {
+    switch (c) {
+        case leon::CausingSense::kNone:          return "none";
+        case leon::CausingSense::kLevel:         return "level";
+        case leon::CausingSense::kLeashSoft:     return "leash_soft";
+        case leon::CausingSense::kLeashHard:     return "leash_hard";
+        case leon::CausingSense::kStillness:     return "stillness";
+        case leon::CausingSense::kClock:         return "clock";
+        case leon::CausingSense::kClockRepeated: return "clock_repeated";
+    }
+    return "unknown";
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -171,6 +197,9 @@ int main(int argc, char** argv) {
     rule.leash_slope_limit = sidecar.leash_slope_limit;
     rule.leash_soft_duration_seconds = sidecar.leash_soft_duration_seconds;
     rule.leash_hard_duration_seconds = sidecar.leash_hard_duration_seconds;
+    rule.stuck_window_seconds = sidecar.stuck_window_seconds;
+    rule.min_normal_noise = sidecar.min_normal_noise;
+    rule.allow_steady = sidecar.allow_steady;
     rule.clock_fault_repeat_count = sidecar.clock_fault_repeat_count;
     rule.clock_fault_repeat_window_seconds = sidecar.clock_fault_repeat_window_seconds;
     rule.linked_channel_count = 0;
@@ -197,7 +226,7 @@ int main(int argc, char** argv) {
     // Python reference, not assumed correct.
     out << std::setprecision(17);
     out << "sample_index,severity,jump_event,leash_settled,new_crossing_while_latched,has_slope,slope,"
-           "clock_event,clock_repeated\n";
+           "clock_event,clock_repeated,sensor_health_fault,causing_sense\n";
 
     for (const Reading& r : readings) {
         if (r.clear_before) {
@@ -222,7 +251,8 @@ int main(int argc, char** argv) {
             << (result.jump_event ? 1 : 0) << ',' << (result.leash_settled ? 1 : 0) << ','
             << (result.new_crossing_while_latched ? 1 : 0) << ',' << (result.has_slope ? 1 : 0) << ','
             << result.slope << ',' << (result.clock_event ? 1 : 0) << ','
-            << (result.clock_repeated ? 1 : 0) << '\n';
+            << (result.clock_repeated ? 1 : 0) << ',' << (result.sensor_health_fault ? 1 : 0) << ','
+            << causing_sense_name(result.causing_sense) << '\n';
     }
     std::printf("Processed %zu readings -> %s\n", readings.size(), argv[3]);
     return 0;

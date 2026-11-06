@@ -35,7 +35,7 @@ OUT_DIR = os.path.join(PROOF_DIR, "out")
 READINGS_HEADER = ["sample_index", "timestamp", "value", "clear_before"]
 VERDICT_HEADER = ["sample_index", "severity", "jump_event", "leash_settled",
                   "new_crossing_while_latched", "has_slope", "slope",
-                  "clock_event", "clock_repeated"]
+                  "clock_event", "clock_repeated", "sensor_health_fault", "causing_sense"]
 
 
 def write_sidecar(path, rule: ChannelRule):
@@ -47,6 +47,9 @@ def write_sidecar(path, rule: ChannelRule):
         f.write(f"leash_slope_limit={rule.leash_slope_limit!r}\n")
         f.write(f"leash_soft_duration_seconds={rule.leash_soft_duration_seconds!r}\n")
         f.write(f"leash_hard_duration_seconds={rule.leash_hard_duration_seconds!r}\n")
+        f.write(f"stuck_window_seconds={rule.stuck_window_seconds!r}\n")
+        f.write(f"min_normal_noise={rule.min_normal_noise!r}\n")
+        f.write(f"allow_steady={1 if rule.allow_steady else 0}\n")
         f.write(f"clock_fault_repeat_count={rule.clock_fault_repeat_count!r}\n")
         f.write(f"clock_fault_repeat_window_seconds={rule.clock_fault_repeat_window_seconds!r}\n")
         f.write(f"linked_channels={','.join(rule.linked_channels)}\n")
@@ -71,6 +74,7 @@ def write_reference_csv(path, log):
                 int(row["leash_settled"]), int(row["new_crossing_while_latched"]),
                 int(row["has_slope"]), repr(row["slope"]),
                 int(row["clock_event"]), int(row["clock_repeated"]),
+                int(row["sensor_health_fault"]), row["causing_sense"] or "none",
             ])
 
 
@@ -122,6 +126,8 @@ def run_reference(channel, rule: ChannelRule, rows):
                 "slope": slope if slope is not None else 0.0,
                 "clock_event": clock_event,
                 "clock_repeated": clock_event and last_reading["causing_sense"] == "clock_repeated",
+                "sensor_health_fault": bool(last_reading["sensor_health_fault"]),
+                "causing_sense": last_reading["causing_sense"],
             })
     finally:
         gracie_module.GracieAgent._process_leash = original_process_leash
