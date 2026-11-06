@@ -20,6 +20,17 @@ that mattered. Replaced with the exitcode file: if it's newer than
 the currently-RUNNING job's own started_at, the top-level process has
 already exited while that job is still (wrongly) marked RUNNING.
 
+2026-11-06 rerun batch: added job7/8/9 (the clock-health/scorer-fix
+reruns) to JOB_PROGRESS_FILES -- without this they'd have hit the same
+stale blind spot the 2026-11-05 fix above describes, just for new job
+keys instead of old ones. Also, Jay asked for a phone ping after EACH
+channel (or seed, for the sim jobs) finishes, not batched to at most
+once an hour like the old job2-only version -- _completed_channels_
+and_current() (job2-only) is now _completed_units_and_current(job_key)
+(job2/6/7/8's channels, job1/9's seeds, via JOB_UNIT_KIND), and the
+progress block below sends one low-priority ntfy per newly-done unit,
+unthrottled.
+
 Meant to be run every 10 minutes from its own scheduled task (see
 Ccode update.txt for the registration command) -- reads current
 state, sends 0+ notifications, writes new state, exits. Not a daemon.
@@ -44,9 +55,12 @@ QUEUE_OUT_DIR = os.path.join(REPO_ROOT, "bg_jobs", "queue", "out")
 STATUS_FILE = os.path.join(QUEUE_OUT_DIR, "queue_status.json")
 RESULTS_DIR = os.path.join(REPO_ROOT, "real_data_tests", "esa_adb", "results")
 MISSION_FILES = ["ESA-Mission1-v2-allchannels.json", "ESA-Mission2-v2-allchannels.json"]
+# 2026-11-06 rerun batch (job7/8/9): job7's own output, same per-
+# channel schema as job2's MISSION_FILES above, new filenames so the
+# pre-clock-health files are never touched.
+CLOCKRULE_MISSION_FILES = ["ESA-Mission1-v2-allchannels-clockrule.json", "ESA-Mission2-v2-allchannels-clockrule.json"]
 
 STALE_SECONDS = 45 * 60
-PROGRESS_INTERVAL_SECONDS = 60 * 60
 SETTINGS_COUNT = 2   # STRICT/LOOSE
 WINDOWS_COUNT = 3    # 1min/10min/1hour
 PASSES_PER_CHANNEL = SETTINGS_COUNT * WINDOWS_COUNT
@@ -55,6 +69,8 @@ SHORT_NAME = {
     "job1_sim_50seeds": "job1", "job2_esa_adb_all_channels": "job2",
     "job3_mars_express_kicks": "job3", "job4_battery_ageing": "job4",
     "job5_cpp_proof_bigger": "job5", "job6_per_event_catch_rate": "job6",
+    "job7_esa_adb_all_channels_clockrule": "job7", "job8_per_event_catch_rate_clockrule": "job8",
+    "job9_sim_50seeds_rescored": "job9",
 }
 # Whichever job is RUNNING: its own progress file(s), used for the
 # stale check. job4 writes only once, at the very end (no per-step
@@ -67,6 +83,22 @@ JOB_PROGRESS_FILES = {
     "job4_battery_ageing": [os.path.join(QUEUE_OUT_DIR, "job4_battery_ageing.json")],
     "job5_cpp_proof_bigger": [os.path.join(QUEUE_OUT_DIR, "job5_cpp_proof_bigger.json")],
     "job6_per_event_catch_rate": [os.path.join(QUEUE_OUT_DIR, "job6_per_event_catch_rate.json")],
+    "job7_esa_adb_all_channels_clockrule": [os.path.join(RESULTS_DIR, f) for f in CLOCKRULE_MISSION_FILES],
+    "job8_per_event_catch_rate_clockrule": [os.path.join(QUEUE_OUT_DIR, "job8_per_event_catch_rate_clockrule.json")],
+    "job9_sim_50seeds_rescored": [os.path.join(QUEUE_OUT_DIR, "job9_sim_50seeds_rescored.json")],
+}
+# Which "unit" each job progresses by -- a channel (job2/6/7/8) or a
+# seed (job1/9) -- used to ping Jay's phone as each one finishes (Jay,
+# 2026-11-06: "ping me after each channel finishes"). job3/4/5 have no
+# entry: no per-unit tracking for them, only the job-level/stale/
+# stopped-with-work-left checks above, unchanged.
+JOB_UNIT_KIND = {
+    "job2_esa_adb_all_channels": "esa_channels",
+    "job7_esa_adb_all_channels_clockrule": "esa_channels",
+    "job6_per_event_catch_rate": "per_event_channels",
+    "job8_per_event_catch_rate_clockrule": "per_event_channels",
+    "job1_sim_50seeds": "sim_seeds",
+    "job9_sim_50seeds_rescored": "sim_seeds",
 }
 
 
@@ -111,15 +143,13 @@ def _channel_pass_count(channel_result):
     return sum(len(channel_result.get(setting, {})) for setting in ("STRICT", "LOOSE"))
 
 
-def _completed_channels_and_current():
-    """(set of fully-done channel names, most-recently-touched
-    incomplete channel or None) -- job2's own channel-progress
-    message only. Staleness uses _latest_progress_mtime() instead,
-    generalized to whichever job is RUNNING."""
+def _esa_channel_units(paths):
+    """(done channel names, most-recently-touched incomplete channel)
+    from one or two job2/job7-shaped files: channel -> {setting:
+    {window: ...}}, done once all PASSES_PER_CHANNEL are present."""
     done = set()
     current = None
-    for fname in MISSION_FILES:
-        path = os.path.join(RESULTS_DIR, fname)
+    for path in paths:
         if not os.path.exists(path):
             continue
         data = _load_json(path, default={}) or {}
@@ -129,6 +159,54 @@ def _completed_channels_and_current():
             else:
                 current = channel  # dict preserves insertion order -- last wins
     return done, current
+
+
+def _per_event_channel_units(path):
+    """(done channel names, most-recently-touched incomplete channel)
+    from a job6/job8-shaped file: tags "{prefix}_{channel}_{SETTING}",
+    done once both STRICT and LOOSE exist for that channel."""
+    if not os.path.exists(path):
+        return set(), None
+    data = _load_json(path, default={}) or {}
+    settings_seen = {}
+    order = []
+    for tag in data:
+        base, _, setting = tag.rpartition("_")
+        if setting not in ("STRICT", "LOOSE"):
+            continue
+        settings_seen.setdefault(base, set()).add(setting)
+        if base not in order:
+            order.append(base)
+    done = {base for base, settings in settings_seen.items() if {"STRICT", "LOOSE"} <= settings}
+    current = next((base for base in reversed(order) if base not in done), None)
+    return done, current
+
+
+def _sim_seed_units(path):
+    """(done seed labels, None) from a job1/job9-shaped file:
+    {"per_seed": {"seed_201": {...}, ...}}. No partial "current" seed
+    -- run_scenario() writes a seed's whole report in one shot, so a
+    seed present at all is already done."""
+    if not os.path.exists(path):
+        return set(), None
+    data = _load_json(path, default={}) or {}
+    return set(data.get("per_seed", {}).keys()), None
+
+
+def _completed_units_and_current(job_key):
+    """Generalizes the old job2-only _completed_channels_and_current()
+    to whichever job is RUNNING, by its JOB_UNIT_KIND. Returns (set(),
+    None) for a job with no per-unit tracking (job3/4/5) -- the
+    progress-ping block below then simply has nothing to report."""
+    kind = JOB_UNIT_KIND.get(job_key)
+    paths = JOB_PROGRESS_FILES.get(job_key, [])
+    if kind == "esa_channels":
+        return _esa_channel_units(paths)
+    if kind == "per_event_channels":
+        return _per_event_channel_units(paths[0]) if paths else (set(), None)
+    if kind == "sim_seeds":
+        return _sim_seed_units(paths[0]) if paths else (set(), None)
+    return set(), None
 
 
 def _latest_progress_mtime(job_key):
@@ -155,21 +233,6 @@ def _format_duration(started_at, finished_at):
     return f"{seconds / 3600:.1f}h"
 
 
-def _format_channel_range(names):
-    nums = []
-    for name in names:
-        try:
-            nums.append(int(name.rsplit("_", 1)[1]))
-        except (IndexError, ValueError):
-            return ", ".join(sorted(names))
-    nums.sort()
-    if not nums:
-        return ""
-    if nums[-1] - nums[0] + 1 == len(nums):
-        return f"ch{nums[0]}-{nums[-1]}" if len(nums) > 1 else f"ch{nums[0]}"
-    return ", ".join(f"ch{n}" for n in nums)
-
-
 def _running_job(queue_status):
     for key, info in (queue_status or {}).items():
         if info.get("outcome") == "RUNNING":
@@ -185,16 +248,16 @@ def main():
 
     queue_status = _load_json(STATUS_FILE, default={}) or {}
     prior_statuses = state.get("job_statuses", {})
-    done_channels, current_channel = _completed_channels_and_current()
+    running_job = _running_job(queue_status)
+    done_units, current_unit = _completed_units_and_current(running_job) if running_job else (set(), None)
 
     if first_run:
-        # Seed a baseline silently -- otherwise every job/channel
-        # that finished before this watcher ever ran would look like
-        # a brand-new transition on its very first execution.
+        # Seed a baseline silently -- otherwise every job/unit that
+        # finished before this watcher ever ran would look like a
+        # brand-new transition on its very first execution.
         state["job_statuses"] = {k: v.get("outcome") for k, v in queue_status.items()}
-        state["channels_seen_done"] = sorted(done_channels)
-        state["current_channel"] = current_channel
-        state["last_progress_alert_time"] = now
+        state["units_seen_done"] = sorted(done_units)
+        state["current_unit"] = current_unit
         state["alerted_stale"] = False
         state["alerted_stopped_with_work_left"] = False
         _save_state(state)
@@ -209,8 +272,6 @@ def main():
         if info.get("outcome") == "FAILED" and prior_statuses.get(key) != "FAILED":
             send_ntfy(f"LEON: {name} FAILED.", priority="high",
                       title="LEON: job failed", tags="warning")
-
-    running_job = _running_job(queue_status)
 
     if running_job is not None:
         running_info = queue_status[running_job]
@@ -262,19 +323,20 @@ def main():
     else:
         state["alerted_stopped_with_work_left"] = False
 
-    prior_done = set(state.get("channels_seen_done", []))
-    newly_done = sorted(done_channels - prior_done)
-    last_progress = state.get("last_progress_alert_time", 0)
-    if newly_done and running_job and (now - last_progress) >= PROGRESS_INTERVAL_SECONDS:
-        range_str = _format_channel_range(newly_done)
-        on_str = f", on {current_channel}" if current_channel else ""
-        send_ntfy(f"LEON: {range_str} done{on_str}, {SHORT_NAME.get(running_job, running_job)} RUNNING.",
-                  priority="low", title="LEON: progress")
-        state["last_progress_alert_time"] = now
+    # Jay, 2026-11-06: ping after EACH unit finishes, not batched to
+    # at most once an hour like the old job2-only version -- one low-
+    # priority ntfy per newly-done channel/seed. If several finish
+    # within one 10-minute watcher tick, that's several pings, which
+    # is what "after each one finishes" asks for.
+    if running_job is not None:
+        prior_done = set(state.get("units_seen_done", []))
+        for unit in sorted(done_units - prior_done):
+            send_ntfy(f"LEON: {unit} done, {SHORT_NAME.get(running_job, running_job)} RUNNING.",
+                      priority="low", title="LEON: progress")
 
     state["job_statuses"] = {k: v.get("outcome") for k, v in queue_status.items()}
-    state["channels_seen_done"] = sorted(done_channels)
-    state["current_channel"] = current_channel
+    state["units_seen_done"] = sorted(done_units)
+    state["current_unit"] = current_unit
     _save_state(state)
 
 
