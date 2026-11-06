@@ -61,7 +61,7 @@ from agents.gracie import GracieAgent
 from agents.lunae import LunaeAgent
 from core.bus import EventBus
 
-from sim.blueprint import FAULT_CLASSES
+from sim.blueprint import FAULT_CLASSES, STILLNESS_WINDOW_SECONDS
 from sim.craft import build_clean_timeline, TOTAL_SECONDS, SCENARIO_SEED, _kick_offset
 from sim.fault_injection import inject_faults
 from sim.human_signoff import HumanSignoff
@@ -81,6 +81,18 @@ CHESTER_MAX_LAYERS = 6
 # refresh period, not a new invented number -- a sim-only "how often
 # a human actually checks in" delay, not a real spacecraft parameter.
 HUMAN_RESPONSE_DELAY_SECONDS = CHESTER_REFRESH_PERIOD_SECONDS
+
+# Queued item A (Ccode update.txt, 2026-11-06): score_faults() used to
+# credit a catch anywhere from a fault's start to the end of the whole
+# run. Bounded here to the fault's own start_s..end_s plus this grace --
+# same scale as Stillness's own window, not a new invented number:
+# Stillness is GRACIE's slowest sense (needs a full window of samples
+# before she can latch at all), so crediting up to one Stillness window
+# past the fault's stated end covers her own detection latency, nothing
+# more. Comfortably under the tightest real gap between two faults
+# (stuck_sensor's end to noisy_sensor's start, 1000s), so grace from one
+# fault can never bleed into crediting the next.
+FAULT_SCORE_GRACE_SECONDS = STILLNESS_WINDOW_SECONDS
 
 
 # Item 3b (Jay's approved change 1): a kick's expected RANGE tracks
@@ -262,7 +274,7 @@ def _sense_noticed_flagged(window):
     return out
 
 
-def score_faults(per_channel_log, faults):
+def score_faults(per_channel_log, faults, grace_seconds=FAULT_SCORE_GRACE_SECONDS):
     """For each planted fault, per sense AND combined: the first
     sample index (if any) where that sense was noticed (logged) and
     where it was flagged (latched FAULT), each as a delay in seconds
@@ -272,13 +284,40 @@ def score_faults(per_channel_log, faults):
     flagged are genuinely different questions (see sim/RESULTS.md's
     noisy_sensor finding: a fault that only ever shows up as repeated
     jump events scored as flat-out "missed" under the old, flagged-
-    only scoring, even though it was noticed almost continuously)."""
+    only scoring, even though it was noticed almost continuously).
+
+    Queued item A: a catch only counts inside the fault's own window
+    (start_s..end_s) plus grace_seconds -- the previous, unbounded
+    version credited a catch anywhere up to the end of the entire run.
+    Real regression, not hypothetical: seed_201's noisy_sensor fault
+    (fuel_flow, window 12667..14467) scored flagged=True at delay 8411s
+    under the old code -- that's sample 21078, which is fuel_flow
+    latching FAULT 6611s AFTER noisy_sensor's own window closed, for a
+    reason unrelated to this fault (score_background_false_alarms
+    already (and correctly) counts that same sample as a background
+    false alarm). One real FAULT sample, double-counted under two
+    contradictory labels. See run_sim_test_test.py.
+
+    Separately: no credit at all if the channel was already latched
+    FAULT the sample before the fault started -- that's a pre-existing
+    false latch continuing, not this fault being caught. No fault in
+    seed_201 happens to start this way (checked directly, all 4 begin
+    from NOMINAL); covered by a synthetic fixture in
+    run_sim_test_test.py instead."""
     results = []
     for f in faults:
         channel = f["channel"].split(",")[0]  # ground-truth primary channel
         start_idx = f["start_s"]
-        per_sense = _sense_noticed_flagged(per_channel_log[channel][start_idx:])
-        entry = {"fault": f["name"], "channel": channel, "senses": {}}
+        end_idx = int(f["end_s"] + grace_seconds)  # grace is a float (Stillness's own window); slicing needs int
+        already_latched = start_idx > 0 and per_channel_log[channel][start_idx - 1]["severity"] == "FAULT"
+        if already_latched:
+            per_sense = {
+                sense: {"noticed_sample_index": None, "flagged_sample_index": None}
+                for sense in (*_SENSE_ACTIVE_KEY, "combined")
+            }
+        else:
+            per_sense = _sense_noticed_flagged(per_channel_log[channel][start_idx:end_idx])
+        entry = {"fault": f["name"], "channel": channel, "already_latched": already_latched, "senses": {}}
         for sense, idx in per_sense.items():
             noticed, flagged = idx["noticed_sample_index"], idx["flagged_sample_index"]
             entry["senses"][sense] = {
@@ -404,6 +443,7 @@ def run_scenario(rule_book, blueprint, scenario_seed, timing_seed):
             rule_book, timestamps, faulted_values, events, faults, use_expected
         )
         fault_scores = score_faults(per_channel_log, faults)
+        fault_scores_grace_zero = score_faults(per_channel_log, faults, grace_seconds=0)
         false_alarm_scores = score_false_alarms(per_channel_log, events)
         background = score_background_false_alarms(per_channel_log, events, faults, TOTAL_SECONDS)
 
@@ -414,6 +454,7 @@ def run_scenario(rule_book, blueprint, scenario_seed, timing_seed):
 
         scenario_report["runs"][label] = {
             "fault_detection": fault_scores,
+            "fault_detection_grace_zero": fault_scores_grace_zero,
             "false_alarms_on_normal_events": false_alarm_scores,
             "background_false_alarms": background,
             "eden_safe_mode_sample_count": eden_safe_mode_samples,

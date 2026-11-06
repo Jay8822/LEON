@@ -81,6 +81,9 @@ def _flatten_metrics(scenario_report):
             "n_background_false_alarm_channels": len(run["background_false_alarms"]),
             "ghost_mode_disagreements": run["ghost_mode_disagreements"],
             "faults_flagged": sum(1 for fs in run["fault_detection"] if fs["senses"]["combined"]["flagged"]),
+            "faults_flagged_grace_zero": sum(
+                1 for fs in run["fault_detection_grace_zero"] if fs["senses"]["combined"]["flagged"]
+            ),
             "n_faults": len(run["fault_detection"]),
         }
     return out
@@ -97,7 +100,10 @@ def summarize(per_seed_metrics):
                 "mean": statistics.mean(values), "stdev": statistics.stdev(values) if len(values) > 1 else 0.0,
                 "min": min(values), "max": max(values),
             }
-        for key in ("n_false_alarms", "n_background_false_alarm_channels", "ghost_mode_disagreements", "faults_flagged"):
+        for key in (
+            "n_false_alarms", "n_background_false_alarm_channels", "ghost_mode_disagreements",
+            "faults_flagged", "faults_flagged_grace_zero",
+        ):
             values = [m[mode][key] for m in per_seed_metrics.values()]
             summary[mode][key] = {
                 "mean": statistics.mean(values), "stdev": statistics.stdev(values) if len(values) > 1 else 0.0,
