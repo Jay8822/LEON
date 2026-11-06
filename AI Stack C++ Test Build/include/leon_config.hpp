@@ -35,6 +35,18 @@ constexpr int kLeashRingCapacity = 2048;
 // Status::kRingOverflow, never silently truncated.
 constexpr int kMaxClockFaultOccurrences = 32;
 
+// Stillness (2026-11-06, "C++: PORT STILLNESS + FAULT CLASSES"): a
+// sliding window of recent (timestamp, value) pairs covering the last
+// stuck_window_seconds, needed to find the window's full value spread
+// (min/max), not just two endpoints like leash's ring above. Every
+// real-data test harness so far sets stuck_window_seconds equal to
+// leash_window_seconds (same window, same channel -- confirmed by
+// reading real_data_tests/esa_adb/'s and cpp_proof/'s own rule
+// derivation), so leash's own measured worst-case burst count applies
+// identically here -- reused, not guessed. Same reporting if ever
+// exceeded: Status::kRingOverflow, never silently truncated.
+constexpr int kStillnessRingCapacity = kLeashRingCapacity;
+
 }  // namespace leon
 
 #endif  // LEON_CONFIG_HPP

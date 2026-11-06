@@ -45,6 +45,40 @@ enum class Severity : std::uint8_t {
     kFault = 2,
 };
 
+// Mirrors agents/escalation_orchestrator.py's FaultClass -- EDEN's
+// vocabulary, not GRACIE's own (EDEN herself is not ported, see this
+// file's header). GracieRulebookState never reads these; it only
+// carries them for EDEN's benefit, same boundary as the Python side.
+// kNotStated is the C++ equivalent of Python's Optional[FaultClass]
+// = None -- "this rule book doesn't state a class for this sense this
+// round" is itself a valid, required answer, not a missing one (same
+// "no invented numbers, but an honest non-claim is allowed" pattern
+// as min_normal_noise<=0.0 below). Zero-value by construction, so a
+// zero-initialized ChannelRule defaults every fault-class field to
+// kNotStated without needing to set it explicitly.
+enum class FaultClass : std::uint8_t {
+    kNotStated = 0,
+    kMajor = 1,
+    kNonUrgent = 2,
+    kBoom = 3,
+};
+
+// Mirrors agents/gracie.py's causing_sense vocabulary exactly (module
+// docstring, point 14): which sense most recently raised
+// latched_severity to its current value. kNone is Python's None.
+// kJump deliberately does not exist -- jump never touches
+// latched_severity (module docstring, point 3), so it can never be
+// the cause of anything this enum describes.
+enum class CausingSense : std::uint8_t {
+    kNone = 0,
+    kLevel = 1,
+    kLeashSoft = 2,
+    kLeashHard = 3,
+    kStillness = 4,
+    kClock = 5,
+    kClockRepeated = 6,
+};
+
 // Mirrors agents/gracie_rulebook.py's ChannelRule dataclass. Every
 // numeric field is required (no invented numbers) -- the caller
 // (real callers and tests alike) supplies real or clearly-labelled
@@ -59,10 +93,27 @@ struct ChannelRule {
     double leash_slope_limit;              // units per second
     double leash_soft_duration_seconds;
     double leash_hard_duration_seconds;
+    // Stillness (2026-11-06): a sensor's variation over
+    // stuck_window_seconds must never fall below min_normal_noise, or
+    // the sensor itself is suspect. min_normal_noise<=0.0 is the
+    // explicit, stated way a caller disables this for a channel (see
+    // process_stillness in the .cpp) -- not an invented real number.
+    double stuck_window_seconds;
+    double min_normal_noise;
+    // Fault class per sense (2026-11-06, matching Python's Item C):
+    // required fields, but kNotStated is an honest "not stated this
+    // round" answer -- see the FaultClass comment above.
+    FaultClass level_fault_class;
+    FaultClass jump_fault_class;
+    FaultClass leash_soft_fault_class;
+    FaultClass leash_hard_fault_class;
+    FaultClass stillness_fault_class;
     // Clock health (2026-11-05): N occurrences of a backward-jumped
     // timestamp within T seconds of each other escalates from a
     // single flagged event to a sustained one. No defaults -- set
     // from real hardware, same discipline as every limit above.
+    FaultClass clock_fault_class;
+    FaultClass clock_repeated_fault_class;
     int clock_fault_repeat_count;              // N
     double clock_fault_repeat_window_seconds;  // T
     // Other channels this one is linked to (by name, resolved by
@@ -71,6 +122,11 @@ struct ChannelRule {
     // relationship), same as the Python side's field(default_factory=tuple).
     FixedString linked_channel_names[kMaxLinkedChannels];
     int linked_channel_count;
+    // Some sensors legitimately hold steady or step in some
+    // conditions -- explicit opt-out from Stillness. Defaults to
+    // false (most sensors are NOT exempt) via zero-init, same as the
+    // Python side's allow_steady=False default.
+    bool allow_steady;
 };
 
 // One ring-buffer entry for leash's windowed slope.
@@ -121,6 +177,24 @@ struct ChannelState {
     // crossing be logged in its own right even while latched_severity
     // is still FAULT from an earlier crossing.
     bool level_crossing_active;
+
+    // Stillness (2026-11-06): same ring-buffer shape as leash's above,
+    // but needs the full spread of every value currently in the
+    // window (min/max), not just two endpoints -- so it keeps its own
+    // ring rather than reusing leash's anchor-only one. True from the
+    // moment Stillness first triggers until clear_fault, same as the
+    // Python side's stillness_active.
+    LeashRingEntry stillness_ring[kStillnessRingCapacity];
+    int stillness_ring_head;
+    int stillness_ring_count;
+    bool stillness_active;
+
+    // Which sense most recently raised latched_severity to its
+    // current (non-NOMINAL) value -- mirrors agents/gracie.py's
+    // causing_sense exactly, including that it persists with the
+    // latch (module docstring, point 14) until clear_fault or leash's
+    // own self-settle exception clears it to kNone.
+    CausingSense causing_sense;
 };
 
 // ~2.1MB (kLeashRingCapacity x kMaxChannels doubles-pairs, plus the
@@ -145,6 +219,8 @@ struct ProcessResult {
     double slope;                          // the windowed slope, only meaningful if has_slope
     bool clock_event;                      // this reading's timestamp was earlier than the last one
     bool clock_repeated;                   // clock_event, and N occurrences fell within T seconds
+    bool sensor_health_fault;              // Stillness: this channel's sensor itself is suspect (mirrors the Python report's "sensor_health_fault" key)
+    CausingSense causing_sense;            // which sense most recently raised latched_severity
 };
 
 Status gracie_rulebook_init(GracieRulebookState* state);
@@ -167,11 +243,15 @@ Status gracie_rulebook_find_channel(const GracieRulebookState* state,
 
 // Processes one reading for one already-registered channel. Order
 // matches agents/gracie.py's process_readings exactly: clock health
-// first (2026-11-05 -- resets jump's last sample and leash's ring
-// before either ever sees an out-of-order timestamp), then level,
-// then jump, then leash -- leash's "part of an active major fault"
-// check reads latched_severity AFTER level has already run this same
-// cycle, so the order is load-bearing, not incidental.
+// first (2026-11-05 -- resets jump's last sample, leash's ring, and
+// Stillness's ring before any of them ever sees an out-of-order
+// timestamp), then level, then jump, then leash, then Stillness
+// (2026-11-06) -- leash's "part of an active major fault" check reads
+// latched_severity AFTER level has already run this same cycle, and
+// Stillness's unconditional causing_sense overwrite (matching the
+// Python side exactly) means whichever of level/leash/Stillness fires
+// LAST this cycle wins the attribution, so this order is load-bearing,
+// not incidental.
 Status gracie_rulebook_process_reading(GracieRulebookState* state,
                                         int channel_index,
                                         double timestamp,
@@ -179,8 +259,9 @@ Status gracie_rulebook_process_reading(GracieRulebookState* state,
                                         ProcessResult* out_result);
 
 // Mirrors agents/gracie.py's clear_fault(channel, reset_leash_timer).
-// Does NOT touch the leash ring buffer or level_crossing_active --
-// same as the Python side, which only ever resets latched_severity,
+// Does NOT touch the leash ring buffer, the Stillness ring, or
+// level_crossing_active -- same as the Python side, which only ever
+// resets latched_severity, stillness_active, causing_sense,
 // clock_fault_times, and (if reset_leash_timer) pull_run_start/
 // soft_active/hard_active.
 Status gracie_rulebook_clear_fault(GracieRulebookState* state,
