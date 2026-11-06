@@ -51,6 +51,14 @@ JOBS = [
      "C++ proof on full channel_62 plus channel_63/64/65"),
     ("job6_per_event_catch_rate", "bg_jobs.queue.job6_per_event_catch_rate",
      "Per-event catch rate, all 105 monitored channels, STRICT/LOOSE"),
+    # 2026-11-06 rerun batch ("SMALL BUILD NOW, THEN ALL RERUNS IN THE BACKGROUND") --
+    # appended, not inserted, so jobs 1-6 above (all already SUCCESS) are never re-touched.
+    ("job7_esa_adb_all_channels_clockrule", "bg_jobs.queue.job7_esa_adb_all_channels_clockrule",
+     "ESA-ADB v2 method, all 105 monitored channels, clock-health rerun"),
+    ("job8_per_event_catch_rate_clockrule", "bg_jobs.queue.job8_per_event_catch_rate_clockrule",
+     "Per-event catch rate on job 7's clock-health results"),
+    ("job9_sim_50seeds_rescored", "bg_jobs.queue.job9_sim_50seeds_rescored",
+     "Sim, same 50 seeds as job 1, rescored with the fixed score_faults()"),
 ]
 
 PROOF_EXE_DEFAULT = os.path.join(
