@@ -92,6 +92,8 @@ Status process_clock(ChannelState* cs, double timestamp, bool* out_clock_event, 
         *out_clock_event = true;
         cs->ring_head = 0;
         cs->ring_count = 0;
+        cs->stillness_ring_head = 0;
+        cs->stillness_ring_count = 0;
         cs->has_last_sample = false;
 
         const double cutoff = last_t - cs->rule.clock_fault_repeat_window_seconds;
@@ -108,6 +110,7 @@ Status process_clock(ChannelState* cs, double timestamp, bool* out_clock_event, 
 
         *out_repeated = cs->clock_fault_count >= cs->rule.clock_fault_repeat_count;
         cs->latched_severity = Severity::kFault;
+        cs->causing_sense = *out_repeated ? CausingSense::kClockRepeated : CausingSense::kClock;
     }
     cs->last_timestamp = timestamp;
     return Status::kOk;
@@ -132,6 +135,7 @@ void process_level(ChannelState* cs, double value, bool* out_new_crossing_while_
         *out_new_crossing_while_latched = true;
     }
     cs->latched_severity = Severity::kFault;
+    cs->causing_sense = CausingSense::kLevel;
     cs->level_crossing_active = true;
 }
 
@@ -198,6 +202,7 @@ LeashOutcome process_leash(GracieRulebookState* state, int channel_index,
             return LeashOutcome::kNone;
         }
         cs->latched_severity = Severity::kNominal;
+        cs->causing_sense = CausingSense::kNone;
         return LeashOutcome::kSettled;
     }
 
@@ -211,15 +216,83 @@ LeashOutcome process_leash(GracieRulebookState* state, int channel_index,
         cs->soft_active = true;
         if (static_cast<int>(cs->latched_severity) < static_cast<int>(Severity::kWarning)) {
             cs->latched_severity = Severity::kWarning;
+            cs->causing_sense = CausingSense::kLeashSoft;
         }
     }
     if (elapsed >= rule.leash_hard_duration_seconds && !cs->hard_active) {
         cs->hard_active = true;
         if (static_cast<int>(cs->latched_severity) < static_cast<int>(Severity::kFault)) {
             cs->latched_severity = Severity::kFault;
+            cs->causing_sense = CausingSense::kLeashHard;
         }
     }
     return LeashOutcome::kNone;
+}
+
+// --- Stillness: ported from agents/gracie.py's _process_stillness --------
+
+const LeashRingEntry& stillness_ring_at(const ChannelState& cs, int offset_from_oldest) {
+    const int index = (cs.stillness_ring_head + offset_from_oldest) % kStillnessRingCapacity;
+    return cs.stillness_ring[index];
+}
+
+void stillness_ring_pop_front(ChannelState* cs) {
+    cs->stillness_ring_head = (cs->stillness_ring_head + 1) % kStillnessRingCapacity;
+    cs->stillness_ring_count -= 1;
+}
+
+Status stillness_ring_push_back(ChannelState* cs, double timestamp, double value) {
+    if (cs->stillness_ring_count >= kStillnessRingCapacity) {
+        return Status::kRingOverflow;
+    }
+    const int tail = (cs->stillness_ring_head + cs->stillness_ring_count) % kStillnessRingCapacity;
+    cs->stillness_ring[tail].timestamp = timestamp;
+    cs->stillness_ring[tail].value = value;
+    cs->stillness_ring_count += 1;
+    return Status::kOk;
+}
+
+// Mirrors _process_stillness exactly: min_normal_noise<=0.0 (or
+// allow_steady) disables the check entirely, checked FIRST so a
+// disabled channel pays no ring cost at all (same reasoning as the
+// Python side's own comment -- every real-data harness so far
+// disables this). Trims entries older than stuck_window_seconds
+// (strict >, matching Python's `> rule.stuck_window_seconds`) BEFORE
+// pushing the new one -- same "trim first" order as
+// update_leash_window above and for the same reason (a fixed ring
+// must not fail a push that would have had room after trimming);
+// this converges to the exact same final window Python's append-then-
+// trim produces, since the trim decision depends only on existing
+// entries' ages relative to the new timestamp, not on the new entry
+// itself. Needs the window's full min/max spread, unlike leash's
+// anchor-only ring, so it walks every entry currently held.
+Status process_stillness(ChannelState* cs, double timestamp, double value, bool* out_is_stuck) {
+    *out_is_stuck = false;
+    const ChannelRule& rule = cs->rule;
+    if (rule.allow_steady || rule.min_normal_noise <= 0.0) {
+        return Status::kOk;
+    }
+    while (cs->stillness_ring_count > 0 &&
+           (timestamp - stillness_ring_at(*cs, 0).timestamp) > rule.stuck_window_seconds) {
+        stillness_ring_pop_front(cs);
+    }
+    const Status push_status = stillness_ring_push_back(cs, timestamp, value);
+    if (push_status != Status::kOk) {
+        return push_status;
+    }
+    const LeashRingEntry& oldest = stillness_ring_at(*cs, 0);
+    if ((timestamp - oldest.timestamp) < rule.stuck_window_seconds) {
+        return Status::kOk;  // window doesn't cover the full stated duration yet
+    }
+    double min_value = oldest.value;
+    double max_value = oldest.value;
+    for (int i = 1; i < cs->stillness_ring_count; ++i) {
+        const double v = stillness_ring_at(*cs, i).value;
+        if (v < min_value) { min_value = v; }
+        if (v > max_value) { max_value = v; }
+    }
+    *out_is_stuck = (max_value - min_value) < rule.min_normal_noise;
+    return Status::kOk;
 }
 
 }  // namespace
@@ -321,6 +394,17 @@ Status gracie_rulebook_process_reading(GracieRulebookState* state,
 
     const LeashOutcome leash_outcome = process_leash(state, channel_index, timestamp, has_slope, slope);
 
+    bool is_stuck = false;
+    const Status stillness_status = process_stillness(cs, timestamp, value, &is_stuck);
+    if (stillness_status != Status::kOk) {
+        return stillness_status;
+    }
+    if (is_stuck) {
+        cs->stillness_active = true;
+        cs->latched_severity = Severity::kFault;
+        cs->causing_sense = CausingSense::kStillness;
+    }
+
     out_result->severity = cs->latched_severity;
     out_result->jump_event = jump_event;
     out_result->leash_settled = (leash_outcome == LeashOutcome::kSettled);
@@ -329,6 +413,8 @@ Status gracie_rulebook_process_reading(GracieRulebookState* state,
     out_result->slope = slope;
     out_result->clock_event = clock_event;
     out_result->clock_repeated = clock_repeated;
+    out_result->sensor_health_fault = cs->stillness_active;
+    out_result->causing_sense = cs->causing_sense;
     return Status::kOk;
 }
 
@@ -341,6 +427,8 @@ Status gracie_rulebook_clear_fault(GracieRulebookState* state,
     }
     ChannelState* cs = &state->channels[channel_index];
     cs->latched_severity = Severity::kNominal;
+    cs->stillness_active = false;
+    cs->causing_sense = CausingSense::kNone;
     cs->clock_fault_head = 0;
     cs->clock_fault_count = 0;
     if (reset_leash_timer) {

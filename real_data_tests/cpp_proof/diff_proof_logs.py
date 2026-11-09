@@ -28,7 +28,7 @@ import csv
 import sys
 
 DISCRETE_FIELDS = ["severity", "jump_event", "leash_settled", "new_crossing_while_latched", "has_slope",
-                    "clock_event", "clock_repeated"]
+                    "clock_event", "clock_repeated", "sensor_health_fault", "causing_sense"]
 SLOPE_TOLERANCE = 1e-9
 
 

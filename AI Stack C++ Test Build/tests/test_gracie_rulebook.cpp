@@ -19,7 +19,9 @@
 
 namespace {
 
+using leon::CausingSense;
 using leon::ChannelRule;
+using leon::FaultClass;
 using leon::GracieRulebookState;
 using leon::ProcessResult;
 using leon::Severity;
@@ -416,6 +418,176 @@ void test_clear_fault_resets_the_clock_fault_occurrence_count() {
     std::printf("  ok: clear_fault resets the clock-fault occurrence count, not just the latch\n");
 }
 
+void test_stillness_flags_a_sensor_that_never_varies_enough() {
+    // Mirrors agents/gracie_test.py's STUCK_RULE: stuck_window_seconds=5.0,
+    // min_normal_noise=2.0. Level/jump/leash are all set unreachable on
+    // this channel, so only Stillness can produce a FAULT here.
+    static GracieRulebookState state{};
+    check(leon::gracie_rulebook_init(&state) == Status::kOk, "init");
+    ChannelRule stuck_rule = make_rule(1e6, -1e6, 1e6, 10.0, 1e6, 1e6, 1e6);
+    stuck_rule.stuck_window_seconds = 5.0;
+    stuck_rule.min_normal_noise = 2.0;
+    const int stuck = add_channel(&state, "stuck_channel", stuck_rule);
+
+    const double readings[] = {10.0, 10.5, 11.0, 10.8, 10.3, 10.6};  // range 1.0, under the 2.0 minimum
+    ProcessResult r{};
+    for (int t = 0; t < 6; ++t) {
+        r = process(&state, stuck, static_cast<double>(t), readings[t]);
+        if (t < 5) {
+            check(r.sensor_health_fault == false, "window doesn't cover the full 5.0s yet -- no verdict possible");
+        }
+    }
+    check(r.severity == Severity::kFault, "Stillness FAULT");
+    check(r.sensor_health_fault == true,
+          "a Stillness fault must be tagged distinctly from an ordinary level/leash fault");
+    std::printf("  ok: a sensor whose variation stays below the blueprint's minimum is flagged, tagged sensor-health\n");
+}
+
+void test_stillness_does_not_fire_on_a_sensor_that_varies_enough() {
+    static GracieRulebookState state{};
+    check(leon::gracie_rulebook_init(&state) == Status::kOk, "init");
+    ChannelRule stuck_rule = make_rule(1e6, -1e6, 1e6, 10.0, 1e6, 1e6, 1e6);
+    stuck_rule.stuck_window_seconds = 5.0;
+    stuck_rule.min_normal_noise = 2.0;
+    const int stuck = add_channel(&state, "stuck_channel", stuck_rule);
+
+    const double readings[] = {0.0, 5.0, 10.0, 3.0, 8.0, 1.0};  // range 10.0, well over the 2.0 minimum
+    ProcessResult r{};
+    for (int t = 0; t < 6; ++t) {
+        r = process(&state, stuck, static_cast<double>(t), readings[t]);
+    }
+    check(r.severity == Severity::kNominal, "no fault");
+    check(r.sensor_health_fault == false, "a sensor with real variation never trips Stillness");
+    std::printf("  ok: a sensor with real variation never trips Stillness\n");
+}
+
+void test_allow_steady_exempts_a_channel_from_stillness() {
+    // STEADY_RULE has the SAME stuck_window_seconds/min_normal_noise as
+    // the stuck-channel tests above, but allow_steady=true.
+    static GracieRulebookState state{};
+    check(leon::gracie_rulebook_init(&state) == Status::kOk, "init");
+    ChannelRule steady_rule = make_rule(1e6, -1e6, 1e6, 10.0, 1e6, 1e6, 1e6);
+    steady_rule.stuck_window_seconds = 5.0;
+    steady_rule.min_normal_noise = 2.0;
+    steady_rule.allow_steady = true;
+    const int steady = add_channel(&state, "steady_channel", steady_rule);
+
+    const double readings[] = {10.0, 10.5, 11.0, 10.8, 10.3, 10.6};  // identical pattern to the stuck-channel test
+    ProcessResult r{};
+    for (int t = 0; t < 6; ++t) {
+        r = process(&state, steady, static_cast<double>(t), readings[t]);
+    }
+    check(r.severity == Severity::kNominal, "no fault");
+    check(r.sensor_health_fault == false, "allow_steady exempts a channel from Stillness entirely");
+    std::printf("  ok: allow_steady exempts a channel from Stillness entirely\n");
+}
+
+void test_stillness_latch_is_released_by_clear_fault() {
+    static GracieRulebookState state{};
+    check(leon::gracie_rulebook_init(&state) == Status::kOk, "init");
+    ChannelRule stuck_rule = make_rule(1e6, -1e6, 1e6, 10.0, 1e6, 1e6, 1e6);
+    stuck_rule.stuck_window_seconds = 5.0;
+    stuck_rule.min_normal_noise = 2.0;
+    const int stuck = add_channel(&state, "stuck_channel", stuck_rule);
+
+    const double readings[] = {10.0, 10.5, 11.0, 10.8, 10.3, 10.6};
+    for (int t = 0; t < 6; ++t) {
+        process(&state, stuck, static_cast<double>(t), readings[t]);
+    }
+    check(state.channels[stuck].latched_severity == Severity::kFault, "FAULT");
+    check(state.channels[stuck].stillness_active == true, "sensor-health flagged");
+
+    check(leon::gracie_rulebook_clear_fault(&state, stuck, true) == Status::kOk, "clear_fault");
+    check(state.channels[stuck].latched_severity == Severity::kNominal, "cleared");
+    check(state.channels[stuck].stillness_active == false, "clear_fault releases a Stillness latch, same as any other");
+    std::printf("  ok: clear_fault releases a Stillness latch, same as any other\n");
+}
+
+void test_causing_sense_is_level() {
+    static GracieRulebookState state{};
+    check(leon::gracie_rulebook_init(&state) == Status::kOk, "init");
+    const ChannelRule temp_rule = make_rule(55.0, -20.0, 1000.0, 10.0, 1.0, 20.0, 40.0);
+    const int temp_c = add_channel(&state, "temp_c", temp_rule);
+
+    check(process(&state, temp_c, 0.0, 30.0).causing_sense == CausingSense::kNone, "nominal, no cause yet");
+    check(process(&state, temp_c, 1.0, 56.0).causing_sense == CausingSense::kLevel, "level crossing");
+
+    // Drops back in bounds -- the ratchet stays, and so must its cause.
+    const ProcessResult r = process(&state, temp_c, 2.0, 30.0);
+    check(r.severity == Severity::kFault, "still FAULT");
+    check(r.causing_sense == CausingSense::kLevel, "cause persists through the ratchet");
+
+    check(leon::gracie_rulebook_clear_fault(&state, temp_c, true) == Status::kOk, "clear_fault");
+    check(state.channels[temp_c].causing_sense == CausingSense::kNone, "cause cleared");
+    std::printf("  ok: causing_sense is kLevel for a level crossing, persists until clear_fault\n");
+}
+
+void test_causing_sense_is_leash_soft_then_leash_hard() {
+    static GracieRulebookState state{};
+    check(leon::gracie_rulebook_init(&state) == Status::kOk, "init");
+    const ChannelRule drift_rule = make_rule(1e6, -1e6, 1000.0, 10.0, 1.0, 20.0, 40.0);
+    const int drift = add_channel(&state, "drift_channel", drift_rule);
+
+    for (int t = 0; t <= 50; ++t) {
+        const CausingSense cause = process(&state, drift, static_cast<double>(t), 2.0 * t).causing_sense;
+        if (t < 30) {
+            check(cause == CausingSense::kNone, "before soft");
+        } else if (t < 50) {
+            check(cause == CausingSense::kLeashSoft, "between soft and hard");
+        } else {
+            check(cause == CausingSense::kLeashHard, "at/after hard");
+        }
+    }
+    std::printf("  ok: causing_sense tracks leash_soft, then switches to leash_hard once hard fires\n");
+}
+
+void test_causing_sense_is_stillness() {
+    static GracieRulebookState state{};
+    check(leon::gracie_rulebook_init(&state) == Status::kOk, "init");
+    ChannelRule stuck_rule = make_rule(1e6, -1e6, 1e6, 10.0, 1e6, 1e6, 1e6);
+    stuck_rule.stuck_window_seconds = 5.0;
+    stuck_rule.min_normal_noise = 2.0;
+    const int stuck = add_channel(&state, "stuck_channel", stuck_rule);
+
+    const double readings[] = {10.0, 10.5, 11.0, 10.8, 10.3, 10.6};  // range 1.0, under the 2.0 minimum
+    ProcessResult r{};
+    for (int t = 0; t < 6; ++t) {
+        r = process(&state, stuck, static_cast<double>(t), readings[t]);
+    }
+    check(r.causing_sense == CausingSense::kStillness, "causing_sense is kStillness for a Stillness fault");
+    std::printf("  ok: causing_sense is kStillness for a Stillness fault\n");
+}
+
+void test_fault_class_fields_round_trip_through_the_rule_book() {
+    // GracieRulebookState never reads these itself (EDEN's vocabulary,
+    // not GRACIE's -- see gracie_rulebook.hpp's file header); this only
+    // confirms the fields are stored and retrievable, and that a
+    // zero-initialized rule defaults every one to kNotStated, matching
+    // Python's None-by-default/"no invented numbers" discipline.
+    static GracieRulebookState state{};
+    check(leon::gracie_rulebook_init(&state) == Status::kOk, "init");
+    ChannelRule rule = make_rule(55.0, -20.0, 1000.0, 10.0, 1.0, 20.0, 40.0);
+    check(rule.level_fault_class == FaultClass::kNotStated, "zero-init defaults to kNotStated");
+    rule.level_fault_class = FaultClass::kMajor;
+    rule.jump_fault_class = FaultClass::kNonUrgent;
+    rule.leash_soft_fault_class = FaultClass::kNonUrgent;
+    rule.leash_hard_fault_class = FaultClass::kMajor;
+    rule.stillness_fault_class = FaultClass::kBoom;
+    rule.clock_fault_class = FaultClass::kNonUrgent;
+    rule.clock_repeated_fault_class = FaultClass::kMajor;
+    const int ch = add_channel(&state, "temp_c", rule);
+
+    const ChannelRule& stored = state.channels[ch].rule;
+    check(stored.level_fault_class == FaultClass::kMajor, "level");
+    check(stored.jump_fault_class == FaultClass::kNonUrgent, "jump");
+    check(stored.leash_soft_fault_class == FaultClass::kNonUrgent, "leash_soft");
+    check(stored.leash_hard_fault_class == FaultClass::kMajor, "leash_hard");
+    check(stored.stillness_fault_class == FaultClass::kBoom, "stillness");
+    check(stored.clock_fault_class == FaultClass::kNonUrgent, "clock");
+    check(stored.clock_repeated_fault_class == FaultClass::kMajor, "clock_repeated");
+    std::printf("  ok: per-sense fault classes round-trip through the rule book, kNotStated by default\n");
+}
+
 }  // namespace
 
 int main() {
@@ -434,6 +606,14 @@ int main() {
     test_clock_fault_escalates_to_repeated_within_window();
     test_clock_fault_does_not_escalate_outside_the_window();
     test_clear_fault_resets_the_clock_fault_occurrence_count();
+    test_stillness_flags_a_sensor_that_never_varies_enough();
+    test_stillness_does_not_fire_on_a_sensor_that_varies_enough();
+    test_allow_steady_exempts_a_channel_from_stillness();
+    test_stillness_latch_is_released_by_clear_fault();
+    test_causing_sense_is_level();
+    test_causing_sense_is_leash_soft_then_leash_hard();
+    test_causing_sense_is_stillness();
+    test_fault_class_fields_round_trip_through_the_rule_book();
     std::printf("All GRACIE rule-book core checks passed.\n");
     return 0;
 }
