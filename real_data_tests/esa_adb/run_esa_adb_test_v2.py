@@ -32,11 +32,22 @@ clear_fault(reset_leash_timer=False)):
     reported for all three reaction windows separately (1 minute, 10
     minutes, 1 hour) -- never just the nicer-looking one.
 (d) Per-reading AND per-episode counts, side by side, for every cause
-    (level/jump/leash/any) and every false-alarm count. An episode is
-    a run of same-cause events with no gap longer than 3x that
-    channel's own median sample interval (Jay's fixed, labelled test
-    choice) -- computed once per channel, not a global constant, since
-    channels are sampled at very different rates.
+    (level/jump/leash/clock/stillness/any) and every false-alarm count.
+    An episode is a run of same-cause events with no gap longer than 3x
+    that channel's own median sample interval (Jay's fixed, labelled
+    test choice) -- computed once per channel, not a global constant,
+    since channels are sampled at very different rates.
+
+2026-11-09 fix: a FAULT/WARNING transition used to be filed as "leash"
+by a binary guess (level_hit_now, i.e. "not a level crossing, so it
+must be leash") that predates clock health (2026-11-05) and Stillness
+entirely. Once the clock-health rerun (job7/8/9) gave real clock
+faults to misclassify, every one of them landed in the "leash" bucket
+-- the per-channel false counts matched the DST jump counts exactly.
+Fixed to read GRACIE's own causing_sense instead of re-deriving a
+guess, with "clock"/"stillness" split out as their own causes. leash
+has still never genuinely fired once in ESA-ADB, now provably so
+rather than apparently so.
 
 MEMORY (2026-10-27, after LEON_v2_rerun died overnight with no
 traceback -- see Ccode update.txt): `values` is now converted to a
@@ -293,7 +304,7 @@ def score_channel_variant(channel, rule_values, linked_channels, timestamps, val
     bus = EventBus(log_publishes=log_publishes)
     gracie = GracieAgent(bus, {channel: rule}, log_nominal_readings=log_nominal_readings)
 
-    level_events, jump_events, leash_events, any_events = [], [], [], []
+    level_events, jump_events, leash_events, clock_events, stillness_events, any_events = [], [], [], [], [], []
     prior_latched, prior_aggregate, last_day, last_value = "NOMINAL", "NOMINAL", None, None
     explained_noise, total_deltas = 0, 0
     big_change_cutoff = noise_band.get("big_change_cutoff") if noise_band else None
@@ -315,8 +326,6 @@ def score_channel_variant(channel, rule_values, linked_channels, timestamps, val
                 explained_noise += 1
         last_value = v
 
-        level_hit_now = v > rule.level_high or v < rule.level_low
-
         ts = t.timestamp()
         lo_idx = bisect.bisect_left(trigger_times_sorted, ts - window_seconds)
         hi_idx = bisect.bisect_right(trigger_times_sorted, ts)
@@ -335,7 +344,25 @@ def score_channel_variant(channel, rule_values, linked_channels, timestamps, val
         new_aggregate = gracie.health_state
 
         if new_latched != prior_latched and new_latched in ("WARNING", "FAULT"):
-            (level_events if level_hit_now else leash_events).append((t, new_latched))
+            # 2026-11-09 fix (Ccode update.txt, "JAY -- MONDAY"): this
+            # used to be `level_events if level_hit_now else leash_
+            # events` -- a binary guess that predates clock health and
+            # Stillness, both of which can also raise severity without
+            # a level crossing. That guess silently filed every clock
+            # fault under "leash" (per-channel false counts matched the
+            # DST jump counts exactly -- not a coincidence). Reading
+            # GRACIE's own causing_sense instead of re-deriving a guess
+            # from the raw value is both correct and the thing she
+            # already computed this same reading.
+            causing_sense = gracie._last_readings[channel]["causing_sense"]
+            if causing_sense == "level":
+                level_events.append((t, new_latched))
+            elif causing_sense in ("clock", "clock_repeated"):
+                clock_events.append((t, new_latched))
+            elif causing_sense == "stillness":
+                stillness_events.append((t, new_latched))
+            else:  # leash_soft / leash_hard -- jump is excluded by design, it never latches
+                leash_events.append((t, new_latched))
         prior_latched = new_latched
 
         if jump_now:
@@ -346,7 +373,8 @@ def score_channel_variant(channel, rule_values, linked_channels, timestamps, val
         prior_aggregate = new_aggregate
 
     test_labels = [(cat, s, e) for cat, s, e in labels if e >= cutoff and cat != "Communication Gap"]
-    cause_events = {"level": level_events, "jump": jump_events, "leash": leash_events, "any": any_events}
+    cause_events = {"level": level_events, "jump": jump_events, "leash": leash_events,
+                     "clock": clock_events, "stillness": stillness_events, "any": any_events}
 
     per_reading_scorecard, per_reading_false = _score(cause_events, test_labels)
     episode_events = {cause: _collapse(events, episode_gap_seconds) for cause, events in cause_events.items()}
@@ -360,12 +388,14 @@ def score_channel_variant(channel, rule_values, linked_channels, timestamps, val
         "per_reading": {
             "scorecard": per_reading_scorecard, "false_counts": per_reading_false,
             "n_level_events": len(level_events), "n_jump_events": len(jump_events),
-            "n_leash_events": len(leash_events),
+            "n_leash_events": len(leash_events), "n_clock_events": len(clock_events),
+            "n_stillness_events": len(stillness_events),
         },
         "per_episode": {
             "scorecard": per_episode_scorecard, "false_counts": per_episode_false,
             "n_level_events": len(episode_events["level"]), "n_jump_events": len(episode_events["jump"]),
-            "n_leash_events": len(episode_events["leash"]),
+            "n_leash_events": len(episode_events["leash"]), "n_clock_events": len(episode_events["clock"]),
+            "n_stillness_events": len(episode_events["stillness"]),
         },
     }
     if return_events:
