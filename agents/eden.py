@@ -94,23 +94,52 @@ class EdenAgent:
                 self.logger.info(f"Mode set to: {mode}")
                 self.send_status_update()
 
-    def _classify(self, payload) -> FaultClass:
+    def _classify(self, payload) -> Optional[FaultClass]:
         """The WORST fault class among every channel in this report
         currently at WARNING or FAULT -- not just the first one found,
         since more than one channel can be non-NOMINAL in the same
         report. Falls back to MAJOR wherever a channel's causing_sense
-        has no entry in her table (SPEC.md: unknown means major)."""
+        has no entry in her table (SPEC.md: unknown means major).
+
+        EDEN expected-boom-readings job (9 November 2026): a BOOM-
+        classed channel GRACIE excused this cycle (report's new
+        excused_by field) contributes nothing here -- not an
+        immediate SAFE_MODE, same as if it were NOMINAL. A separate,
+        external confirmation tracker (sim/expected_cause_
+        confirmation.py) watches the SAME "telemetry/health" traffic
+        and asks the owning agent; it calls react_to_fault_class()
+        directly to force the BOOM reaction if confirmation fails or
+        times out. EDEN herself does no asking or waiting -- she only
+        agrees to stay quiet on an excused boom channel each cycle it
+        stays excused. Scoped to BOOM specifically, per Jay's
+        instruction -- a MAJOR/NON_URGENT channel's excusal is
+        unaffected, same behaviour as before this change.
+
+        Returns None ONLY when at least one non-NOMINAL channel was
+        actually found and EVERY one of them was excused-and-skipped
+        -- genuinely nothing to react to. A payload with no per-
+        channel detail at all (no "readings", or none non-NOMINAL --
+        agents/ghost_mode.py's own synthetic payloads, pre-dating
+        GRACIE's any-sensor upgrade) still falls back to MAJOR, same
+        as always -- SPEC.md's "unknown means major", unchanged by
+        this round."""
         worst = None
+        any_channel_considered = False
         for channel, info in payload.get("readings", {}).items():
             if info.get("severity") not in ("WARNING", "FAULT"):
                 continue
+            any_channel_considered = True
             sense = info.get("causing_sense")
             fc = self.fault_class_table.get(channel, {}).get(sense) if sense is not None else None
             if fc is None:
                 fc = FaultClass.MAJOR
+            if fc == FaultClass.BOOM and info.get("excused_by"):
+                continue
             if worst is None or _FAULT_CLASS_RANK[fc] > _FAULT_CLASS_RANK[worst]:
                 worst = fc
-        return worst if worst is not None else FaultClass.MAJOR
+        if worst is not None:
+            return worst
+        return None if any_channel_considered else FaultClass.MAJOR
 
     def on_health_event(self, payload):
         health = payload.get("system_health")
@@ -121,18 +150,39 @@ class EdenAgent:
             return
 
         fault_class = self._classify(payload)
+        if fault_class is None:
+            # Every non-NOMINAL channel this cycle was excused and
+            # pending the owning agent's confirmation -- genuinely
+            # nothing to react to yet, not "unknown -> MAJOR".
+            self.logger.info("Every non-NOMINAL channel this cycle is excused, pending confirmation -- staying quiet")
+            self.status = "MONITORING"
+            self.send_status_update()
+            return
+        self.react_to_fault_class(fault_class)
+
+    def react_to_fault_class(self, fault_class: FaultClass, reason: str = "GRACIE"):
+        """The actual HOLD/SAFE_MODE/log-only reaction for one fault
+        class -- extracted from on_health_event so a confirmation
+        tracker (sim/expected_cause_confirmation.py) can force the
+        BOOM reaction directly when an excused boom-channel reading
+        fails to confirm or times out, without on_health_event's own
+        health/_classify gate (which would otherwise stay quiet on an
+        excused channel every cycle, correctly, until this is called).
+        `reason` tags the command/log, same CommandPacket shape either
+        way -- defaults to "GRACIE" for on_health_event's own calls,
+        unchanged behaviour."""
         if fault_class == FaultClass.NON_URGENT:
-            self.logger.info(f"Non-urgent fault -- flagged and logged, craft keeps running (health={health})")
+            self.logger.info(f"Non-urgent fault -- flagged and logged, craft keeps running (reason={reason})")
             self.status = "MONITORING"
         elif fault_class == FaultClass.BOOM:
-            self.logger.error("EDEN detected a BOOM fault! Sending SAFE_MODE command...")
+            self.logger.error(f"EDEN detected a BOOM fault! Sending SAFE_MODE command... (reason={reason})")
             self.status = "SAFE_MODE"
-            cmd = CommandPacket(command="SAFE_MODE", mode=None, reason="GRACIE_BOOM")
+            cmd = CommandPacket(command="SAFE_MODE", mode=None, reason=f"{reason}_BOOM")
             self.bus.publish("cmd/propulsion", cmd.__dict__)
         else:  # MAJOR, including "unknown" -- SPEC.md: unknown means major
-            self.logger.error("EDEN detected a MAJOR fault! Commanding HOLD...")
+            self.logger.error(f"EDEN detected a MAJOR fault! Commanding HOLD... (reason={reason})")
             self.status = "HOLD"
-            cmd = CommandPacket(command="NAV_ADJUST", mode="HOLD", reason="GRACIE_MAJOR")
+            cmd = CommandPacket(command="NAV_ADJUST", mode="HOLD", reason=f"{reason}_MAJOR")
             self.bus.publish("cmd/nav", cmd.__dict__)
         # Publish on every event, not just a command-triggering one, so the
         # coordinator's EDEN entry stays as current as GRACIE/LUNAE's

@@ -26,9 +26,9 @@ def health_payload(health, readings):
     return {"system_health": health, "source": "GRACIE", "timestamp": 0, "readings": readings}
 
 
-def reading(severity, causing_sense=None):
+def reading(severity, causing_sense=None, excused_by=None):
     return {"value": 0.0, "units": "u", "severity": severity, "jump": False,
-            "sensor_health_fault": False, "causing_sense": causing_sense}
+            "sensor_health_fault": False, "causing_sense": causing_sense, "excused_by": excused_by}
 
 
 def make_eden(fault_class_table=None):
@@ -91,6 +91,58 @@ def test_worst_class_wins_across_multiple_channels_in_one_report():
     print("  ok: the WORST class among every non-NOMINAL channel wins, not just the first one found")
 
 
+def test_excused_boom_channel_stays_quiet_until_forced():
+    """EDEN expected-boom-readings job (9 November 2026): a BOOM-classed
+    channel GRACIE excused this cycle (excused_by set) must not trip
+    SAFE_MODE on its own -- EDEN stays quiet on it (same as NOMINAL),
+    leaving the owning-agent confirmation to a separate tracker. That
+    tracker forces the reaction directly via react_to_fault_class() if
+    confirmation fails -- proven here by calling it exactly as that
+    tracker would, not by re-implementing its own logic in this test."""
+    table = {"engine_bay_temp": {"level": FaultClass.BOOM}}
+    eden, commands = make_eden(table)
+    eden.on_health_event(health_payload(
+        "WARNING", {"engine_bay_temp": reading("WARNING", "level", excused_by="ETHAN")}
+    ))
+    assert eden.status == "MONITORING", eden.status
+    assert commands == [], "an excused boom channel must not trigger SAFE_MODE on its own"
+
+    eden.react_to_fault_class(FaultClass.BOOM, reason="UNCONFIRMED")
+    assert eden.status == "SAFE_MODE", eden.status
+    assert len(commands) == 1 and commands[0]["command"] == "SAFE_MODE"
+    assert commands[0]["reason"] == "UNCONFIRMED_BOOM", commands[0]
+    print("  ok: an excused boom channel stays quiet on its own; the confirmation tracker can force the reaction")
+
+
+def test_excused_boom_channel_does_not_mask_a_genuinely_major_other_channel():
+    """An excused BOOM channel contributes nothing to "worst" -- but a
+    DIFFERENT, genuinely major channel in the SAME report must still
+    win, exactly as it would if the excused channel weren't there."""
+    table = {
+        "engine_bay_temp": {"level": FaultClass.BOOM},
+        "fuel_flow": {"leash_hard": FaultClass.MAJOR},
+    }
+    eden, commands = make_eden(table)
+    eden.on_health_event(health_payload("FAULT", {
+        "engine_bay_temp": reading("WARNING", "level", excused_by="ETHAN"),
+        "fuel_flow": reading("FAULT", "leash_hard"),
+    }))
+    assert eden.status == "HOLD", eden.status
+    print("  ok: an excused boom channel never masks a genuinely major fault on a different channel")
+
+
+def test_unexcused_boom_still_commands_safe_mode_immediately():
+    """Baseline, unchanged: a BOOM-classed channel with NO excused_by
+    (the ordinary, unexplained-crossing case) still goes straight to
+    SAFE_MODE, exactly as before this round -- the new excused_by check
+    only ever suppresses the reaction when it's actually set."""
+    table = {"engine_bay_temp": {"level": FaultClass.BOOM}}
+    eden, commands = make_eden(table)
+    eden.on_health_event(health_payload("FAULT", {"engine_bay_temp": reading("FAULT", "level")}))
+    assert eden.status == "SAFE_MODE", eden.status
+    print("  ok: an unexcused boom crossing still commands SAFE_MODE immediately, unchanged")
+
+
 def test_nominal_never_escalates():
     eden, commands = make_eden()
     eden.on_health_event(health_payload("NOMINAL", {}))
@@ -115,6 +167,9 @@ def main():
         test_boom_commands_safe_mode_via_cmd_propulsion,
         test_unknown_channel_or_sense_falls_back_to_major,
         test_worst_class_wins_across_multiple_channels_in_one_report,
+        test_excused_boom_channel_stays_quiet_until_forced,
+        test_excused_boom_channel_does_not_mask_a_genuinely_major_other_channel,
+        test_unexcused_boom_still_commands_safe_mode_immediately,
         test_nominal_never_escalates,
         test_default_empty_table_does_not_break_construction,
     ]
