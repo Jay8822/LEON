@@ -509,10 +509,17 @@ everywhere it was checked.
 | M2 | STRICT | Anomaly | 2 | 0 (0%) | 1 (50.0%) |
 | M2 | LOOSE | Anomaly | 2 | 0 (0%) | 0 (0%) |
 | M2 | STRICT | Rare Event | 195 | 186 (95.4%) | 195 (100%) |
-| M2 | LOOSE | Rare Event | 195 | 186 (95.4%) | 194 (99.5%) |
+| M2 | LOOSE | Rare Event | 195 | 186 (95.4%) | 195 (100%) |
 
 Counts are whole-ship (all 105 monitored channels, the original 16
 plus job 2's 89) — see the Mission2-Anomaly correction below.
+
+> **Correction, 2026-11-09:** M2 LOOSE Rare Event any-logged was
+> previously written here as 194 (99.5%) — a transcription error, not
+> a data change. Checked directly against both job 6's own per-event
+> file (pre-clock-rule) and job 8's (post-clock-rule): both say 195
+> (100%), identical to STRICT's own any-logged count on the same row.
+> Fixed above.
 
 **The whole-ship view tells a different story than the per-channel
 one, in both directions.** Mission1 Anomaly: STRICT catches MORE
@@ -579,9 +586,99 @@ original-16-only.
 - Jump's cross-check and leash's context-gating — still not built.
 - Every number in this section and "Per-event catch rate" predates
   GRACIE's clock-health rule (commit `e6053f7`) — see the note at the
-  top of this Job 2 section. Not rerun yet, by design: held until the
-  next batch of GRACIE changes (EDEN excused-vs-genuine, standard
-  release/latch clearing, the sim scorer fix) is done, then everything
-  reruns once, together, from a fresh frozen snapshot of the
-  then-current code — not piecemeal.
+  top of this Job 2 section. Now reran, once, together, from a fresh
+  frozen snapshot (commit `ae87133`) — see "Rerun with the clock rule"
+  below. These original numbers are kept exactly as they were, as the
+  pre-clock-rule record.
 - Still a first test at this scale, not a validation.
+
+## Rerun with the clock rule
+
+Jay's held-back rerun (see the note above) finally ran once GRACIE's
+clock-health rule, the per-channel scorer's own fix below, and the
+sim scorer fix were all done (not EDEN excused-vs-genuine or latch/
+standard release — those are still queued, separately). Jobs 7
+(per-channel, all 105 channels together) and 8 (per-event, on job 7's
+results) reran everything from a fresh snapshot pinned to commit
+`ae87133`; job 2's and the original run's files above are untouched,
+kept exactly as the pre-clock-rule record. New files: `ESA-Mission{1,2}
+-v2-allchannels-clockrule.json` (job 7), `bg_jobs/queue/out/
+job8_per_event_catch_rate_clockrule.json` (job 8).
+
+**Catches are unchanged, everywhere, checked directly rather than
+assumed.** Summed level `caught_flagged`/`caught_logged` across every
+Anomaly/Rare Event category, both missions, both channel groups (the
+original 16 and job 2's 89), both settings (STRICT/LOOSE) — old and
+new totals are identical in all 8 cases, down to the last channel. The
+per-event numbers in the table above are unaffected the same way: a
+real anomaly crossing level is still a real anomaly crossing level: the
+clock rule only changes readings whose timestamp went backward, which
+never coincides with the moment a real labelled event is scored.
+
+**A small level false-flag drop on Mission1 only — latch masking on
+DST days, not a scoring change.** A clock fault latches the channel
+FAULT for the rest of that calendar day (same one-way-ratchet rule as
+any other fault, cleared at the next daily `clear_fault`); if a level
+false-flag would have fired later that same day, it's now masked —
+logged as a continuing crossing, not counted as a NEW false flag (same
+A76 masking phenomenon as channel_43/channel_45's confirmed case,
+just from a new direction). Checked directly, STRICT/1min, per-reading
+`false_counts.level.false_flagged`:
+
+| Mission | Channel group | Setting | Old | New | Drop |
+|---|---|---|---|---|---|
+| M1 | 50 new (job 2) | STRICT | 7710 | 7696 | 14 |
+| M1 | 50 new (job 2) | LOOSE | 2270 | 2268 | 2 |
+| M1 | original 8 | STRICT | 2291 | 2284 | 7 |
+| M1 | original 8 | LOOSE | 230 | 230 | 0 |
+| M2 | 39 new (job 2) | STRICT | 983 | 983 | 0 |
+| M2 | 39 new (job 2) | LOOSE | 517 | 517 | 0 |
+| M2 | original 8 | STRICT | 190 | 190 | 0 |
+| M2 | original 8 | LOOSE | 104 | 104 | 0 |
+
+Mission2 shows no drop at all, in any group or setting — not an
+oversight, a real difference: Mission2 has far fewer clock faults in
+the test period than Mission1 (see below), so there's correspondingly
+less chance one ever lands on the same day as a would-be level false
+flag.
+
+**Clock flags, per mission** (STRICT/1min, `n_leash_events` as job 7
+actually recorded it — before the fix below, every one of these was
+filed under "leash"): Mission1, 210 across all 58/58 channels
+(mostly 4 per channel, matching Jay's own read); Mission2, 31 across
+31/47 channels (mostly 1 per channel, 16 channels with zero).
+
+**Leash is still zero everywhere, now provably so rather than
+apparently so.** The per-channel "leash" false counts that appeared
+after this rerun were a real bug, not a real leash pull: `real_data_
+tests/esa_adb/run_esa_adb_test_v2.py`'s `score_channel_variant` used
+to classify a FAULT/WARNING transition by a binary guess (`level_hit_
+now ? level : leash`) that predates clock health and Stillness
+entirely — once clock faults existed to misclassify, every one of
+them fell into "leash" by elimination (fixed in commit `0057675`,
+`real_data_tests/esa_adb/check_clock_vs_leash_fix.py`). Proven on a
+fresh 6-channel sample (3 per mission, not a job 7 rerun, per Jay's
+instruction) rather than assumed: leash=0 on all 6 once correctly
+separated; the new "clock" count matches the OLD "leash" count on
+every one of them exactly (4/4/4 for the M1 channels, 1/1/1 for the
+M2 ones); and every clock event's own timestamp lands precisely on
+the EU's "last Sunday of March" DST date for that channel's mission
+year — 2010-03-28/2011-03-27/2012-03-25/2013-03-31 (M1), 2003-03-30
+(M2). `linked_channels`'s own effect stays a null result either way
+(see "Job 2" above) — leash never fires, so its settling exception
+never has anything to settle.
+
+### What wasn't done (rerun with the clock rule)
+
+- Only a 6-channel sample reran under the fixed clock/leash
+  classification — not all 105, per instruction (no job 7 rerun this
+  round). The sample fully confirms the fix; it isn't a claim that
+  every channel's exact clock count is now in this file anywhere
+  except the pre-fix "leash" numbers above (which the sample shows how
+  to read correctly).
+- EDEN excused-vs-genuine and latch/standard release are still not
+  built, so false alarms and masking work exactly as before this
+  rerun in every other respect — this round only touches clock health
+  and the scorer fix.
+- Per-episode counts for this rerun weren't pulled into this write-up,
+  same per-reading-only scope as the rest of the document.

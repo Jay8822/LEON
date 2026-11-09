@@ -593,3 +593,71 @@ effect.
 
 - The CHESTER-level "noticed, never flagged, for a long time"
   escalation idea above — real, surfaced by this re-score, not built.
+
+# Rescore with the fixed scorer (9 November 2026 round)
+
+`score_faults()` used to credit a catch anywhere from a fault's own
+start to the end of the entire run, with no upper bound — fixed
+(commit `0fa0a92`, see Ccode update.txt, "SMALL BUILD NOW") to
+only count inside the fault's own window plus a grace period (120s,
+Stillness's own window, reused not invented), and to give no credit
+if the channel was already latched FAULT when the fault started. Same
+50 seeds (201-250) as the original job 1 batch, same frozen rule
+book, rescored from a fresh snapshot (job 9,
+`bg_jobs/queue/job9_sim_50seeds_rescored.json`) — job 1's own numbers
+below are kept exactly as they were, marked superseded, not deleted.
+
+## Per-fault catch rate, old scorer vs fixed scorer, all 50 seeds
+
+| Fault | Old (unbounded) | Fixed | What changed |
+|---|---|---|---|
+| dying_battery | 50/50 | 50/50 | unchanged — every catch was always genuinely inside its own window |
+| stuck_sensor | 50/50 | 49/50 | 1 drop — masking, see below |
+| noisy_sensor | 18/50 | 1/50 | 17 were spurious — credited later, unrelated activity on the same channel, not this fault |
+| bad_engine_burn | 15/50 | 11/50 | 4 were spurious, same reason |
+
+**The old scorer badly overstated noisy_sensor specifically — not a
+small correction.** 17 of its 18 old "catches" were the unbounded
+window crediting something that happened later in the run, on
+`fuel_flow`, for a reason that had nothing to do with the planted
+fault (the exact mechanism first found and fixed via seed_201 — see
+Ccode update.txt). The real catch rate for this fault is 1/50 (2%),
+not 36% — a materially different, and much more honest, number.
+
+**The one stuck_sensor drop (seed_248) is a real masking case, not a
+scorer quirk — checked directly.** `attitude_rate` (stuck_sensor's own
+channel) has its own background false alarm starting at sample 12685;
+the planted stuck_sensor fault doesn't start until sample 13132 — the
+channel is already latched FAULT, from an unrelated cause, the moment
+the real fault begins. No credit given, correctly: this is the same
+A76 masking phenomenon already confirmed in real ESA-ADB data, now
+also seen in the synthetic sim.
+
+**Grace made no difference, checked exactly, not assumed.** Every
+seed's `fault_detection` and `fault_detection_grace_zero` (grace=0)
+entries are identical, per fault, across all 50 seeds — mean 2.22,
+stdev 0.46, min 1, max 3 faults flagged per seed, both ways. Every
+genuine catch in this batch happened well inside its own fault
+window; the 120s grace never once was the difference between a catch
+and a miss here. Worth knowing before trusting the grace constant did
+anything this round — it didn't need to.
+
+## False alarms and HOLD time: unchanged, and they should be
+
+Every false-alarm count and every `safe_state_time` figure (HOLD,
+SAFE_MODE, MONITORING_NOMINAL, both modes) is identical between job 1
+and job 9, down to the exact mean/stdev/min/max. This is expected, not
+a gap in the fix: the scorer only changes how a catch is CREDITED
+after the run finishes — it has no effect on GRACIE/EDEN's own live
+behaviour during the run, which is still exactly what it was. The
+reason false alarms and HOLD time stay elevated either way is
+unrelated to this fix: latch release (standard release / EDEN
+excused-vs-genuine) isn't built yet, so a background false alarm
+still holds a channel (and the craft) for a long time regardless of
+how the catch is scored afterward.
+
+## What this adds to "what wasn't done"
+
+- EDEN excused-vs-genuine and latch/standard release are still not
+  built — this round only fixed how catches are scored, not anything
+  about how long a false alarm is allowed to hold a channel.
