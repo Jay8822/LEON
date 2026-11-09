@@ -330,6 +330,24 @@ def test_signoff_major_fault_one_retest_then_terminal_hold():
     print("  ok: sign-off — major fault, still gapped after one retest -> terminal HOLD, no override")
 
 
+def test_signoff_boom_fault_never_gives_up_no_override():
+    """Fault-clearing job (9 November 2026): BOOM gets no retest
+    ladder and no give-up at all -- it must keep retesting
+    indefinitely, never HOLD, never OVERRIDE_AVAILABLE, however many
+    gaps occur. Checked past both the major and non-urgent terminal
+    points (1 and 2 retests respectively) to prove it genuinely never
+    terminates, not just "terminates later"."""
+    orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
+    state = orch.start_signoff(report(), FaultClass.BOOM)
+    for expected_retest_count in range(1, 6):
+        for party in SignOffParty:
+            confirmed = party != SignOffParty.HUMAN  # human withholds -- still waiting
+            result = orch.confirm(state, party, confirmed)
+        assert result.outcome == "RETEST_REQUESTED" and result.reason == "boom_signoff_gap", result
+        assert state.retest_count == expected_retest_count, state.retest_count
+    print("  ok: sign-off — boom fault retests indefinitely, no give-up, no override, past 5 gaps")
+
+
 def test_signoff_non_urgent_fault_needs_double_retest_before_override():
     orch = make_orchestrator(AlwaysNominal(), AlwaysNominal())
     state = orch.start_signoff(report(), FaultClass.NON_URGENT)
@@ -438,6 +456,7 @@ def main():
         test_eden_silence_major_and_non_urgent_windows_are_independent,
         test_signoff_all_four_confirm_in_any_order_releases,
         test_signoff_major_fault_one_retest_then_terminal_hold,
+        test_signoff_boom_fault_never_gives_up_no_override,
         test_signoff_non_urgent_fault_needs_double_retest_before_override,
         test_signoff_override_unused_falls_to_hold_course,
         test_signoff_override_used_then_fault_gone_is_cleared,

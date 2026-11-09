@@ -444,9 +444,26 @@ class EscalationOrchestrator:
         return self._handle_signoff_gap(state)
 
     def _handle_signoff_gap(self, state: SignOffState) -> ChainResult:
-        """Not all four agreed. Major faults get one retest before a
-        terminal HOLD (no override path). Non-urgent faults get a
-        second retest before a manual override becomes available."""
+        """Not all four agreed. BOOM faults retest indefinitely -- "no
+        retest ladder, no give-up... always waits for a human" (SPEC.md
+        Sign-off retest and escalation) means there is no terminal
+        state to fall into, modeled here as an unbounded retest, never
+        HOLD and never an override (added 9 November 2026, fault-
+        clearing job -- sim/human_signoff.py previously always passed
+        FaultClass.MAJOR regardless of the real channel, so this gap
+        never ran with genuine boom semantics before). Major faults
+        get one retest before a terminal HOLD (no override path).
+        Non-urgent faults get a second retest before a manual override
+        becomes available."""
+        if state.fault_class == FaultClass.BOOM:
+            state.retest_count += 1
+            state.confirmations.clear()
+            self._log(
+                "decision", state.report,
+                f"BOOM sign-off gap -> retest #{state.retest_count} (no give-up, no override, waits for a human)",
+            )
+            return ChainResult("RETEST_REQUESTED", "boom_signoff_gap", state.report)
+
         required_retests = 1 if state.fault_class == FaultClass.MAJOR else 2
 
         if state.retest_count < required_retests:

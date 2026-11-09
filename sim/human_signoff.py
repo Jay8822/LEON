@@ -46,13 +46,31 @@ from agents.escalation_orchestrator import AgentReport, EscalationOrchestrator, 
 
 
 class HumanSignoff:
-    def __init__(self, gracie, orchestrator: EscalationOrchestrator, faults, response_delay_seconds):
+    def __init__(self, gracie, eden, orchestrator: EscalationOrchestrator, faults, response_delay_seconds):
         self.gracie = gracie
+        self.eden = eden
         self.orchestrator = orchestrator
         self.faults = faults
         self.response_delay_seconds = response_delay_seconds
         self._fault_since = {}       # channel -> second_offset the latch started
         self._signoff_states = {}    # channel -> SignOffState, once sign-off has begun
+
+    def _is_boom(self, channel):
+        """Fault-clearing job (9 November 2026): narrowed to BOOM
+        faults only -- SPEC.md's "Standard release" path (sim/
+        standard_release.py, added the same round) now handles
+        MAJOR/NON_URGENT. A channel with no causing_sense yet, or no
+        table entry, is NOT boom (same "nothing to react to yet"
+        reasoning as agents/eden.py's own None-vs-MAJOR distinction --
+        this tracker simply has nothing to do for it, StandardRelease
+        does)."""
+        last = self.gracie._last_readings.get(channel)
+        if last is None or last["severity"] != "FAULT":
+            return False
+        sense = last.get("causing_sense")
+        if sense is None:
+            return False
+        return self.eden.fault_class_table.get(channel, {}).get(sense) == FaultClass.BOOM
 
     def _channel_is_within_an_active_fault(self, channel, second_offset):
         for f in self.faults:
@@ -62,11 +80,13 @@ class HumanSignoff:
 
     def tick(self, second_offset):
         """Call once per cycle, after GRACIE has processed this
-        cycle's readings. Releases any channel whose FAULT latch has
-        run past the response delay and is not currently inside a
-        real, still-live planted fault."""
+        cycle's readings. Releases any BOOM-classed channel whose
+        FAULT latch has run past the response delay and is not
+        currently inside a real, still-live planted fault.
+        MAJOR/NON_URGENT faults are sim/standard_release.py's job,
+        not this tracker's -- narrowed here, 9 November 2026."""
         for channel, last in list(self.gracie._last_readings.items()):
-            if last["severity"] != "FAULT":
+            if not self._is_boom(channel):
                 self._fault_since.pop(channel, None)
                 self._signoff_states.pop(channel, None)
                 continue
@@ -76,7 +96,7 @@ class HumanSignoff:
 
             if channel not in self._signoff_states:
                 report = AgentReport(agent="GRACIE", value={"channel": channel}, timestamp=second_offset)
-                self._signoff_states[channel] = self.orchestrator.start_signoff(report, FaultClass.MAJOR)
+                self._signoff_states[channel] = self.orchestrator.start_signoff(report, FaultClass.BOOM)
 
             elapsed = second_offset - self._fault_since[channel]
             if elapsed < self.response_delay_seconds:
