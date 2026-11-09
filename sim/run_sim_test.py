@@ -61,11 +61,13 @@ from agents.gracie import GracieAgent
 from agents.lunae import LunaeAgent
 from core.bus import EventBus
 
-from sim.blueprint import FAULT_CLASSES, STILLNESS_WINDOW_SECONDS
+from sim.blueprint import EVENT_OWNERS, FAULT_CLASSES, STILLNESS_WINDOW_SECONDS
 from sim.craft import build_clean_timeline, TOTAL_SECONDS, SCENARIO_SEED, _kick_offset
+from sim.expected_cause_confirmation import ExpectedCauseConfirmation
 from sim.fault_injection import inject_faults
 from sim.human_signoff import HumanSignoff
 from sim.rulebook import build_rule_book
+from sim.standard_release import StandardRelease
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
 
@@ -81,6 +83,31 @@ CHESTER_MAX_LAYERS = 6
 # refresh period, not a new invented number -- a sim-only "how often
 # a human actually checks in" delay, not a real spacecraft parameter.
 HUMAN_RESPONSE_DELAY_SECONDS = CHESTER_REFRESH_PERIOD_SECONDS
+
+# EDEN expected-boom-readings / fault-clearing job (9 November 2026,
+# Ccode update.txt "JAY -- DESIGN DECIDED"). Neither is a ChannelRule
+# field -- both are constructor parameters on their own new sim-only
+# class (sim/expected_cause_confirmation.py, sim/standard_release.py),
+# same reasoning as HUMAN_RESPONSE_DELAY_SECONDS above: GRACIE/EDEN's
+# own ChannelRule is shared by every caller in the whole codebase,
+# only these sim-only trackers need these values.
+#
+# CONFIRM_WINDOW_SECONDS: how long ExpectedCauseConfirmation waits for
+# the ground truth to confirm an excused boom reading before raising.
+# In this round's real run it never actually waits (GRACIE's own
+# excusal and this check read the same EVENT_SCHEDULE, so confirmation
+# is always immediate) -- same scale as HUMAN_RESPONSE_DELAY_SECONDS
+# anyway, for whenever a future round's less-reliable owning agent
+# genuinely needs to wait.
+CONFIRM_WINDOW_SECONDS = CHESTER_REFRESH_PERIOD_SECONDS
+# SETTLE_TIME_SECONDS: how long a channel must read back inside normal,
+# continuously, before StandardRelease even asks EDEN. Reused from
+# Stillness's own window -- she's GRACIE's slowest sense (needs a full
+# window of samples before she can latch at all), so one Stillness
+# window's worth of continuous normal readings is a reasoned floor for
+# "genuinely settled", not a number invented fresh (same reuse the sim
+# scorer's own grace constant already uses).
+SETTLE_TIME_SECONDS = STILLNESS_WINDOW_SECONDS
 
 # Queued item A (Ccode update.txt, 2026-11-06): score_faults() used to
 # credit a catch anywhere from a fault's start to the end of the whole
@@ -166,13 +193,36 @@ def active_expected_causes(events, second_offset, rule_book, baselines):
     return active
 
 
-def build_craft(rule_book, faults):
+def active_expected_cause_owners(events, second_offset):
+    """{channel: owner_name or None} for whichever expected cause is
+    active for that channel THIS second -- EDEN expected-boom-
+    readings job (9 November 2026). Mirrors active_expected_causes()'s
+    own iteration exactly, looking up sim/blueprint.py's EVENT_OWNERS
+    by the active event's kind instead of computing a size/tolerance
+    range. A channel with no active event at all simply has no entry
+    here, same as active_expected_causes()."""
+    owners = {}
+    for ev in events:
+        if not (ev["start_s"] <= second_offset < ev["end_s"]):
+            continue
+        for channel in ev["affected_channels"]:
+            owners[channel] = EVENT_OWNERS.get(ev["kind"])
+    return owners
+
+
+def build_craft(rule_book, events, faults):
     bus = EventBus()
     gracie = GracieAgent(bus, rule_book)
     # Item C: EDEN's own fault-class table is sim/blueprint.py's SAME
     # FAULT_CLASSES, unmodified -- point 2 of Jay's approval, EDEN's
-    # copy covers GRACIE's real table only this round.
-    eden = EdenAgent(bus, fault_class_table=FAULT_CLASSES)
+    # copy covers GRACIE's real table only this round. Fault-clearing
+    # job (9 November 2026): her level_bounds_table is the SAME
+    # level_high/level_low every channel's own ChannelRule already
+    # carries -- a separate, similarly narrow copy, not the whole rule.
+    eden = EdenAgent(
+        bus, fault_class_table=FAULT_CLASSES,
+        level_bounds_table={ch: (rule.level_low, rule.level_high) for ch, rule in rule_book.items()},
+    )
     bus.subscribe("telemetry/health", eden.on_health_event)
     orchestrator = EscalationOrchestrator(
         eden_rules={}, own_rules={},
@@ -189,15 +239,24 @@ def build_craft(rule_book, faults):
     ghost = GhostModeHarness(bus, eden, orchestrator)
     ethan = EthanAgent(bus)
     lunae = LunaeAgent(bus)
-    human = HumanSignoff(gracie, orchestrator, faults, HUMAN_RESPONSE_DELAY_SECONDS)
+    # Fault-clearing job (9 November 2026): HumanSignoff is now BOOM-
+    # only (needs eden for its own _is_boom() check); StandardRelease
+    # handles MAJOR/NON_URGENT; ExpectedCauseConfirmation is part A's
+    # owning-agent ask-and-wait, ticked alongside both.
+    human = HumanSignoff(gracie, eden, orchestrator, faults, HUMAN_RESPONSE_DELAY_SECONDS)
+    standard_release = StandardRelease(gracie, eden, faults, SETTLE_TIME_SECONDS)
+    expected_cause_confirmation = ExpectedCauseConfirmation(
+        gracie, eden, events, EVENT_OWNERS, CONFIRM_WINDOW_SECONDS,
+    )
     return {
         "bus": bus, "gracie": gracie, "eden": eden, "orchestrator": orchestrator,
         "chester": chester, "ghost": ghost, "ethan": ethan, "lunae": lunae, "human": human,
+        "standard_release": standard_release, "expected_cause_confirmation": expected_cause_confirmation,
     }
 
 
 def run_scored(rule_book, timestamps, values, events, faults, use_expected_causes):
-    craft = build_craft(rule_book, faults)
+    craft = build_craft(rule_book, events, faults)
     gracie = craft["gracie"]
     per_channel_log = {ch: [] for ch in rule_book}
     aggregate_log = []
@@ -207,8 +266,16 @@ def run_scored(rule_book, timestamps, values, events, faults, use_expected_cause
         second_offset = (t - start).total_seconds()
         readings = {ch: values[ch][i] for ch in rule_book}
         expected = active_expected_causes(events, second_offset, rule_book, baselines) if use_expected_causes else None
-        gracie.process_readings(readings, timestamp=t.timestamp(), expected_causes=expected)
-        craft["human"].tick(second_offset)  # Item 3b: may clear_fault() a released channel this cycle
+        # Fault-clearing job: the owner lookup only matters alongside
+        # expected_causes itself -- no cause active, no owner to echo.
+        owners = active_expected_cause_owners(events, second_offset) if use_expected_causes else None
+        gracie.process_readings(readings, timestamp=t.timestamp(), expected_causes=expected,
+                                 expected_cause_owners=owners)
+        craft["human"].tick(second_offset)  # Item 3b: may clear_fault() a released channel this cycle (BOOM only)
+        for channel, value in craft["human"].released_this_tick:
+            craft["ghost"].ghost_check_release(channel, value, real_released=True)
+        craft["standard_release"].tick(second_offset)  # fault-clearing job: MAJOR/NON_URGENT release
+        craft["expected_cause_confirmation"].tick(second_offset)  # EDEN expected-boom-readings job
         for ch in rule_book:
             last = gracie._last_readings[ch]
             cs = gracie._states[ch]  # per-sense activity flags, for the Item 3b-ordered re-score below
