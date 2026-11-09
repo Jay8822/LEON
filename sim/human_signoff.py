@@ -54,6 +54,7 @@ class HumanSignoff:
         self.response_delay_seconds = response_delay_seconds
         self._fault_since = {}       # channel -> second_offset the latch started
         self._signoff_states = {}    # channel -> SignOffState, once sign-off has begun
+        self.released_this_tick = []  # (channel, value) pairs released by the most recent tick() call
 
     def _is_boom(self, channel):
         """Fault-clearing job (9 November 2026): narrowed to BOOM
@@ -84,7 +85,14 @@ class HumanSignoff:
         FAULT latch has run past the response delay and is not
         currently inside a real, still-live planted fault.
         MAJOR/NON_URGENT faults are sim/standard_release.py's job,
-        not this tracker's -- narrowed here, 9 November 2026."""
+        not this tracker's -- narrowed here, 9 November 2026.
+
+        self.released_this_tick: channels released by THIS call,
+        reset every call -- orchestrator ghosting (agents/ghost_mode.
+        py's ghost_check_release(), added the same round) reads this
+        to know which boom releases just happened, to independently
+        re-check against."""
+        self.released_this_tick = []
         for channel, last in list(self.gracie._last_readings.items()):
             if not self._is_boom(channel):
                 self._fault_since.pop(channel, None)
@@ -114,6 +122,7 @@ class HumanSignoff:
             still_live = self._channel_is_within_an_active_fault(channel, second_offset)
             result = self.orchestrator.confirm(state, SignOffParty.HUMAN, not still_live)
             if result is not None and result.outcome == "RELEASE":
+                self.released_this_tick.append((channel, last["value"]))
                 self.gracie.clear_fault(channel)
                 self._fault_since.pop(channel, None)
                 self._signoff_states.pop(channel, None)

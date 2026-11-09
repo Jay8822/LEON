@@ -210,6 +210,34 @@ def test_harness_failure_never_affects_eden_or_the_bus():
     print("  ok: a harness-side failure is swallowed and logged -- EDEN still reacts normally")
 
 
+def test_ghost_check_release_agrees_when_value_is_genuinely_within_bounds():
+    bus = EventBus()
+    eden = EdenAgent(bus, level_bounds_table={"engine_bay_temp": (10.0, 50.0)})
+    harness = GhostModeHarness(bus, eden, make_orchestrator())
+
+    agree = harness.ghost_check_release("engine_bay_temp", 30.0, real_released=True)
+    assert agree is True
+    log = harness.comparison_log()
+    assert log[-1]["ghost_outcome"] == "RELEASE" and log[-1]["agree"] is True
+    print("  ok: ghost_check_release agrees when the ghost's own check matches what actually happened")
+
+
+def test_ghost_check_release_disagrees_when_value_is_still_out_of_bounds():
+    """The genuinely meaningful case: the real release is driven by
+    ground truth (fault window closed), but the ghost's OWN
+    independent value check says this reading isn't actually back to
+    normal yet -- e.g. still decaying from a kick."""
+    bus = EventBus()
+    eden = EdenAgent(bus, level_bounds_table={"engine_bay_temp": (10.0, 50.0)})
+    harness = GhostModeHarness(bus, eden, make_orchestrator())
+
+    agree = harness.ghost_check_release("engine_bay_temp", 65.0, real_released=True)
+    assert agree is False
+    log = harness.comparison_log()
+    assert log[-1]["ghost_outcome"] == "WITHHOLD" and log[-1]["agree"] is False
+    print("  ok: ghost_check_release genuinely disagrees when the value itself isn't back in bounds")
+
+
 def main():
     tests = [
         test_fault_report_reaches_orchestrator_and_agrees_with_eden,
@@ -218,6 +246,8 @@ def main():
         test_warning_and_nominal_are_ignored,
         test_ghost_mode_depends_on_subscription_order_after_eden,
         test_harness_failure_never_affects_eden_or_the_bus,
+        test_ghost_check_release_agrees_when_value_is_genuinely_within_bounds,
+        test_ghost_check_release_disagrees_when_value_is_still_out_of_bounds,
     ]
     for test in tests:
         test()

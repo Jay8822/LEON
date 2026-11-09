@@ -103,6 +103,44 @@ class GhostModeHarness:
         convention as EscalationOrchestrator.decision_log()."""
         return list(self._comparison_log)
 
+    def ghost_check_release(self, channel, value, real_released):
+        """Fault-clearing job addendum (Ccode update.txt, "JAY --
+        ADDITION... the ORCHESTRATOR in the sim"): "The orchestrator's
+        ghost gives its own would-be sign-off answer for every
+        release, logged in the ghost log and compared with what
+        actually happened." The orchestrator does NOT sign off for
+        real in the sim (its own confirm() slot in sim/human_signoff.
+        py is unconditionally True, same "no independent check exists
+        yet" precedent as everywhere else in this mesh) -- this is
+        that independent check, finally given somewhere to run: the
+        SAME confirm_settled() value-vs-bounds check EDEN already uses
+        for standard release, applied here to a BOOM release instead.
+        Meaningful, not vacuous -- the real boom release is driven
+        entirely by ground truth (is the planted fault still live),
+        never by the current VALUE, so this can genuinely disagree
+        (e.g. a kick still decaying the instant the fault's own window
+        closes). Counted into the SAME comparison log/agree field
+        run_scored() already reads for ghost_mode_disagreements --
+        not a new, separate metric."""
+        ghost_would_release = self.eden.confirm_settled(channel, value)
+        agree = ghost_would_release == real_released
+        self._comparison_log.append({
+            "timestamp": None,
+            "source": channel,
+            "health": "RELEASE_CHECK",
+            "ghost_outcome": "RELEASE" if ghost_would_release else "WITHHOLD",
+            "ghost_reason": "boom_release_ghost_check",
+            "old_wiring_status": "RELEASE" if real_released else "WITHHOLD",
+            "agree": agree,
+        })
+        if not agree:
+            self.logger.warning(
+                "GHOST SIGNOFF DISAGREEMENT "
+                f"channel={channel} value={value} ghost_would_release={ghost_would_release} "
+                f"real_released={real_released}"
+            )
+        return agree
+
     def on_health_event(self, payload):
         try:
             self._handle(payload)
