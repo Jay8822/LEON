@@ -41,7 +41,7 @@ questions), not built here.
 """
 
 import time
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from core.bus import EventBus
 from core.logger import setup_agent_logger
@@ -56,7 +56,8 @@ _FAULT_CLASS_RANK = {FaultClass.NON_URGENT: 0, FaultClass.MAJOR: 1, FaultClass.B
 
 
 class EdenAgent:
-    def __init__(self, bus: EventBus, fault_class_table: Optional[Dict[str, Dict[str, FaultClass]]] = None):
+    def __init__(self, bus: EventBus, fault_class_table: Optional[Dict[str, Dict[str, FaultClass]]] = None,
+                 level_bounds_table: Optional[Dict[str, Tuple[float, float]]] = None):
         self.logger = setup_agent_logger("eden")
         self.bus = bus
         self.bus.subscribe("eden/command", self.on_command)
@@ -68,6 +69,14 @@ class EdenAgent:
         # EdenAgent(bus) keeps working -- an empty/missing lookup
         # always falls back to MAJOR, never NON_URGENT or BOOM.
         self.fault_class_table = fault_class_table or {}
+        # Standard release (fault-clearing job, 9 November 2026):
+        # channel -> (level_low, level_high), a SEPARATE, similarly
+        # narrow copy of GRACIE's rule book -- same "her own copy
+        # covers only what she needs so far" discipline as fault_
+        # class_table above, not the whole ChannelRule. Used only by
+        # confirm_settled() below; empty by default, same backward-
+        # compatible convention as fault_class_table.
+        self.level_bounds_table = level_bounds_table or {}
 
     def send_status_update(self):
         payload = {
@@ -162,6 +171,28 @@ class EdenAgent:
             self.send_status_update()
             return
         self.react_to_fault_class(fault_class)
+
+    def confirm_settled(self, channel: str, value: float) -> bool:
+        """Standard release, step 2 (Ccode update.txt "JAY -- DESIGN
+        DECIDED": "GRACIE asks EDEN; EDEN checks the readings herself
+        and confirms"). An independent re-check against EDEN's OWN
+        copy of GRACIE's level bounds for this channel -- NOT the
+        separate, bigger, deliberately-deferred-elsewhere system of
+        EDEN holding her own TIGHTER tolerances (agents/eden.py's own
+        earlier docstring names that as its own future round); this
+        is a sanity echo-check against the SAME bounds GRACIE already
+        uses. No bounds on file for this channel -- she genuinely
+        can't verify, so she does not confirm, same cautious-default
+        pattern as "unknown fault class means major" elsewhere in
+        this file."""
+        bounds = self.level_bounds_table.get(channel)
+        if bounds is None:
+            self.logger.info(f"{channel}: no level bounds on file -- cannot independently confirm, not confirmed")
+            return False
+        low, high = bounds
+        confirmed = low <= value <= high
+        self.logger.info(f"{channel}: confirm_settled value={value} bounds=[{low}, {high}] -> {confirmed}")
+        return confirmed
 
     def react_to_fault_class(self, fault_class: FaultClass, reason: str = "GRACIE"):
         """The actual HOLD/SAFE_MODE/log-only reaction for one fault

@@ -144,6 +144,19 @@ def test_unexcused_boom_still_commands_safe_mode_immediately():
     print("  ok: an unexcused boom crossing still commands SAFE_MODE immediately, unchanged")
 
 
+def test_confirm_settled_checks_her_own_level_bounds_copy():
+    """Standard release, step 2: EDEN re-checks the CURRENT value
+    against her own copy of GRACIE's level bounds, independently of
+    whatever the caller believes. No bounds on file -> never
+    confirms, same cautious-default pattern as "unknown -> major"."""
+    bus = EventBus()
+    eden = EdenAgent(bus, level_bounds_table={"battery_voltage": (10.0, 14.0)})
+    assert eden.confirm_settled("battery_voltage", 12.0) is True
+    assert eden.confirm_settled("battery_voltage", 20.0) is False
+    assert eden.confirm_settled("unknown_channel", 12.0) is False, "no bounds on file -- cannot confirm"
+    print("  ok: confirm_settled checks EDEN's own level-bounds copy, not the caller's say-so")
+
+
 def test_nominal_never_escalates():
     eden, commands = make_eden()
     eden.on_health_event(health_payload("NOMINAL", {}))
@@ -171,6 +184,7 @@ def main():
         test_excused_boom_channel_stays_quiet_until_forced,
         test_excused_boom_channel_does_not_mask_a_genuinely_major_other_channel,
         test_unexcused_boom_still_commands_safe_mode_immediately,
+        test_confirm_settled_checks_her_own_level_bounds_copy,
         test_nominal_never_escalates,
         test_default_empty_table_does_not_break_construction,
     ]
