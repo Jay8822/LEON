@@ -518,6 +518,12 @@ def run_scenario(rule_book, blueprint, scenario_seed, timing_seed):
         safe_state_time = score_safe_state_time(aggregate_log)
         ghost_log = craft["ghost"].comparison_log()
         ghost_disagreements = [g for g in ghost_log if not g["agree"]]
+        # Fault-clearing job (9 November 2026): every question/answer,
+        # logged (Jay's own rule) -- pulled into the report so the
+        # mechanisms' real activity is visible, not just inferred from
+        # before/after numbers.
+        confirmation_log = craft["expected_cause_confirmation"].question_log()
+        release_log = craft["standard_release"].question_log()
 
         scenario_report["runs"][label] = {
             "fault_detection": fault_scores,
@@ -528,6 +534,8 @@ def run_scenario(rule_book, blueprint, scenario_seed, timing_seed):
             "safe_state_time": safe_state_time,
             "ghost_mode_comparisons": len(ghost_log),
             "ghost_mode_disagreements": len(ghost_disagreements),
+            "expected_cause_confirmation_log": confirmation_log,
+            "standard_release_log": release_log,
         }
         for fs in fault_scores:
             combined = fs["senses"]["combined"]
@@ -544,6 +552,12 @@ def run_scenario(rule_book, blueprint, scenario_seed, timing_seed):
         print(f"    EDEN SAFE_MODE samples: {eden_safe_mode_samples}")
         print(f"    safe-state time: {safe_state_time}")
         print(f"    ghost mode: {len(ghost_log)} comparisons, {len(ghost_disagreements)} disagreements")
+        n_confirmed = sum(1 for e in confirmation_log if e["outcome"] == "confirmed")
+        n_raised = sum(1 for e in confirmation_log if e["outcome"].startswith("raised"))
+        print(f"    expected-cause confirmation: {n_confirmed} confirmed, {n_raised} raised, "
+              f"{len(confirmation_log)} log entries")
+        n_released = sum(1 for e in release_log if e["outcome"] == "released")
+        print(f"    standard release: {n_released} channels released, {len(release_log)} log entries")
     return scenario_report
 
 
