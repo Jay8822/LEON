@@ -661,3 +661,190 @@ how the catch is scored afterward.
 - EDEN excused-vs-genuine and latch/standard release are still not
   built — this round only fixed how catches are scored, not anything
   about how long a false alarm is allowed to hold a channel.
+
+---
+
+# EDEN fault-clearing: expected-boom confirmation + standard/boom release (9 November 2026)
+
+Two mechanisms, built together on branch `eden-fault-clearing`, both
+exercised against the same frozen rule book and the same 50 seeds
+(201-250) as job 9, rescored from a fresh snapshot
+(`bg_jobs/queue/job_eden_fault_clearing_50seeds.py`, job output
+`bg_jobs/queue/out/job_eden_fault_clearing_50seeds.json`):
+
+- **Expected-boom confirmation**: a correctly-excused reading on a
+  boom-classed channel no longer gets a free pass from GRACIE's
+  pattern match alone — EDEN now asks the cause's owning agent (from
+  the blueprint) to confirm it's genuinely happening, and only stays
+  quiet once confirmed.
+- **Standard release**: a non-boom fault that's settled back to
+  normal and stayed there for a settle time now actually gets
+  released by its own agent, instead of staying latched for the rest
+  of the run.
+
+Job 9 predates both — no release mechanism existed at all, for
+anything, boom or not.
+
+## SAFE_MODE time: down in every single seed, exactly where it should be
+
+`with_expected_causes` is the only scenario where boom-channel
+excusal can fire (it needs an active expected cause to excuse
+against). There, SAFE_MODE time dropped in **50/50 seeds, zero
+exceptions**:
+
+| | job 9 (mean/seed) | eden job (mean/seed) | change |
+|---|---|---|---|
+| SAFE_MODE | 3589s | 3214s | -10.4% |
+| HOLD | 16471s | 16849s | +2.3% |
+
+The drop moves almost entirely into HOLD, not down to nominal —
+correct: when a confirmed boom channel goes quiet, the craft only
+drops all the way out of a safe state if nothing else is also
+genuinely abnormal at that moment; often something else (non-boom)
+still is, so HOLD rather than MONITORING_NOMINAL picks up the
+difference.
+
+**Not a confirmation shortcut letting anything real through, checked
+not assumed.** Every boom-channel excusal this round — 18,757
+`asked` log entries across all 50 seeds — was confirmed against
+ground truth: 18,413 by ETHAN (engine burns), 344 by LUNAE (course
+corrections). Zero `raised_no_owner`, zero `raised_timeout` anywhere
+in the batch. This sim's two active expected-cause kinds both have a
+real owner in the blueprint, so the "unknown owner" and "timeout
+with no confirmation" raise paths exist and are proven by unit test,
+but didn't have occasion to fire in this particular 50-seed batch —
+worth knowing before assuming they've been exercised against the
+real scenario, not just synthetically.
+
+`without_expected_causes` (the control — no expected causes active,
+so nothing to excuse) is correctly untouched: SAFE_MODE/HOLD means
+move by under 0.1% (16733s→16744s HOLD mean, noise-level — see
+below), and `engine_bay_temp`'s own background-false-alarm sample
+count is **exactly** 143999 in both job 9 and the eden job, in every
+scenario where it appears — the boom channel's behaviour is
+bit-for-bit unchanged outside the one mechanism meant to change it.
+
+## Standard release fixes a masking case already named in this file
+
+`agents/gracie.py`'s A76 masking pattern — a channel already latched
+FAULT from an unrelated cause the moment a real fault starts, so the
+real fault gets no credit — was found in seed_248 two rounds ago (see
+"Rescore with the fixed scorer" above) and left as a known, unfixed
+gap. Checked directly this round, not assumed: in seed_248,
+`attitude_rate`'s own earlier background false alarm now **releases**
+(standard release, settled and confirmed) before the real
+stuck_sensor fault begins, so the channel is no longer already-latched
+when it matters — `noticed`/`flagged` both flip False→True,
+`already_latched` flips True→False. The same thing happens in
+seed_203 for `noisy_sensor`/`fuel_flow`. Two real catches gained, both
+previously-documented masking failures, not scorer noise — grace=0
+(strict) scoring agrees exactly with the lenient scoring on both, and
+on every other fault.
+
+## Background false alarms: standard release working as intended
+
+`without_expected_causes`, total background-false-alarm samples over
+50 seeds, and how many of the 50 seeds each channel appears in at all:
+
+| Channel | job 9 | eden job |
+|---|---|---|
+| battery_current | 67120 (50 seeds) | 19776 (16 seeds) |
+| solar_current | 44729 (50) | 14019 (4) |
+| thrust | 130345 (50) | 69143 (34) |
+| velocity | 63190 (50) | 15656 (20) |
+| attitude_rate | 46689 (18) | 40917 (50) |
+| fuel_flow | 83850 (22) | 71174 (23) |
+| avionics_bay_temp | 21642 (5) | 20119 (5) |
+| battery_voltage (dying_battery, a real fault) | 878937 (50) | 880427 (50) — unchanged |
+| engine_bay_temp (boom-classed) | 143999 (50) | 143999 (50) — unchanged |
+
+All 7 non-excluded channels drop in total exposure. Four
+(`battery_current`, `solar_current`, `thrust`, `velocity`) also touch
+far fewer seeds — these were latching once and staying latched for
+the whole run in every one of the 50; standard release now clears
+them. `attitude_rate` and `fuel_flow` go the other way on seed-count
+(18→50, 22→23) while their totals still drop — the same mechanism as
+the seed_248/seed_203 catches above: a channel that used to latch
+once and stay stuck for a lucky-unlucky subset of seeds now
+latches-releases-relatches briefly in nearly every seed instead —
+lower total exposure, spread wider, not a new failure mode. Standard
+release fired 812 times across the batch releasing these same 7
+channels, **identically in both scenarios** (same 812, same
+per-channel counts, same seeds) — confirms it has no dependency on
+the boom-confirmation mechanism, as designed.
+
+`battery_voltage` and `engine_bay_temp` are correctly untouched: the
+first is a real, ever-worsening fault that never actually settles
+(standard release should never fire for it, and doesn't); the second
+is boom-classed (standard release explicitly excludes boom faults —
+see Sign-off rules in SPEC.md).
+
+`with_expected_causes` shows the same direction on every channel, but
+starting from a lower, different baseline for the engine/course-
+correction-affected ones (`battery_current`, `engine_bay_temp`,
+`solar_current`, `thrust`, `velocity`) — because the older,
+pre-existing expected-cause exclusion (built before this task, "a
+rise matching it is logged, not flagged") already keeps many of their
+samples out of the background count in job 9 itself, before this
+round's fixes exist at all. On top of that existing baseline, the
+eden job still shows a further, smaller reduction on every one of
+them except the two correctly-untouched channels — `engine_bay_temp`
+is **exactly** 102023 in both (41 of 50 seeds, both jobs), and
+`battery_voltage` exactly 878937/880427 as above.
+
+## Ghost mode: a genuine new disagreement source, checked not hand-waved
+
+131 `ghost_mode_disagreements`, identical seed-by-seed in both
+scenarios (job 9 had 0 in every seed). Instrumented one seed directly
+(seed_202, 5 disagreements) rather than assume the cause: **all 5 are
+the new `RELEASE_CHECK` kind** (`GhostModeHarness.ghost_check_release`,
+on `engine_bay_temp`) — the ghost's own value-vs-bounds check says
+WITHHOLD while the real four-way sign-off, driven by ground-truth
+fault-liveness rather than the live value, actually RELEASEs. Zero
+disagreements come from the original FAULT-based ghost check
+(`on_health_event`) in any seed checked — that mechanism is
+unregressed. This is the "meaningful, not vacuous" disagreement
+`ghost_mode.py`'s own docstring predicted: a kick still decaying the
+instant the fault's own ground-truth window closes.
+
+## What got worse, honestly
+
+- 131 new ghost-mode disagreements exist that didn't before — real,
+  but shown above to be the independent check doing its job, not a
+  defect.
+- `without_expected_causes` HOLD time rises by a negligible ~11s/seed
+  mean (16733→16744, 0.07%) — the same relatch-cycling noise as the
+  background-false-alarm spread above, not a real cost.
+- `fuel_flow` and `attitude_rate` background false alarms now touch
+  more seeds (22→23, 18→50) even though their total exposure drops —
+  flagged above as the relatch pattern, not a new problem, but it is
+  a genuine change in shape worth watching if a future round adds a
+  "how many distinct latch episodes" metric.
+- The commissioning check (clean, fault-free timeline, frozen
+  blueprint/rule book, "reported as-is, not corrected") moves from
+  27/1100 to 25/1100 false alarms on normal events across the batch —
+  a small improvement, not a regression, and explained by the same
+  mechanism: a background false alarm that used to stay latched for
+  the rest of a clean run can now clear before a later normal event's
+  window, so it no longer gets blamed for that later event too.
+
+No regression found in fault detection (identical for 2 of 4 faults,
+improved for the other 2 — see above), or in the main
+false-alarms-on-normal-events score (647→645/1100 without expected
+causes, 121→120/1100 with — both effectively flat, within the same
+noise as everything else here).
+
+## What this adds to "what wasn't done"
+
+- "EDEN excused-vs-genuine and latch/standard release are still not
+  built" (previous round's own line, above) — now built, as sim-only
+  stand-ins (`sim/expected_cause_confirmation.py`,
+  `sim/standard_release.py`); not yet real agent-to-agent traffic,
+  since ETHAN/LUNAE have no real state to interrogate yet (see
+  SPEC.md).
+- The owning agent answering truthfully is untested this round —
+  ground truth stands in for a real asked-and-answered exchange; see
+  `ASSUMPTIONS.md` A85.
+- The orchestrator's ghost now has something real to check for boom
+  releases, but the orchestrator itself still doesn't control
+  anything — ghost mode only, per Jay's own addendum.
