@@ -175,6 +175,26 @@ EVENT_EFFECTS = {
     "solar_occlusion": {"solar_current": "zero"},
 }
 
+# EDEN expected-boom-readings job (9 November 2026, Ccode update.txt
+# "JAY -- DESIGN DECIDED"): each expected cause names its owning
+# agent -- a required field, no default. engine_burn is ETHAN's
+# (propulsion); course_correction is LUNAE's (navigation, "instructs
+# ETHAN for propulsion" but the correction itself is hers to call).
+# battery_switch/solar_occlusion are environmental/scheduled, not
+# commanded by any agent in this architecture -- None is the honest,
+# deliberate answer (no commanding agent exists), not a missing one,
+# same pattern as min_normal_noise<=0.0. Only engine_bay_temp's LEVEL
+# sense is BOOM-classed in FAULT_CLASSES above, and only engine_burn/
+# course_correction ever touch it (EVENT_EFFECTS), so battery_switch/
+# solar_occlusion's owner is never actually exercised by a real run --
+# stated here plainly, not hidden.
+EVENT_OWNERS = {
+    "engine_burn": "ETHAN",
+    "course_correction": "LUNAE",
+    "battery_switch": None,
+    "solar_occlusion": None,
+}
+
 
 def _build_derivation_series(sensor_name, rng):
     """DERIVATION_N_CHUNKS clean fragments, DERIVATION_CHUNK_SECONDS

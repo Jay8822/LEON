@@ -381,7 +381,7 @@ class GracieAgent:
 
     # --- the three senses, per channel --------------------------------
     def _process_level(self, channel: str, state: _ChannelState, value: float,
-                        timestamp: float, expected_cause=_NO_EXPECTED_CAUSE):
+                        timestamp: float, expected_cause=_NO_EXPECTED_CAUSE) -> bool:
         """`expected_cause` -- SPEC.md GRACIE section: "An expected
         cause ... carries the blueprint's expected size ... with the
         blueprint's own tolerance ... A rise inside an expected cause's
@@ -396,12 +396,21 @@ class GracieAgent:
         expected size -- excuses only a value actually inside it). A
         crossing that IS excused is LOGGED (WARNING) and never
         downgrades an existing FAULT latch -- the one-way-ratchet rule
-        everywhere else in this file."""
+        everywhere else in this file.
+
+        Returns True exactly when THIS reading matched an expected
+        cause this cycle (the excused branch below) -- EDEN expected-
+        boom-readings job (9 November 2026): process_readings() uses
+        this, together with the caller-supplied owner for this
+        channel's expected cause (if any), to set the report's new
+        `excused_by` field. GRACIE still has no idea what the cause
+        IS or who owns it; she only reports whether THIS branch fired,
+        same boundary as everything else about expected_causes."""
         rule = state.rule
         crossing = value > rule.level_high or value < rule.level_low
         if not crossing:
             state.level_crossing_active = False
-            return
+            return False
         is_new_crossing = not state.level_crossing_active
         has_expected_cause = expected_cause is not _NO_EXPECTED_CAUSE
         matches_expected = has_expected_cause and (
@@ -417,7 +426,7 @@ class GracieAgent:
                 state.latched_severity = "WARNING"
                 state.causing_sense = "level"
             state.level_crossing_active = True
-            return
+            return True
         if is_new_crossing:
             if state.latched_severity != "FAULT":
                 self.logger.info(
@@ -436,6 +445,7 @@ class GracieAgent:
         state.latched_severity = "FAULT"
         state.causing_sense = "level"
         state.level_crossing_active = True
+        return False
 
     def _process_stillness(self, channel: str, state: _ChannelState, timestamp: float,
                             value: float) -> bool:
@@ -566,7 +576,8 @@ class GracieAgent:
 
     # --- main entry point ----------------------------------------------
     def process_readings(self, readings: Dict[str, float], timestamp: float,
-                          expected_causes: Optional[Dict[str, Optional[Tuple[float, float]]]] = None):
+                          expected_causes: Optional[Dict[str, Optional[Tuple[float, float]]]] = None,
+                          expected_cause_owners: Optional[Dict[str, Optional[str]]] = None):
         """readings: {channel_name: value}. Channels not in the rule
         book are logged and ignored -- no guessing at a channel GRACIE
         has no rule for.
@@ -578,9 +589,21 @@ class GracieAgent:
         value is excused); a (low, high) tuple only excuses a value
         actually inside it (point 13 -- "not excused by that cause"
         otherwise). Omitted or empty preserves the original behaviour
-        exactly for every existing caller."""
+        exactly for every existing caller.
+
+        expected_cause_owners: optional {channel: owner_name or None}
+        -- EDEN expected-boom-readings job (9 November 2026, Ccode
+        update.txt "JAY -- DESIGN DECIDED"). GRACIE does not interpret
+        this -- same "doesn't know what an expected cause is" boundary
+        as expected_causes itself -- she only echoes the owner back in
+        the report's new `excused_by` field, exactly when `_process_
+        level` reports this reading matched an expected cause THIS
+        cycle, None otherwise. Omitted or empty leaves `excused_by`
+        None for every channel, the exact existing behaviour for every
+        caller that doesn't pass this."""
         cycle_jump_channels = set()
         expected_causes = expected_causes or {}
+        expected_cause_owners = expected_cause_owners or {}
 
         for channel, value in readings.items():
             state = self._states.get(channel)
@@ -595,7 +618,8 @@ class GracieAgent:
             clock_event = self._process_clock(channel, state, timestamp)
 
             expected_cause = expected_causes.get(channel, _NO_EXPECTED_CAUSE)
-            self._process_level(channel, state, value, timestamp, expected_cause=expected_cause)
+            matched_expected = self._process_level(channel, state, value, timestamp, expected_cause=expected_cause)
+            excused_by = expected_cause_owners.get(channel) if matched_expected else None
             jump_event = self._process_jump(state, timestamp, value)
             slope = self._update_window_and_get_slope(state, timestamp, value)
             leash_event = self._process_leash(channel, state, timestamp, slope)
@@ -623,6 +647,7 @@ class GracieAgent:
                 "sensor_health_fault": state.stillness_active,
                 "causing_sense": state.causing_sense,
                 "clock_event": clock_event,
+                "excused_by": excused_by,
             }
 
             if clock_event:

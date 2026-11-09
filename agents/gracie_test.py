@@ -476,6 +476,48 @@ def test_expected_cause_with_size_only_excuses_a_value_actually_inside_it():
     print("  ok: an expected cause with a known size only excuses a value actually inside it")
 
 
+def test_excused_by_echoes_the_caller_supplied_owner_only_when_excused():
+    """EDEN expected-boom-readings job (9 November 2026): GRACIE
+    doesn't interpret expected_cause_owners at all -- she only echoes
+    the owner back exactly when THIS reading matched an expected
+    cause this cycle, None otherwise (not excused, no owner given,
+    unknown channel, or a genuinely-flagged crossing despite a cause
+    being commanded at the wrong size)."""
+    gracie, _, _ = make_gracie()
+    gracie.process_readings(
+        {"temp_c": 56}, timestamp=0,
+        expected_causes={"temp_c": None}, expected_cause_owners={"temp_c": "ETHAN"},
+    )
+    assert gracie._last_readings["temp_c"]["severity"] == "WARNING"
+    assert gracie._last_readings["temp_c"]["excused_by"] == "ETHAN"
+    gracie.clear_fault("temp_c")
+
+    # No expected cause this cycle -- never excused, so excused_by is
+    # None even though an owner mapping is supplied for other channels.
+    gracie.process_readings({"temp_c": 30}, timestamp=1, expected_cause_owners={"temp_c": "ETHAN"})
+    assert gracie._last_readings["temp_c"]["excused_by"] is None
+
+    # A cause commanded at the wrong size still flags -- not excused,
+    # so excused_by stays None even though an owner was supplied.
+    gracie.process_readings(
+        {"temp_c": 80}, timestamp=2,
+        expected_causes={"temp_c": (50.0, 60.0)}, expected_cause_owners={"temp_c": "ETHAN"},
+    )
+    assert gracie._last_readings["temp_c"]["severity"] == "FAULT"
+    assert gracie._last_readings["temp_c"]["excused_by"] is None
+    gracie.clear_fault("temp_c")
+
+    # Excused, but the caller supplied no owner for this channel (the
+    # blueprint's honest "no commanding agent" answer) -- excused_by
+    # is None, same value as "not excused", distinguishable only by
+    # severity (WARNING vs NOMINAL) same as every other None in this
+    # report already works.
+    gracie.process_readings({"temp_c": 56}, timestamp=3, expected_causes={"temp_c": None})
+    assert gracie._last_readings["temp_c"]["severity"] == "WARNING"
+    assert gracie._last_readings["temp_c"]["excused_by"] is None
+    print("  ok: excused_by echoes the caller-supplied owner only when this reading was actually excused")
+
+
 def test_stillness_flags_a_sensor_that_never_varies_enough():
     """STUCK_RULE: stuck_window_seconds=5.0, min_normal_noise=2.0.
     Level/jump/leash are all set unreachable on this channel, so only
@@ -690,6 +732,7 @@ def main():
         test_new_crossing_while_latched_logs_but_does_not_change_anything,
         test_expected_cause_logs_not_flags_but_never_downgrades_fault,
         test_expected_cause_with_size_only_excuses_a_value_actually_inside_it,
+        test_excused_by_echoes_the_caller_supplied_owner_only_when_excused,
         test_stillness_flags_a_sensor_that_never_varies_enough,
         test_stillness_does_not_fire_on_a_sensor_that_varies_enough,
         test_allow_steady_exempts_a_channel_from_stillness,
