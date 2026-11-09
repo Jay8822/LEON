@@ -403,9 +403,10 @@ class GracieAgent:
         boom-readings job (9 November 2026): process_readings() uses
         this, together with the caller-supplied owner for this
         channel's expected cause (if any), to set the report's new
-        `excused_by` field. GRACIE still has no idea what the cause
-        IS or who owns it; she only reports whether THIS branch fired,
-        same boundary as everything else about expected_causes."""
+        `excused` and `excused_by` fields. GRACIE still has no idea
+        what the cause IS or who owns it; she only reports whether
+        THIS branch fired, same boundary as everything else about
+        expected_causes."""
         rule = state.rule
         crossing = value > rule.level_high or value < rule.level_low
         if not crossing:
@@ -619,6 +620,13 @@ class GracieAgent:
 
             expected_cause = expected_causes.get(channel, _NO_EXPECTED_CAUSE)
             matched_expected = self._process_level(channel, state, value, timestamp, expected_cause=expected_cause)
+            # excused is the "was this reading excused at all" signal;
+            # excused_by is "who owns the cause, if known" -- kept
+            # separate because a cause can genuinely be excused with
+            # NO known owner (sim/blueprint.py's EVENT_OWNERS states
+            # None for battery_switch/solar_occlusion), which must not
+            # look identical to "not excused at all" to a consumer
+            # checking only excused_by.
             excused_by = expected_cause_owners.get(channel) if matched_expected else None
             jump_event = self._process_jump(state, timestamp, value)
             slope = self._update_window_and_get_slope(state, timestamp, value)
@@ -647,6 +655,7 @@ class GracieAgent:
                 "sensor_health_fault": state.stillness_active,
                 "causing_sense": state.causing_sense,
                 "clock_event": clock_event,
+                "excused": matched_expected,
                 "excused_by": excused_by,
             }
 

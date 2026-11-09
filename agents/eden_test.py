@@ -26,9 +26,10 @@ def health_payload(health, readings):
     return {"system_health": health, "source": "GRACIE", "timestamp": 0, "readings": readings}
 
 
-def reading(severity, causing_sense=None, excused_by=None):
+def reading(severity, causing_sense=None, excused=False, excused_by=None):
     return {"value": 0.0, "units": "u", "severity": severity, "jump": False,
-            "sensor_health_fault": False, "causing_sense": causing_sense, "excused_by": excused_by}
+            "sensor_health_fault": False, "causing_sense": causing_sense,
+            "excused": excused, "excused_by": excused_by}
 
 
 def make_eden(fault_class_table=None):
@@ -102,7 +103,7 @@ def test_excused_boom_channel_stays_quiet_until_forced():
     table = {"engine_bay_temp": {"level": FaultClass.BOOM}}
     eden, commands = make_eden(table)
     eden.on_health_event(health_payload(
-        "WARNING", {"engine_bay_temp": reading("WARNING", "level", excused_by="ETHAN")}
+        "WARNING", {"engine_bay_temp": reading("WARNING", "level", excused=True, excused_by="ETHAN")}
     ))
     assert eden.status == "MONITORING", eden.status
     assert commands == [], "an excused boom channel must not trigger SAFE_MODE on its own"
@@ -124,7 +125,7 @@ def test_excused_boom_channel_does_not_mask_a_genuinely_major_other_channel():
     }
     eden, commands = make_eden(table)
     eden.on_health_event(health_payload("FAULT", {
-        "engine_bay_temp": reading("WARNING", "level", excused_by="ETHAN"),
+        "engine_bay_temp": reading("WARNING", "level", excused=True, excused_by="ETHAN"),
         "fuel_flow": reading("FAULT", "leash_hard"),
     }))
     assert eden.status == "HOLD", eden.status

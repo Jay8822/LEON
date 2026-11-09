@@ -103,7 +103,10 @@ class EdenAgent:
 
         EDEN expected-boom-readings job (9 November 2026): a BOOM-
         classed channel GRACIE excused this cycle (report's new
-        excused_by field) contributes nothing here -- not an
+        excused field -- true regardless of whether an owner is also
+        known; excused_by separately carries the owner, if any, for
+        the confirmation tracker to use) contributes nothing here --
+        not an
         immediate SAFE_MODE, same as if it were NOMINAL. A separate,
         external confirmation tracker (sim/expected_cause_
         confirmation.py) watches the SAME "telemetry/health" traffic
@@ -133,7 +136,7 @@ class EdenAgent:
             fc = self.fault_class_table.get(channel, {}).get(sense) if sense is not None else None
             if fc is None:
                 fc = FaultClass.MAJOR
-            if fc == FaultClass.BOOM and info.get("excused_by"):
+            if fc == FaultClass.BOOM and info.get("excused"):
                 continue
             if worst is None or _FAULT_CLASS_RANK[fc] > _FAULT_CLASS_RANK[worst]:
                 worst = fc
