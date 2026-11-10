@@ -62,7 +62,11 @@ sim/out/
 
 # Scratch file used for review exchanges with Jay — not project content.
 Ccode update.txt
+Ccode history.txt
 ChatGPT relay.txt.txt
+
+# Internal usage-saving working rules (CLAUDE.md would be public).
+CLAUDE.local.md
 
 # Throwaway measurement/proof scripts, written to prove a change
 # before it lands -- not meant to be kept once their job is done.
